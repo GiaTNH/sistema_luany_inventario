@@ -22,6 +22,7 @@ Soy la Scrum Master y líder del equipo. También me encargo de la arquitectura 
 Enlace: https://trello.com/b/wPw5N1Ny/luany-sistema-de-inventarios
 
 | Columna | Qué significa |
+|---|---|
 | Pendiente | Product Backlog (18 historias: PB-00 a PB-17) |
 | Por hacer | Tareas del sprint actual |
 | En desarrollo (máx. 2 por persona) | Alguien está trabajando en la tarea |
@@ -42,6 +43,7 @@ Etiquetas de colores, vinculadas a los objetivos específicos:
 ## Equipo
 
 | Integrante | Rol |
+|---|---|
 | Dayana De La Cruz Pachas | Product Owner |
 | Kyara Felipa Escate | Scrum Master |
 | Gianira Navarrete Higa | Developer (backend y base de datos) |
