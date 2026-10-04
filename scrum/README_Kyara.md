@@ -6,7 +6,7 @@ Curso: Metodologías Ágiles - Universidad Privada San Juan Bautista
 
 ## Rol
 
-Soy la Scrum Master y líder del equipo. También me encargo de la arquitectura del proyecto.
+Soy la Scrum Master y líder del equipo.
 
 ## Responsabilidades
 
@@ -15,7 +15,6 @@ Soy la Scrum Master y líder del equipo. También me encargo de la arquitectura 
 - Dirigir el Sprint Planning.
 - Controlar el límite de trabajo en curso (máximo 2 tareas por persona en "En desarrollo").
 - Revisar el trabajo del equipo antes de pasarlo a "Hecho".
-- Elaborar el diagrama de arquitectura.
 
 ## Tablero
 
@@ -48,3 +47,4 @@ Etiquetas de colores, vinculadas a los objetivos específicos:
 | Kyara Felipa Escate | Scrum Master |
 | Gianira Navarrete Higa | Developer (backend y base de datos) |
 | Yahir Parin Arotinco | Developer (frontend y diseño) |
+| Jared Acosta Huaman | Developer (Pruebas y evidencias) |
