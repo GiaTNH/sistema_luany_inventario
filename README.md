@@ -20,7 +20,7 @@ Soy el Developer de pruebas y evidencias. Me encargo de la arquitectura del sist
 
 ## Diagrama de arquitectura
 
-Archivo: `Arquitectura de inventarios Luany.png` (en esta misma carpeta)
+![Arquitectura del sistema de gestión de inventarios - Luany](https://github.com/user-attachments/assets/13a0b1a3-74af-45fc-b19b-385c60eeed67)
 
 Arquitectura web cliente-servidor en tres capas con API REST:
 
