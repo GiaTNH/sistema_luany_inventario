@@ -7,7 +7,8 @@ Curso: Metodologías Ágiles - Universidad Privada San Juan Bautista (2026-II)
 
 ## Diagrama de arquitectura
 
-Archivo: `Arquitectura de inventarios Luany.png` (en esta misma carpeta)
+<img width="1920" height="1080" alt="Arquitectura de inventarios Luany" src="https://github.com/user-attachments/assets/b1de168b-4262-47c6-95c8-869b612601ab" />
+
 
 Arquitectura web cliente-servidor en tres capas con API REST:
 
