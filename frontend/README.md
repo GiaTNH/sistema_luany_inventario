@@ -38,3 +38,9 @@ Pantallas diseñadas en el Sprint 1:
 - `README.md`: este archivo.
 - Capturas de las pantallas del prototipo.
 - Más adelante: el código de la interfaz.
+
+## Código de la interfaz
+
+Las pantallas ya construidas (HTML, CSS y JavaScript) están en `backend/src/main/resources/static/`. Están ahí porque Spring Boot las sirve desde esa carpeta, así que el sistema funciona con un solo comando. Las capturas del prototipo están en `frontend/prototipo_pantalla/`.
+
+Pantallas: `index.html` (login), `dashboard.html`, `productos.html` y `asistente.html`.

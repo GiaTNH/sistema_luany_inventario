@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LUANY — Productos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/animaciones.css" />
+</head>
+<body class="productos-page" data-tab-activa="productos">
+
+<button class="btn-menu-movil" id="btn-menu-movil" aria-label="Menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <svg class="sidebar-background-shapes" viewBox="0 0 320 900" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M218 0h102v218c-31-13-43-48-69-57-31-11-55 14-83 2-23-10-25-37-15-62 13-34-1-72 23-101 13-15 25-18 42-19Z" fill="#352A85" opacity=".6"/>
+      <path d="M0 520c46 7 62 28 75 58 13 32 40 37 69 44 29 7 44 27 33 60-10 30 5 54 46 64 36 9 44 39 15 62-27 21-62 8-88 30-20 17-28 43-59 62H0Z" fill="#150F40" opacity=".48"/>
+      <path d="M320 636c-44 20-67 55-99 68-33 14-55 31-45 67 8 31 43 47 43 82 0 19-9 34-21 47h122Z" fill="#150F40" opacity=".42"/>
+    </svg>
+    <div class="sidebar-logo">
+      <div class="sidebar-brand">
+        <span class="sidebar-brand-bag" aria-hidden="true"><img src="/img/logo-bolsa.png" alt="" onerror="this.hidden=true"/><svg class="sidebar-bag-fallback" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="sidebar-bag-gradient" x1="12" y1="8" x2="53" y2="59" gradientUnits="userSpaceOnUse"><stop stop-color="#8B5CF6"/><stop offset="1" stop-color="#C4B5FD"/></linearGradient></defs><g transform="rotate(-8 32 32)"><path d="M19 23h26l5 32H14l5-32Z" fill="url(#sidebar-bag-gradient)" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M23 24v-7a9 9 0 0 1 18 0v7" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M32 44s-8-5.3-8-10.2a4.8 4.8 0 0 1 8-3.5 4.8 4.8 0 0 1 8 3.5C40 38.7 32 44 32 44Z" fill="#fff"/></g></svg><svg class="sidebar-brand-sparkle" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 1 2.2 7.8L22 11l-7.8 2.2L12 21l-2.2-7.8L2 11l7.8-2.2L12 1Z"/></svg><svg class="sidebar-brand-sparkle sidebar-brand-sparkle-two" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 1 2.2 7.8L22 11l-7.8 2.2L12 21l-2.2-7.8L2 11l7.8-2.2L12 1Z"/></svg></span>
+        <span class="sidebar-brand-copy"><span class="sidebar-brand-name">Luany</span><svg class="sidebar-brand-heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21S2 15 2 8.5A5.5 5.5 0 0 1 12 5a5.5 5.5 0 0 1 10 3.5C22 15 12 21 12 21Z"/></svg><span class="sidebar-brand-tagline">Panel de Inventario</span></span>
+      </div>
+      
+    </div>
+    <div class="sidebar-location" aria-hidden="true"><span class="sidebar-location-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span>Juega · Viste · Crece</span><svg class="sidebar-location-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-seccion"><span class="sidebar-section-rays" aria-hidden="true"></span>MENÚ PRINCIPAL<span class="sidebar-section-rays" aria-hidden="true"></span></div>
+      <a href="/dashboard.html" class="nav-item" data-pagina="dashboard.html" aria-label="Dashboard"><span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="sidebar-nav-label">Dashboard</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+      <a href="/productos.html" class="nav-item" data-pagina="productos.html" aria-label="Productos"><span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 7 9 5 9-5M3 7v10l9 5 9-5V7M12 12v10"/></svg></span><span class="sidebar-nav-label">Productos</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+      <a href="/asistente.html" class="nav-item" data-pagina="asistente.html" aria-label="Asistente IA"><span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.4-.7L4 20l1.5-3.5A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z"/><path d="M9 10h6M9 14h4"/></svg></span><span class="sidebar-nav-label">Asistente IA</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+    </nav>
+    <div class="sidebar-mascot" aria-hidden="true">
+      <svg class="sidebar-decoration-art" viewBox="0 0 180 140" fill="none">
+        <path d="M100 92S76 76 76 61a13 13 0 0 1 24-7 13 13 0 0 1 24 7c0 15-24 31-24 31Z" fill="#4C2FA8"/>
+        <path d="M48 113s-12-8-12-16a7 7 0 0 1 13-4 7 7 0 0 1 13 4c0 8-14 16-14 16Z" fill="#4C2FA8" opacity=".8"/>
+        <path d="m151 28 3 10 10 3-10 3-3 10-3-10-10-3 10-3 3-10Z" stroke="#8B5CF6" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="sidebar-footer"><div class="sidebar-usuario"><div class="sidebar-avatar" id="avatar-inicial">U</div><div class="sidebar-usuario-info"><span class="sidebar-usuario-nombre" id="nombre-usuario"></span><span class="sidebar-usuario-rol">Personal autorizado</span></div><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div><button class="btn-cerrar-sesion" aria-label="Cerrar sesión"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17 15 12 10 7M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>Cerrar sesión</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div></aside>
+
+  <!-- CONTENIDO -->
+  <main class="contenido-principal">
+    <header class="topbar productos-header">
+      <div class="productos-title-group">
+        <span class="productos-bag-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 23h30l4 32H13l4-32Z" fill="currentColor" stroke="none"/>
+            <path d="M23 25v-7a9 9 0 0 1 18 0v7" stroke="currentColor" stroke-width="4"/>
+            <path d="M32 31c-5-7-13 0 0 10 13-10 5-17 0-10Z" fill="#fff" stroke="#fff" stroke-width="1.5"/>
+          </svg>
+          <span class="productos-header-sparkle sparkle-one">✦</span>
+          <span class="productos-header-sparkle sparkle-two">✧</span>
+        </span>
+        <div class="topbar-titulo">
+          <h2 id="titulo-pagina">Productos</h2>
+          <p>Administra prendas, categorías y proveedores</p>
+        </div>
+      </div>
+      <div class="productos-header-decor" aria-hidden="true">
+        <span class="productos-petal"></span>
+        <svg class="productos-heart heart-one" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21S2 15 2 8.5A5.5 5.5 0 0 1 12 5a5.5 5.5 0 0 1 10 3.5C22 15 12 21 12 21Z"/></svg>
+        <svg class="productos-heart heart-two" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21S2 15 2 8.5A5.5 5.5 0 0 1 12 5a5.5 5.5 0 0 1 10 3.5C22 15 12 21 12 21Z"/></svg>
+      </div>
+    </header>
+
+    <div class="pagina productos-content">
+
+      <!-- Pestañas — .tab-btn y .tab-panel usados por productos.js -->
+      <div class="productos-tabs-card">
+        <div class="tabs">
+          <button class="tab-btn activo" onclick="cambiarTab('productos')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Productos</button>
+          <button class="tab-btn" onclick="cambiarTab('categorias')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13V6a2 2 0 0 0-2-2H7L3 8l8 8 4-4Z"/><circle cx="8" cy="8" r="1"/></svg>Categorías</button>
+          <button class="tab-btn" onclick="cambiarTab('proveedores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 4.5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4.6V20"/></svg>Proveedores</button>
+        </div>
+      </div>
+
+      <!-- TAB PRODUCTOS -->
+      <div class="tab-panel activo" id="tab-productos">
+        <div class="panel productos-table-card">
+          <div class="toolbar-productos">
+            <div class="toolbar-filtros">
+              <div class="buscador-wrapper productos-local-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                <input type="text" id="buscador" class="form-control" placeholder="Buscar por nombre..." />
+              </div>
+              <label class="productos-select-wrap" aria-label="Filtrar por categoría">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                <select id="filtro-categoria" class="select-filtro"><option value="">Todas las categorías</option></select>
+              </label>
+              <label class="productos-select-wrap productos-state-select" aria-label="Filtrar por estado">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 7 9 5 9-5M3 7v10l9 5 9-5V7M12 12v10"/></svg>
+                <select id="filtro-estado" class="select-filtro">
+                  <option value="">Todos los estados</option>
+                  <option value="AGOTADO">Agotado</option>
+                  <option value="BAJO">Bajo</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="EXCESO">Exceso</option>
+                </select>
+              </label>
+            </div>
+            <div class="toolbar-acciones productos-toolbar-actions">
+              <button class="btn btn-primario productos-tab-action productos-action-product" onclick="abrirModalProducto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo producto</button>
+            </div>
+          </div>
+
+          <!-- id="tabla-productos-body" usado por productos.js -->
+          <div class="tabla-wrapper">
+            <table class="productos-list-table productos-product-table">
+              <thead>
+                <tr>
+                  <th><button type="button" class="productos-sort-button" data-sort="nombre" aria-sort="none" onclick="ordenarProductos('nombre')">Nombre<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="categoria" aria-sort="none" onclick="ordenarProductos('categoria')">Categoría<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="proveedor" aria-sort="none" onclick="ordenarProductos('proveedor')">Proveedor<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="stockActual" aria-sort="none" onclick="ordenarProductos('stockActual')">Stock actual<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="stockMinimo" aria-sort="none" onclick="ordenarProductos('stockMinimo')">Mín.<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="stockMaximo" aria-sort="none" onclick="ordenarProductos('stockMaximo')">Máx.<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="precio" aria-sort="none" onclick="ordenarProductos('precio')">Precio<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th><button type="button" class="productos-sort-button" data-sort="estado" aria-sort="none" onclick="ordenarProductos('estado')">Estado<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-productos-body">
+                <tr class="cargando-fila">
+                  <td colspan="9"><span class="spinner spinner-dark"></span> Cargando productos...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CATEGORÍAS -->
+      <div class="tab-panel" id="tab-categorias">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Categorías</h3>
+            <button class="btn btn-primario" onclick="abrirModalCategoria()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva categoría</button>
+          </div>
+          <div class="tabla-wrapper">
+            <table class="productos-list-table productos-entity-table productos-category-table">
+              <thead><tr><th>ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+              <tbody id="tabla-categorias-body">
+                <tr class="cargando-fila"><td colspan="3"><span class="spinner spinner-dark"></span> Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB PROVEEDORES -->
+      <div class="tab-panel" id="tab-proveedores">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Proveedores</h3>
+            <button class="btn btn-primario" onclick="abrirModalProveedor()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo proveedor</button>
+          </div>
+          <div class="tabla-wrapper">
+            <table class="productos-list-table productos-entity-table productos-provider-table">
+              <thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Acciones</th></tr></thead>
+              <tbody id="tabla-proveedores-body">
+                <tr class="cargando-fila"><td colspan="4"><span class="spinner spinner-dark"></span> Cargando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /pagina -->
+  </main>
+</div>
+
+<!-- ===== MODAL PRODUCTO — id="modal-producto" ===== -->
+<div class="modal-overlay" id="modal-producto">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-producto-titulo">Nuevo producto</h3>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-producto')" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="form-producto" novalidate>
+        <input type="hidden" id="prod-id" />
+        <div class="form-grupo">
+          <label for="prod-nombre">Nombre *</label>
+          <input type="text" id="prod-nombre" class="form-control" maxlength="120" placeholder="Ej. Body manga larga" />
+          <span class="form-error" id="err-prod-nombre">El nombre es obligatorio.</span>
+        </div>
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="prod-categoria">Categoría *</label>
+            <select id="prod-categoria" class="form-control"><option value="">Seleccionar...</option></select>
+            <span class="form-error" id="err-prod-categoria">Selecciona una categoría.</span>
+          </div>
+          <div class="form-grupo">
+            <label for="prod-proveedor">Proveedor *</label>
+            <select id="prod-proveedor" class="form-control"><option value="">Seleccionar...</option></select>
+            <span class="form-error" id="err-prod-proveedor">Selecciona un proveedor.</span>
+          </div>
+        </div>
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="prod-stock-actual">Stock actual *</label>
+            <input type="number" id="prod-stock-actual" class="form-control" min="0" placeholder="0" />
+            <span class="form-error" id="err-prod-stock-actual">Valor inválido.</span>
+          </div>
+          <div class="form-grupo">
+            <label for="prod-precio">Precio (S/) *</label>
+            <input type="number" id="prod-precio" class="form-control" min="0" step="0.01" placeholder="0.00" />
+            <span class="form-error" id="err-prod-precio">Precio inválido.</span>
+          </div>
+        </div>
+        <div class="form-fila">
+          <div class="form-grupo">
+            <label for="prod-stock-min">Stock mínimo *</label>
+            <input type="number" id="prod-stock-min" class="form-control" min="0" placeholder="0" />
+            <span class="form-error" id="err-prod-stock-min">Valor inválido.</span>
+          </div>
+          <div class="form-grupo">
+            <label for="prod-stock-max">Stock máximo *</label>
+            <input type="number" id="prod-stock-max" class="form-control" min="0" placeholder="0" />
+            <span class="form-error" id="err-prod-stock-max">Debe ser ≥ al mínimo.</span>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primario" id="btn-guardar-producto" onclick="guardarProducto()">Guardar producto</button>
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-producto')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL MOVIMIENTO — id="modal-movimiento" ===== -->
+<div class="modal-overlay" id="modal-movimiento">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <h3 id="modal-mov-titulo">Registrar movimiento</h3>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-movimiento')" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="form-movimiento" novalidate>
+        <input type="hidden" id="mov-producto-id" />
+        <div class="form-grupo">
+          <label>Producto</label>
+          <input type="text" id="mov-producto-nombre" class="form-control" readonly
+                 style="background:#F5F0FF;color:var(--primario);font-weight:600;" />
+        </div>
+        <div class="form-grupo" id="grupo-tipo-mov">
+          <label for="mov-tipo">Tipo de movimiento *</label>
+          <select id="mov-tipo" class="form-control">
+            <option value="ENTRADA">Entrada</option>
+            <option value="SALIDA">Salida</option>
+            <option value="VENTA">Venta</option>
+          </select>
+        </div>
+        <div class="form-grupo">
+          <label for="mov-cantidad">Cantidad *</label>
+          <input type="number" id="mov-cantidad" class="form-control" min="1" placeholder="1" />
+          <span class="form-error" id="err-mov-cantidad">La cantidad debe ser al menos 1.</span>
+        </div>
+        <div class="form-grupo">
+          <label for="mov-observacion">Motivo / Observación</label>
+          <input type="text" id="mov-observacion" class="form-control" maxlength="200" placeholder="Opcional" />
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primario" id="btn-guardar-mov" onclick="guardarMovimiento()">Registrar movimiento</button>
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-movimiento')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL HISTORIAL — id="modal-historial" ===== -->
+<div class="modal-overlay" id="modal-historial">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h3 id="modal-historial-titulo">Historial de movimientos</h3>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-historial')" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="tabla-wrapper">
+        <table>
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Observación</th></tr></thead>
+          <tbody id="tabla-historial-body">
+            <tr class="cargando-fila"><td colspan="4">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-historial')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL CATEGORÍA — id="modal-categoria" ===== -->
+<div class="modal-overlay" id="modal-categoria">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 id="modal-cat-titulo">Nueva categoría</h3>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-categoria')" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cat-id" />
+      <div class="form-grupo">
+        <label for="cat-nombre">Nombre *</label>
+        <input type="text" id="cat-nombre" class="form-control" maxlength="80" placeholder="Ej. Bodies" />
+        <span class="form-error" id="err-cat-nombre">El nombre es obligatorio.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primario" onclick="guardarCategoria()">Guardar categoría</button>
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-categoria')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL PROVEEDOR — id="modal-proveedor" ===== -->
+<div class="modal-overlay" id="modal-proveedor">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 id="modal-prov-titulo">Nuevo proveedor</h3>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-proveedor')" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="prov-id" />
+      <div class="form-grupo">
+        <label for="prov-nombre">Nombre *</label>
+        <input type="text" id="prov-nombre" class="form-control" maxlength="120" placeholder="Nombre del proveedor" />
+        <span class="form-error" id="err-prov-nombre">El nombre es obligatorio.</span>
+      </div>
+      <div class="form-grupo">
+        <label for="prov-telefono">Teléfono</label>
+        <input type="text" id="prov-telefono" class="form-control" maxlength="20" placeholder="Opcional" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primario" onclick="guardarProveedor()">Guardar proveedor</button>
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-proveedor')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL CONFIRMAR ELIMINAR — id="modal-confirmar" ===== -->
+<div class="modal-overlay" id="modal-confirmar">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>¿Eliminar elemento?</h3>
+      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-confirmar')" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <div style="width:44px;height:44px;background:#FEE2E2;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" width="22" height="22">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+          </svg>
+        </div>
+        <div>
+          <p id="confirmar-mensaje" style="font-size:14px;color:var(--texto);line-height:1.5;">
+            ¿Estás seguro de que deseas eliminar este elemento?
+          </p>
+          <p style="font-size:12px;color:var(--texto-suave);margin-top:6px;">Esta acción no se puede deshacer.</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-peligro" id="btn-confirmar-ok">Sí, eliminar</button>
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-confirmar')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="/js/api.js"></script>
+<script src="/js/productos.js"></script>
+<script src="/js/animaciones.js"></script>
+</body>
+</html>
