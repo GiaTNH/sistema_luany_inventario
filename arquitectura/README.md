@@ -74,15 +74,17 @@ La base de datos se encuentra alojada en Aiven, lo que permite que la aplicació
 Las entidades y tablas corresponden a los módulos del sistema, entre ellos:
 
 - Usuarios.
+- Categorías.
 - Productos.
 - Proveedores.
+- Clientes.
 - Movimientos.
 - Notas de venta.
 - Detalle de venta.
 - Pedidos.
 - Detalle de pedido.
 
-La estructura definitiva depende del modelo de datos implementado en el proyecto.
+Son 10 tablas. La estructura vigente está en `database/schema_aiven.sql` y el diagrama actualizado en `database/modelo-er-actualizado.png`.
 
 ## 4. Seguridad y control de acceso
 
@@ -166,3 +168,4 @@ sistema_luany_inventario/
 - Los movimientos deben registrar información que permita identificar la operación, su fecha y el usuario responsable.
 - Las copias de respaldo de la base de datos deben formar parte de las medidas de mantenimiento y protección de la información.
 - Las funcionalidades se desarrollan progresivamente y deben validarse antes de considerarse terminadas.
+
