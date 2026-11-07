@@ -24,6 +24,19 @@ public class Usuario {
     @Column(nullable = false, length = 20)
     private String rol = "EMPLEADO";
 
+    @Column(length = 100)
+    private String apellido;
+
+    @Column(length = 20)
+    private String estado = "ACTIVO";
+
+    @Column(name = "debe_cambiar_password", nullable = false,
+            columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
+    private boolean debeCambiarPassword = false;
+}
+    @Column(nullable = false, length = 20)
+    private String rol = "EMPLEADO";
+
     @Column(name = "debe_cambiar_password", nullable = false,
             columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
     private boolean debeCambiarPassword = false;
