@@ -5733,3 +5733,20 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .contenido-principal:has(.ai-header) .ai-info-row { flex-basis: clamp(64px, 11vh, 80px); }
   .contenido-principal:has(.ai-header) .ai-scroll-area:has(#chat-mensajes .burbuja.usuario) { flex: 1 0 55vh; overflow: hidden; }
 }
+
+/* Ajustes exclusivos para el formulario de cambio de contraseña */
+.login-screen #form-cambiar-password .login-field {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    box-sizing: border-box;
+}
+
+.login-screen #form-cambiar-password .login-field-copy {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-screen #form-cambiar-password .login-field .form-control {
+    width: 100%;
+    box-sizing: border-box;
+}

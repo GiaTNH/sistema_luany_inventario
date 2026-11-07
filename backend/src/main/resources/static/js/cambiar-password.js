@@ -1,7 +1,5 @@
-
 (() => {
     const formulario = document.getElementById('form-cambiar-password');
-    const inputTemporal = document.getElementById('password-temporal');
     const inputNueva = document.getElementById('nueva-password');
     const inputConfirmar = document.getElementById('confirmar-password');
     const mensajeError = document.getElementById('password-error');
@@ -10,7 +8,6 @@
     formulario.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        const passwordTemporal = inputTemporal.value;
         const nuevaPassword = inputNueva.value;
         const confirmarPassword = inputConfirmar.value;
 
@@ -27,11 +24,6 @@
             return;
         }
 
-        if (passwordTemporal === nuevaPassword) {
-            mostrarError('La nueva contraseña debe ser diferente de la temporal.');
-            return;
-        }
-
         if (nuevaPassword !== confirmarPassword) {
             mostrarError('Las contraseñas nuevas no coinciden.');
             return;
@@ -42,7 +34,6 @@
 
         try {
             const usuario = await apiPost('/api/auth/cambiar-password', {
-                passwordTemporal,
                 nuevaPassword
             });
 
