@@ -13,8 +13,15 @@ function obtenerSesion() {
   return raw ? JSON.parse(raw) : null;
 }
 
-/** Elimina la sesión y redirige al login */
-function cerrarSesion() {
+/** Cierra la sesión del servidor y redirige al login */
+async function cerrarSesion() {
+  try {
+    await apiPost('/api/auth/logout', {});
+  } catch (error) {
+    mostrarToast(`No se pudo cerrar la sesión: ${error.message}`, 'error');
+    return;
+  }
+
   sessionStorage.removeItem('usuario');
   window.location.href = '/index.html';
 }
@@ -35,10 +42,26 @@ function requerirSesion() {
  * @returns {Promise<any>} - datos JSON o lanza Error con mensaje legible
  */
 async function apiFetch(ruta, opciones = {}) {
-  const config = {
-    headers: { 'Content-Type': 'application/json' },
-    ...opciones,
+  const metodo = (opciones.method || 'GET').toUpperCase();
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+    ...(opciones.headers || {}),
   };
+
+  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(metodo)) {
+    let tokenCsrf;
+    try {
+      const respuestaCsrf = await fetch('/api/auth/csrf', { cache: 'no-store' });
+      if (!respuestaCsrf.ok) throw new Error(`Error ${respuestaCsrf.status}`);
+      tokenCsrf = await respuestaCsrf.json();
+    } catch (error) {
+      throw new Error(`No se pudo validar la solicitud: ${error.message}`);
+    }
+    headers[tokenCsrf.headerName] = tokenCsrf.token;
+  }
+
+  const config = { ...opciones, method: metodo, headers };
 
   let respuesta;
   try {
@@ -187,6 +210,22 @@ function iniciarLayout(tituloPagina) {
   document.querySelectorAll('.btn-cerrar-sesion').forEach(btn => {
     btn.addEventListener('click', cerrarSesion);
   });
+
+  marcarNavActivo();
+
+  if (usuario.rol === 'ADMIN' && !document.querySelector('[data-pagina="usuarios.html"]')) {
+    const enlaceUsuarios = document.createElement('a');
+    enlaceUsuarios.href = '/usuarios.html';
+    enlaceUsuarios.className = 'nav-item';
+    enlaceUsuarios.dataset.pagina = 'usuarios.html';
+    enlaceUsuarios.setAttribute('aria-label', 'Gestión de usuarios');
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'sidebar-nav-label';
+    etiqueta.textContent = 'Usuarios';
+    enlaceUsuarios.appendChild(etiqueta);
+    const nav = document.querySelector('.sidebar-nav');
+    if (nav) nav.appendChild(enlaceUsuarios);
+  }
 
   marcarNavActivo();
 

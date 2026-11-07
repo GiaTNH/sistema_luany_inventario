@@ -1,12 +1,23 @@
 package com.luany.inventory.controller;
 
 import com.luany.inventory.model.LoginRequest;
-import com.luany.inventory.model.RegistroRequest;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.service.AuthService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -14,14 +25,36 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final SecurityContextRepository securityContextRepository;
 
-    @PostMapping("/registro")
-    public UsuarioResponse registrar(@Valid @RequestBody RegistroRequest request) {
-        return authService.registrar(request);
+    @GetMapping("/csrf")
+    public ResponseEntity<CsrfTokenResponse> csrfToken(CsrfToken csrfToken) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new CsrfTokenResponse(csrfToken.getToken(), csrfToken.getHeaderName()));
     }
 
     @PostMapping("/login")
-    public UsuarioResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.iniciarSesion(request);
+    public UsuarioResponse login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        UsuarioResponse usuario = authService.iniciarSesion(request);
+        httpRequest.getSession(true);
+        httpRequest.changeSessionId();
+
+        var authentication = new UsernamePasswordAuthenticationToken(
+                usuario.email(),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_" + usuario.rol())));
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        securityContextRepository.saveContext(context, httpRequest, httpResponse);
+
+        return usuario;
+    }
+
+    public record CsrfTokenResponse(String token, String headerName) {
     }
 }

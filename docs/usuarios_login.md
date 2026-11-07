@@ -1,61 +1,49 @@
-# Gestión de usuarios: registro e inicio de sesión
+# Gestión de usuarios: creación administrativa e inicio de sesión
 
 ## 1. Descripción general
 
-El sistema de gestión de inventario de la empresa LUANY contempla la gestión de usuarios para controlar el acceso a sus funcionalidades. El registro permite incorporar usuarios al sistema, mientras que el inicio de sesión permite comprobar sus credenciales antes de autorizar el acceso.
+El acceso se realiza con cuentas creadas por un administrador. No hay registro público. El backend mantiene una sesión Spring Security después de validar las credenciales; la creación de empleados está restringida en el servidor al rol `ADMIN`.
 
-La gestión de usuarios también considera la validación de los datos ingresados y la protección de las contraseñas almacenadas en la base de datos.
+## 2. Creación de cuentas de empleados
 
-## 2. Registro de usuarios
+El administrador crea una cuenta desde **Usuarios** o mediante `POST /api/usuarios`, enviando únicamente nombre y correo electrónico. El servidor valida ambos campos, normaliza el correo y rechaza duplicados.
 
-El registro permite guardar los datos de un nuevo usuario en la base de datos. Durante este proceso, el sistema debe comprobar que los campos obligatorios estén completos y que la información cumpla las validaciones establecidas.
+El servidor genera una contraseña temporal aleatoria, la almacena mediante BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. La contraseña temporal se muestra una sola vez en la respuesta para que el administrador la comparta de forma segura. El envío por correo y el flujo de cambio obligatorio aún no están implementados.
 
-Cuando se registra una contraseña, esta debe procesarse mediante un algoritmo de hash seguro antes de almacenarse. De esta manera, la base de datos no conserva la contraseña original como texto legible.
-
-Las validaciones aplicadas y los campos solicitados deben corresponder al formulario y al código implementados en el proyecto.
+El endpoint no acepta contraseña ni rol en la solicitud. Los usuarios no autenticados y los empleados no pueden crear cuentas, aunque intenten llamar directamente a la API. Las operaciones de escritura usan un token CSRF.
 
 ## 3. Inicio de sesión
 
-El inicio de sesión permite verificar las credenciales de un usuario registrado. El proceso comprende la recepción de los datos ingresados, la búsqueda del usuario correspondiente y la comprobación de la contraseña.
-
-Si las credenciales son válidas, el sistema permite el acceso de acuerdo con el mecanismo de autenticación implementado. Si las credenciales no son correctas, el acceso debe rechazarse y mostrarse un mensaje de error que no exponga información confidencial.
+El inicio de sesión busca el usuario por correo y comprueba la contraseña mediante BCrypt. Si las credenciales son válidas, se establece una sesión del lado del servidor con la autoridad correspondiente al rol guardado en la base de datos. Los roles no se aceptan desde el cliente.
 
 ## 4. Protección de contraseñas mediante BCrypt
 
-Las contraseñas deben almacenarse mediante un mecanismo de hash y no como texto plano. El formato BCrypt utiliza cadenas que pueden comenzar con el prefijo `$2a$`.
-
-Este prefijo es compatible con el formato de hash de BCrypt. Sin embargo, para confirmar que la autenticación funciona correctamente, también debe comprobarse que el código utiliza el mecanismo correspondiente para verificar la contraseña introducida durante el inicio de sesión.
-
-La contraseña original no debe mostrarse ni guardarse directamente en la base de datos. Asimismo, las credenciales de conexión y las claves de servicios externos deben mantenerse fuera del repositorio público.
+Las contraseñas se guardan como hashes BCrypt, no como texto legible. La contraseña temporal se devuelve únicamente al administrador al crear la cuenta; el hash no forma parte de la respuesta. No se debe registrar ni compartir el hash completo ni la contraseña temporal en logs o capturas.
 
 ## 5. Evidencia de la tabla usuarios
 
-En esta sección se incorpora una captura obtenida de la base de datos del proyecto LUANY, donde se visualiza la tabla `usuarios` y el formato de hash utilizado para almacenar las contraseñas.
+En esta sección se puede incorporar una captura de la tabla `usuarios` mostrando el rol y `debe_cambiar_password`, y únicamente el prefijo del hash BCrypt.
 
 **Figura 1. Evidencia del almacenamiento de contraseñas en la tabla usuarios.**
 
 [Insertar aquí la captura real de la tabla `usuarios` en MySQL Workbench.]
 
-La captura debe permitir identificar el campo correspondiente a la contraseña y mostrar únicamente el prefijo `$2a$` del hash. El resto del hash y los datos personales de los usuarios deben ocultarse para proteger la información.
+El resto del hash, las contraseñas temporales y los datos personales deben ocultarse.
 
 **Fuente:** elaboración propia a partir de la base de datos del proyecto LUANY.
 
 ## 6. Pruebas de verificación
 
-Para documentar el funcionamiento de la gestión de usuarios, se deben ejecutar las siguientes pruebas:
+Las pruebas automatizadas verifican:
 
 | Caso de prueba | Procedimiento | Resultado esperado |
 |---|---|---|
-| Registro de usuario | Ingresar los datos requeridos para crear una cuenta. | El sistema registra al usuario si los datos cumplen las validaciones. |
-| Validación de campos | Enviar el formulario con campos obligatorios vacíos. | El sistema rechaza los datos que incumplen las reglas establecidas. |
-| Inicio de sesión correcto | Ingresar las credenciales de un usuario registrado. | El sistema permite el acceso. |
-| Contraseña incorrecta | Ingresar una contraseña que no corresponde al usuario. | El sistema rechaza el acceso. |
-| Verificación del hash | Consultar el campo de contraseña en la base de datos. | Se comprueba que la contraseña está almacenada en un formato de hash compatible con el mecanismo utilizado. |
-
-Los resultados de estas pruebas deben registrarse después de ejecutarlas en el sistema. La definición de un resultado esperado no constituye, por sí sola, evidencia de que la prueba haya sido superada.
+| Creación de empleado | Crear una cuenta desde el servicio con un correo nuevo. | Guarda BCrypt, rol `EMPLEADO` y cambio de contraseña requerido. |
+| Correo duplicado | Repetir la creación con el mismo correo. | El backend responde conflicto y no guarda otra cuenta. |
+| Campos inválidos | Enviar nombre/correo vacíos o un correo inválido. | El backend rechaza la solicitud. |
+| Acceso restringido | Intentar `POST /api/usuarios` sin sesión o con rol `EMPLEADO`. | El backend rechaza la creación. |
+| Acceso ADMIN | Iniciar sesión con una cuenta ADMIN y crear un empleado. | El backend crea la cuenta y devuelve la contraseña temporal sin exponer el hash. |
 
 ## 7. Conclusión
 
-La gestión de usuarios es importante para controlar el acceso al sistema de inventario LUANY y proteger las credenciales almacenadas. La validación de los datos y el uso de un mecanismo de hash para las contraseñas contribuyen a mejorar la seguridad de la aplicación.
-
-La documentación debe mantenerse actualizada de acuerdo con el código fuente, la estructura de la base de datos y los resultados obtenidos durante las pruebas.
+La creación de empleados está centralizada en el administrador y se valida en el backend. Las cuentas nuevas tienen contraseña temporal protegida con BCrypt, rol no elevado y marca de cambio inicial. El cambio de contraseña y el envío de correo quedan para etapas posteriores.
