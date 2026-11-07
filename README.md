@@ -9,9 +9,10 @@ Curso: Metodologías Ágiles - Universidad Privada San Juan Bautista (2026-II)
 
 El sistema usa Java 17, Spring Boot y MySQL. El código está en `backend/`.
 
-1. Crear la base de datos con los scripts de `database/`.
+1. Crear la base de datos con `database/schema_aiven.sql` (y, si se quiere, `database/datos_ejemplo.sql`). Ver `database/README.md`.
 2. Definir las variables de entorno `DB_URL`, `DB_USER` y `DB_PASSWORD` (y la clave de Gemini para el asistente, según `backend/src/main/resources/application.properties`).
 3. Desde la carpeta `backend/`: `./mvnw spring-boot:run`
 4. Abrir `http://localhost:8080`
 
-Para desplegar en Render, usar `backend` como directorio raíz; ahí está el `Dockerfile`.
+Para desplegar en Render, usar `backend` como directorio raíz; ahí está el `Dockerfile`. La base de datos de producción está en Aiven (MySQL 8, SSL obligatorio) y el backend usa `spring.jpa.hibernate.ddl-auto=validate`: la estructura solo se cambia con scripts SQL.
+
