@@ -241,3 +241,82 @@ function iniciarLayout(tituloPagina) {
     });
   }
 }
+
+// ---------- PROTECCIÓN DE PÁGINAS ----------
+
+/**
+ * Consulta al backend para obtener los datos reales de la sesión.
+ */
+async function consultarUsuarioActual() {
+  try {
+    const usuario = await apiGet('/api/auth/me');
+    guardarSesion(usuario);
+    return usuario;
+  } catch (error) {
+    sessionStorage.removeItem('usuario');
+    return null;
+  }
+}
+
+/**
+ * Comprueba si el usuario puede entrar a una página.
+ */
+async function protegerPagina(opciones = {}) {
+  const usuario = await consultarUsuarioActual();
+
+  if (!usuario) {
+    window.location.replace('/index.html');
+    return null;
+  }
+
+  // Pantalla exclusiva para usuarios con contraseña temporal.
+  if (opciones.cambioPassword) {
+    if (!usuario.debeCambiarPassword) {
+      window.location.replace('/dashboard.html');
+      return null;
+    }
+    return usuario;
+  }
+
+  // Los usuarios pendientes deben cambiar su contraseña.
+  if (usuario.debeCambiarPassword) {
+    window.location.replace('/cambiar-password.html');
+    return null;
+  }
+
+  // Gestión de usuarios: solamente ADMIN.
+  if (opciones.soloAdmin && usuario.rol !== 'ADMIN') {
+    window.location.replace('/dashboard.html');
+    return null;
+  }
+
+  return usuario;
+}
+
+/**
+ * Carga el JavaScript de una pantalla después de validar el acceso.
+ */
+async function cargarPaginaProtegida(archivo, opciones = {}) {
+  const usuario = await protegerPagina(opciones);
+
+  if (!usuario) return;
+
+  const script = document.createElement('script');
+  script.src = archivo;
+  document.body.appendChild(script);
+}
+
+/**
+ * Si ya existe una sesión, redirige según el estado de la contraseña.
+ */
+async function redirigirSiHaySesionActiva() {
+  const usuario = await consultarUsuarioActual();
+
+  if (!usuario) return;
+
+  const destino = usuario.debeCambiarPassword
+    ? '/cambiar-password.html'
+    : '/dashboard.html';
+
+  window.location.replace(destino);
+}
