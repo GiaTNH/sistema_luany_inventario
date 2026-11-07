@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -15,6 +16,12 @@ public class ManejadorErrores {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> reglaDeNegocio(IllegalArgumentException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, String>> estadoDeRespuesta(ResponseStatusException e) {
+        return ResponseEntity.status(e.getStatusCode())
+                .body(Map.of("error", e.getReason() == null ? "No se pudo completar la solicitud" : e.getReason()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
