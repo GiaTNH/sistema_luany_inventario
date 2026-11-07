@@ -60,7 +60,7 @@ Contiene los archivos y componentes necesarios para configurar la aplicación, l
 
 ## 5. Base de datos
 
-El sistema utiliza MySQL como gestor de base de datos relacional. La base de datos local se denomina `luany_inventario`.
+El sistema utiliza MySQL como gestor de base de datos relacional. La base de datos de producción está alojada en Aiven (MySQL 8, base `defaultdb`, conexión con SSL). Para pruebas locales se puede usar una base propia creada con `database/schema_aiven.sql`.
 
 Entre las principales entidades del sistema se encuentran:
 
@@ -69,6 +69,8 @@ Entre las principales entidades del sistema se encuentran:
 - Proveedores.
 - Movimientos de inventario.
 - Usuarios.
+- Clientes, notas de venta y detalle de venta.
+- Pedidos a proveedores y detalle de pedido.
 - Alertas de stock.
 
 Las relaciones entre las entidades permiten organizar la información y mantener la integridad de los datos.
@@ -115,7 +117,7 @@ Para trabajar con el proyecto se requiere:
 
 1. Instalar Java JDK 17.
 2. Instalar y ejecutar MySQL Server.
-3. Crear la base de datos `luany_inventario` si todavía no existe.
+3. Crear una base de datos MySQL propia y ejecutar `database/schema_aiven.sql` si todavía no existe (en producción se usa Aiven).
 4. Configurar el usuario y la contraseña de MySQL en el entorno local.
 5. Configurar la clave de Gemini si se utilizará el asistente inteligente.
 6. Abrir la carpeta raíz del proyecto en Visual Studio Code.
