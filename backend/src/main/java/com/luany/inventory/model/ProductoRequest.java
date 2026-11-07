@@ -31,4 +31,10 @@ public class ProductoRequest {
     @NotNull(message = "El precio es obligatorio")
     @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
     private Double precio;
+
+    @Size(max = 50, message = "El código no puede superar 50 caracteres")
+    private String codigo;
+
+    @Size(max = 200, message = "La descripción no puede superar 200 caracteres")
+    private String descripcion;
 }
