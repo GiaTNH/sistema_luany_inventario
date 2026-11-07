@@ -5737,7 +5737,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 /* Ajustes exclusivos para el formulario de cambio de contraseña */
 .login-screen #form-cambiar-password .login-field {
     width: 100%;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 25px;
     box-sizing: border-box;
 }
 
