@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
@@ -14,6 +15,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     @Query("SELECT p FROM Producto p WHERE LOWER(p.nombre) LIKE LOWER(CONCAT('%', :nombre, '%'))")
     List<Producto> buscarPorNombre(@Param("nombre") String nombre);
+
+    Optional<Producto> findByCodigo(String codigo);
 
     @Query("SELECT p FROM Producto p WHERE p.categoria.id = :categoriaId")
     List<Producto> findPorCategoria(@Param("categoriaId") Long categoriaId);
