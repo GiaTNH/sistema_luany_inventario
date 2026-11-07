@@ -5,6 +5,7 @@ import com.luany.inventory.model.MovimientoRequest;
 import com.luany.inventory.service.MovimientoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,8 +18,10 @@ public class MovimientoController {
     private final MovimientoService movimientoService;
 
     @PostMapping
-    public Movimiento registrar(@Valid @RequestBody MovimientoRequest request) {
-        return movimientoService.registrar(request);
+    public Movimiento registrar(
+            @Valid @RequestBody MovimientoRequest request,
+            Authentication authentication) {
+        return movimientoService.registrar(request, authentication.getName());
     }
 
     @GetMapping
