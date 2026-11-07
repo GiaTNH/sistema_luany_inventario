@@ -1,8 +1,11 @@
 package com.luany.inventory.service;
 
 import com.luany.inventory.model.CrearEmpleadoRequest;
+import com.luany.inventory.model.CambioPasswordRequest;
+import com.luany.inventory.model.LoginRequest;
 import com.luany.inventory.model.Usuario;
 import com.luany.inventory.model.UsuarioCreadoResponse;
+import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,5 +83,111 @@ class AuthServiceTests {
 
         assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
         verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cambioPasswordValidaTemporalYGuardaHashActualizandoLaBandera() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordTemporal("temporal-segura");
+        request.setNuevaPassword("NuevaClaveSegura2026!");
+
+        UsuarioResponse respuesta = authService.cambiarPassword("empleado@luany.com", request);
+
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        Usuario guardado = captor.getValue();
+        assertTrue(passwordEncoder.matches(request.getNuevaPassword(), guardado.getPassword()));
+        assertNotEquals(request.getNuevaPassword(), guardado.getPassword());
+        assertFalse(guardado.isDebeCambiarPassword());
+        assertFalse(respuesta.debeCambiarPassword());
+        assertEquals("EMPLEADO", respuesta.rol());
+    }
+
+    @Test
+    void cambioPasswordRechazaPasswordTemporalIncorrecta() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-correcta");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordTemporal("temporal-incorrecta");
+        request.setNuevaPassword("NuevaClaveSegura2026!");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.cambiarPassword("empleado@luany.com", request));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cambioPasswordNoPermiteReutilizarLaTemporal() {
+        Usuario usuario = usuarioConPasswordTemporal("UnaTemporalSegura2026!");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordTemporal("UnaTemporalSegura2026!");
+        request.setNuevaPassword("UnaTemporalSegura2026!");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.cambiarPassword("empleado@luany.com", request));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cambioPasswordRechazaUsuarioSinCambioPendiente() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+        usuario.setDebeCambiarPassword(false);
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordTemporal("temporal-segura");
+        request.setNuevaPassword("NuevaClaveSegura2026!");
+
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class,
+                () -> authService.cambiarPassword("empleado@luany.com", request));
+
+        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cambioPasswordRechazaNuevaPasswordSobreLimiteUtf8DeBcrypt() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordTemporal("temporal-segura");
+        request.setNuevaPassword("á".repeat(37));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.cambiarPassword("empleado@luany.com", request));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void loginYConsultaDeSesionDevuelvenEstadoPersistido() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        LoginRequest login = new LoginRequest();
+        login.setEmail("empleado@luany.com");
+        login.setPassword("temporal-segura");
+
+        assertTrue(authService.iniciarSesion(login).debeCambiarPassword());
+        assertTrue(authService.obtenerUsuarioAutenticado("empleado@luany.com").debeCambiarPassword());
+    }
+
+    private Usuario usuarioConPasswordTemporal(String passwordTemporal) {
+        Usuario usuario = new Usuario();
+        usuario.setId(5L);
+        usuario.setNombre("Empleado");
+        usuario.setEmail("empleado@luany.com");
+        usuario.setRol("EMPLEADO");
+        usuario.setPassword(passwordEncoder.encode(passwordTemporal));
+        usuario.setDebeCambiarPassword(true);
+        return usuario;
     }
 }

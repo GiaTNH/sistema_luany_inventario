@@ -38,8 +38,11 @@ public class ConfiguracionSeguridad {
                         .csrfTokenRequestHandler(csrfHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/csrf", "/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/cambiar-password")
+                        .hasAuthority("PASSWORD_CHANGE_REQUIRED")
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").hasRole("ADMIN")
-                        .requestMatchers("/api/**").authenticated()
+                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "EMPLEADO")
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->

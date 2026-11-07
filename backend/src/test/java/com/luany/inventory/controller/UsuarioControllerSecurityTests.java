@@ -2,9 +2,9 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.model.UsuarioCreadoResponse;
 import com.luany.inventory.model.UsuarioResponse;
-import com.luany.inventory.service.AuthService;
 import com.luany.inventory.model.Producto;
 import com.luany.inventory.service.ProductoService;
+import com.luany.inventory.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -53,14 +53,15 @@ class UsuarioControllerSecurityTests {
         String token = extraer(cuerpoCsrf, "token");
         MockHttpSession session = (MockHttpSession) resultado.getRequest().getSession(false);
         when(authService.iniciarSesion(any())).thenReturn(
-                new UsuarioResponse(1L, "Usuario de prueba", "prueba@luany.com", "ADMIN"));
+                usuario("ADMIN", false));
 
         mockMvc.perform(post("/api/auth/login")
                         .session(session)
                         .header(header, token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"prueba@luany.com\",\"password\":\"secreta\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.debeCambiarPassword").value(false));
     }
 
     @Test
@@ -121,10 +122,115 @@ class UsuarioControllerSecurityTests {
     }
 
     @Test
+    void empleadoConCambioPendienteNoPuedeConsultarProductos() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO", true);
+
+        mockMvc.perform(get("/api/productos").session(session))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(productoService);
+    }
+
+    @Test
+    void empleadoConCambioPendientePuedeConsultarSuSesion() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO", true);
+        when(authService.obtenerUsuarioAutenticado("prueba@luany.com"))
+                .thenReturn(usuario("EMPLEADO", true));
+
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("prueba@luany.com"))
+                .andExpect(jsonPath("$.debeCambiarPassword").value(true));
+
+        verify(authService).obtenerUsuarioAutenticado("prueba@luany.com");
+    }
+
+    @Test
+    void usuarioAnonimoNoPuedeConsultarSuSesion() throws Exception {
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void empleadoConCambioPendientePuedeCambiarPasswordYUsarLaMismaSesion() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO", true);
+        when(authService.cambiarPassword(eq("prueba@luany.com"), any()))
+                .thenReturn(usuario("EMPLEADO", false));
+        when(productoService.listar()).thenReturn(java.util.List.of());
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"NuevaClaveSegura2026!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.debeCambiarPassword").value(false))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        mockMvc.perform(get("/api/productos").session(session))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+
+        verify(authService).cambiarPassword(eq("prueba@luany.com"), any());
+        verify(productoService).listar();
+    }
+
+    @Test
+    void empleadoConCambioPendienteNoPuedeCambiarPasswordSinCsrf() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO", true);
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .session(session)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"NuevaClaveSegura2026!\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(authService, never()).cambiarPassword(any(), any());
+    }
+
+    @Test
+    void empleadoSinCambioPendienteNoPuedeUsarEndpointDeCambio() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO");
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"NuevaClaveSegura2026!\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(authService, never()).cambiarPassword(any(), any());
+    }
+
+    @Test
+    void nuevaPasswordDebeCumplirLaLongitudMinima() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO", true);
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"corta\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(authService, never()).cambiarPassword(any(), any());
+    }
+
+    @Test
+    void empleadoConCambioPendientePuedeCerrarSesion() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO", true);
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .session(session)
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
     void administradorPuedeCrearEmpleadoYNoSeDevuelveElHash() throws Exception {
         MockHttpSession session = iniciarSesion("ADMIN");
         when(authService.crearEmpleado(any())).thenReturn(new UsuarioCreadoResponse(
-                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO"),
+                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true),
                 "temporal-segura"));
 
         mockMvc.perform(post("/api/usuarios")
@@ -200,8 +306,11 @@ class UsuarioControllerSecurityTests {
     }
 
     private MockHttpSession iniciarSesion(String rol) throws Exception {
-        when(authService.iniciarSesion(any())).thenReturn(
-                new UsuarioResponse(1L, "Usuario de prueba", "prueba@luany.com", rol));
+        return iniciarSesion(rol, false);
+    }
+
+    private MockHttpSession iniciarSesion(String rol, boolean debeCambiarPassword) throws Exception {
+        when(authService.iniciarSesion(any())).thenReturn(usuario(rol, debeCambiarPassword));
 
         return (MockHttpSession) mockMvc.perform(post("/api/auth/login")
                         .with(csrf())
@@ -211,6 +320,11 @@ class UsuarioControllerSecurityTests {
                 .andReturn()
                 .getRequest()
                 .getSession(false);
+    }
+
+    private UsuarioResponse usuario(String rol, boolean debeCambiarPassword) {
+        return new UsuarioResponse(
+                1L, "Usuario de prueba", "prueba@luany.com", rol, debeCambiarPassword);
     }
 
     private String extraer(String json, String campo) {
