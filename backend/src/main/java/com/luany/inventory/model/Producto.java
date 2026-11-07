@@ -34,4 +34,10 @@ public class Producto {
 
     @Column(nullable = false)
     private Double precio = 0.0;
+
+    @Column(length = 50)
+    private String codigo;
+
+    @Column(length = 200)
+    private String descripcion;
 }
