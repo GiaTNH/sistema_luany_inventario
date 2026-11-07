@@ -61,29 +61,35 @@ public class AuthService {
         return aRespuesta(usuario);
     }
 
-    @Transactional
-    public UsuarioResponse cambiarPassword(String email, CambioPasswordRequest request) {
-        Usuario usuario = usuarioRepository.buscarPorEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La sesión ya no es válida"));
 
-        if (!usuario.isDebeCambiarPassword()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "El usuario no tiene un cambio pendiente");
-        }
-        if (!passwordEncoder.matches(request.getPasswordTemporal(), usuario.getPassword())) {
-            throw new IllegalArgumentException("La contraseña temporal es incorrecta");
-        }
-        if (passwordEncoder.matches(request.getNuevaPassword(), usuario.getPassword())) {
-            throw new IllegalArgumentException("La nueva contraseña debe ser diferente a la temporal");
-        }
-        if (request.getNuevaPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new IllegalArgumentException("La nueva contraseña no puede superar 72 bytes UTF-8");
-        }
+@Transactional
+public UsuarioResponse cambiarPassword(String email, CambioPasswordRequest request) {
+    Usuario usuario = usuarioRepository.buscarPorEmail(email)
+            .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "La sesión ya no es válida"));
 
-        usuario.setPassword(passwordEncoder.encode(request.getNuevaPassword()));
-        usuario.setDebeCambiarPassword(false);
-        usuarioRepository.save(usuario);
-        return aRespuesta(usuario);
+    if (!usuario.isDebeCambiarPassword()) {
+        throw new ResponseStatusException(
+                HttpStatus.CONFLICT, "El usuario no tiene un cambio pendiente");
     }
+
+    if (request.getNuevaPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+        throw new IllegalArgumentException(
+                "La nueva contraseña no puede superar 72 bytes UTF-8");
+    }
+
+    if (passwordEncoder.matches(request.getNuevaPassword(), usuario.getPassword())) {
+        throw new IllegalArgumentException(
+                "La nueva contraseña debe ser diferente a la contraseña actual");
+    }
+
+    usuario.setPassword(passwordEncoder.encode(request.getNuevaPassword()));
+    usuario.setDebeCambiarPassword(false);
+    usuarioRepository.save(usuario);
+
+    return aRespuesta(usuario);
+}
+
 
     private UsuarioResponse aRespuesta(Usuario u) {
         return new UsuarioResponse(u.getId(), u.getNombre(), u.getEmail(), u.getRol(), u.isDebeCambiarPassword());
