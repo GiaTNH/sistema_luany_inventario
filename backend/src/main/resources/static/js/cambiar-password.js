@@ -4,6 +4,28 @@
     const inputConfirmar = document.getElementById('confirmar-password');
     const mensajeError = document.getElementById('password-error');
     const boton = document.getElementById('btn-cambiar-password');
+    function configurarOjito(idCampo, idBoton) {
+        const campo = document.getElementById(idCampo);
+        const botonOjito = document.getElementById(idBoton);
+
+        botonOjito.addEventListener('click', () => {
+            const visible = campo.type === 'password';
+
+            campo.type = visible ? 'text' : 'password';
+
+            botonOjito.setAttribute('aria-pressed', String(visible));
+            botonOjito.setAttribute(
+                'aria-label',
+                visible ? 'Ocultar contraseña' : 'Mostrar contraseña'
+            );
+            botonOjito.title = visible
+                ? 'Ocultar contraseña'
+                : 'Mostrar contraseña';
+        });
+    }
+
+    configurarOjito('nueva-password', 'nueva-password-toggle');
+    configurarOjito('confirmar-password', 'confirmar-password-toggle');
 
     formulario.addEventListener('submit', async (event) => {
         event.preventDefault();
