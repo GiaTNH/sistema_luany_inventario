@@ -17,4 +17,16 @@ public class Proveedor {
 
     @Column(length = 20)
     private String telefono;
+
+    @Column(length = 20)
+    private String ruc;
+
+    @Column(length = 120)
+    private String correo;
+
+    @Column(length = 200)
+    private String direccion;
+
+    @Column(length = 20)
+    private String estado = "ACTIVO";
 }
