@@ -14,6 +14,9 @@ public class CrearEmpleadoRequest {
     @Size(max = 100, message = "El nombre no puede superar 100 caracteres")
     private String nombre;
 
+    @Size(max = 100, message = "El apellido no puede superar 100 caracteres")
+    private String apellido;
+
     @NotBlank(message = "El correo es obligatorio")
     @Email(message = "El correo no tiene un formato válido")
     @Size(max = 120, message = "El correo no puede superar 120 caracteres")
