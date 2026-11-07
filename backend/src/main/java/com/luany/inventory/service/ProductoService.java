@@ -96,5 +96,24 @@ public class ProductoService {
         producto.setStockMinimo(r.getStockMinimo());
         producto.setStockMaximo(r.getStockMaximo());
         producto.setPrecio(r.getPrecio());
+        // codigo y descripcion son opcionales: si el formulario no los envia,
+        // se conservan los valores que ya tenia el producto.
+        if (r.getCodigo() != null) {
+            String codigo = r.getCodigo().trim();
+            if (codigo.isEmpty()) {
+                producto.setCodigo(null);
+            } else {
+                productoRepository.findByCodigo(codigo)
+                        .filter(otro -> !otro.getId().equals(producto.getId()))
+                        .ifPresent(otro -> {
+                            throw new IllegalArgumentException("Ya existe un producto con ese código");
+                        });
+                producto.setCodigo(codigo);
+            }
+        }
+        if (r.getDescripcion() != null) {
+            String descripcion = r.getDescripcion().trim();
+            producto.setDescripcion(descripcion.isEmpty() ? null : descripcion);
+        }
     }
 }
