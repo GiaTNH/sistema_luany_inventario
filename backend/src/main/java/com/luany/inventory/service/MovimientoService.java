@@ -3,6 +3,7 @@ package com.luany.inventory.service;
 import com.luany.inventory.model.*;
 import com.luany.inventory.repository.MovimientoRepository;
 import com.luany.inventory.repository.ProductoRepository;
+import com.luany.inventory.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,13 +16,20 @@ public class MovimientoService {
 
     private final MovimientoRepository movimientoRepository;
     private final ProductoRepository productoRepository;
+    private final UsuarioRepository usuarioRepository;
 
     @Transactional
     public Movimiento registrar(MovimientoRequest request) {
+        return registrar(request, null);
+    }
+
+    @Transactional
+    public Movimiento registrar(MovimientoRequest request, String emailUsuario) {
         Producto producto = productoRepository.findById(request.getProductoId())
                 .orElseThrow(() -> new IllegalArgumentException("El producto no existe"));
 
         int cantidad = request.getCantidad();
+        int stockAnterior = producto.getStockActual();
 
         if (request.getTipo() == TipoMovimiento.ENTRADA) {
             producto.setStockActual(producto.getStockActual() + cantidad);
@@ -40,6 +48,11 @@ public class MovimientoService {
         movimiento.setTipo(request.getTipo());
         movimiento.setCantidad(cantidad);
         movimiento.setObservacion(request.getObservacion());
+        movimiento.setStockAnterior(stockAnterior);
+        movimiento.setStockNuevo(producto.getStockActual());
+        if (emailUsuario != null) {
+            usuarioRepository.buscarPorEmail(emailUsuario).ifPresent(movimiento::setUsuario);
+        }
         return movimientoRepository.save(movimiento);
     }
 
