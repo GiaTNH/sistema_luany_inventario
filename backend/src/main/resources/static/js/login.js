@@ -1,7 +1,7 @@
 /* ===== login.js ===== */
 
-// Si ya hay sesión activa, ir directo al dashboard
-if (obtenerSesion()) window.location.href = '/dashboard.html';
+// Si ya hay sesión activa
+redirigirSiHaySesionActiva();
 
 function mostrarAvisoApi(id, mensaje) {
   const aviso = document.getElementById(id);
@@ -74,7 +74,9 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
   try {
     const usuario = await apiPost('/api/auth/login', { email, password });
     guardarSesion(usuario);
-    window.location.href = '/dashboard.html';
+    window.location.href = usuario.debeCambiarPassword
+      ? '/cambiar-password.html'
+      : '/dashboard.html';
   } catch (err) {
     mostrarAvisoApi('login-api-error', err.message);
   } finally {

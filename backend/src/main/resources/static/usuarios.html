@@ -81,6 +81,10 @@
 </div>
 
 <script src="/js/api.js"></script>
-<script src="/js/usuarios.js"></script>
+<script>
+    cargarPaginaProtegida('/js/usuarios.js', {
+        soloAdmin: true
+    });
+</script>
 </body>
 </html>
