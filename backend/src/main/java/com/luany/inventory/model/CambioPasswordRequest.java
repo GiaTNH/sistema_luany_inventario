@@ -9,9 +9,6 @@ import lombok.Setter;
 @Setter
 public class CambioPasswordRequest {
 
-    @NotBlank(message = "La contraseña temporal es obligatoria")
-    private String passwordTemporal;
-
     @NotBlank(message = "La nueva contraseña es obligatoria")
     @Size(min = 12, max = 72, message = "La nueva contraseña debe tener entre 12 y 72 caracteres")
     private String nuevaPassword;

@@ -1,3 +1,4 @@
+
 package com.luany.inventory.service;
 
 import com.luany.inventory.model.CrearEmpleadoRequest;
@@ -86,13 +87,12 @@ class AuthServiceTests {
     }
 
     @Test
-    void cambioPasswordValidaTemporalYGuardaHashActualizandoLaBandera() {
+    void cambioPasswordGuardaHashYActualizaLaBandera() {
         Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
         when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         CambioPasswordRequest request = new CambioPasswordRequest();
-        request.setPasswordTemporal("temporal-segura");
         request.setNuevaPassword("NuevaClaveSegura2026!");
 
         UsuarioResponse respuesta = authService.cambiarPassword("empleado@luany.com", request);
@@ -100,6 +100,7 @@ class AuthServiceTests {
         ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
         verify(usuarioRepository).save(captor.capture());
         Usuario guardado = captor.getValue();
+
         assertTrue(passwordEncoder.matches(request.getNuevaPassword(), guardado.getPassword()));
         assertNotEquals(request.getNuevaPassword(), guardado.getPassword());
         assertFalse(guardado.isDebeCambiarPassword());
@@ -108,27 +109,13 @@ class AuthServiceTests {
     }
 
     @Test
-    void cambioPasswordRechazaPasswordTemporalIncorrecta() {
-        Usuario usuario = usuarioConPasswordTemporal("temporal-correcta");
+    void cambioPasswordNoPermiteReutilizarLaPasswordActual() {
+        String passwordActual = "UnaTemporalSegura2026!";
+        Usuario usuario = usuarioConPasswordTemporal(passwordActual);
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
 
         CambioPasswordRequest request = new CambioPasswordRequest();
-        request.setPasswordTemporal("temporal-incorrecta");
-        request.setNuevaPassword("NuevaClaveSegura2026!");
-
-        assertThrows(IllegalArgumentException.class,
-                () -> authService.cambiarPassword("empleado@luany.com", request));
-        verify(usuarioRepository, never()).save(any());
-    }
-
-    @Test
-    void cambioPasswordNoPermiteReutilizarLaTemporal() {
-        Usuario usuario = usuarioConPasswordTemporal("UnaTemporalSegura2026!");
-        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
-
-        CambioPasswordRequest request = new CambioPasswordRequest();
-        request.setPasswordTemporal("UnaTemporalSegura2026!");
-        request.setNuevaPassword("UnaTemporalSegura2026!");
+        request.setNuevaPassword(passwordActual);
 
         assertThrows(IllegalArgumentException.class,
                 () -> authService.cambiarPassword("empleado@luany.com", request));
@@ -142,7 +129,6 @@ class AuthServiceTests {
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
 
         CambioPasswordRequest request = new CambioPasswordRequest();
-        request.setPasswordTemporal("temporal-segura");
         request.setNuevaPassword("NuevaClaveSegura2026!");
 
         ResponseStatusException error = assertThrows(
@@ -159,7 +145,6 @@ class AuthServiceTests {
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
 
         CambioPasswordRequest request = new CambioPasswordRequest();
-        request.setPasswordTemporal("temporal-segura");
         request.setNuevaPassword("á".repeat(37));
 
         assertThrows(IllegalArgumentException.class,
