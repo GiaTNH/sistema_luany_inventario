@@ -3,6 +3,7 @@ package com.luany.inventory.service;
 import com.luany.inventory.model.*;
 import com.luany.inventory.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Locale;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +25,49 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final CorreoService correoService;
+    private final JdbcTemplate jdbcTemplate;
+
+    @Transactional(readOnly = true)
+    public boolean registroInicialDisponible() {
+        Boolean controlDisponible = jdbcTemplate.query(
+                "SELECT completado FROM registro_inicial WHERE id = 1",
+                resultSet -> resultSet.next() && !resultSet.getBoolean("completado"));
+        return Boolean.TRUE.equals(controlDisponible) && usuarioRepository.count() == 0;
+    }
+
+    @Transactional
+    public UsuarioResponse registrarPrimerAdministrador(RegistroInicialRequest request) {
+        if (!Objects.equals(request.getPassword(), request.getConfirmarPassword())) {
+            throw new IllegalArgumentException("La contraseña y su confirmación no coinciden");
+        }
+
+        String password = request.getPassword();
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new IllegalArgumentException("La contraseña no puede superar 72 bytes UTF-8");
+        }
+
+        int controlActualizado = jdbcTemplate.update(
+                "UPDATE registro_inicial SET completado = TRUE " +
+                        "WHERE id = 1 AND completado = FALSE");
+        if (controlActualizado != 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "El registro inicial no está disponible");
+        }
+
+        if (usuarioRepository.count() != 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "El registro inicial no está disponible");
+        }
+
+        Usuario administrador = new Usuario();
+        administrador.setNombre(request.getNombre().trim());
+        administrador.setEmail(request.getEmail().trim().toLowerCase(Locale.ROOT));
+        administrador.setPassword(passwordEncoder.encode(password));
+        administrador.setRol("ADMIN");
+        administrador.setDebeCambiarPassword(false);
+
+        return aRespuesta(usuarioRepository.saveAndFlush(administrador));
+    }
 
     @Transactional
     public UsuarioCreadoResponse crearEmpleado(CrearEmpleadoRequest request) {
