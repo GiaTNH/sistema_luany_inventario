@@ -567,6 +567,15 @@ td:first-child { font-weight: 600; color: var(--texto); }
 
 .usuarios-contenido { display: grid; align-content: start; gap: 22px; }
 .usuarios-contenido .panel { max-width: 720px; }
+.usuarios-contenido .usuarios-listado { max-width: 1100px; }
+.usuarios-tabla-wrapper { overflow-x: auto; }
+.usuarios-tabla { width: 100%; min-width: 760px; border-collapse: collapse; }
+.usuarios-tabla th,
+.usuarios-tabla td { padding: 11px 12px; border-bottom: 1px solid var(--borde); text-align: left; }
+.usuarios-tabla th { color: var(--texto-suave); font-size: 12px; font-weight: 700; }
+.usuarios-tabla td { color: var(--texto); font-size: 13px; }
+.usuarios-tabla .usuarios-rol-select { min-width: 115px; padding: 7px 10px; }
+.usuarios-tabla .btn { padding: 8px 12px; font-size: 12px; }
 .usuarios-ayuda { color: var(--texto-suave); margin-bottom: 18px; }
 .usuarios-mensaje-error { color: var(--rojo); margin: 0 0 14px; }
 

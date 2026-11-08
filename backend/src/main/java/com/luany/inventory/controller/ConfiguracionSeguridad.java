@@ -71,7 +71,7 @@ public class ConfiguracionSeguridad {
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/cambiar-password")
                         .hasAnyAuthority("PASSWORD_CHANGE_REQUIRED", "ROLE_ADMIN", "ROLE_EMPLEADO")
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").hasRole("ADMIN")
+                        .requestMatchers("/api/usuarios", "/api/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "EMPLEADO")
                         .anyRequest().permitAll())
                 .sessionManagement(session -> session

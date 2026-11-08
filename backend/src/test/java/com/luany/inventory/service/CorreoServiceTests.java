@@ -27,13 +27,15 @@ class CorreoServiceTests {
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer test-api-key"))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("ana@luany.com")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("ana.usuario")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("clave-temporal-segura")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "https://sistema-luany-inventario.onrender.com/")))
                 .andRespond(withSuccess());
 
         assertDoesNotThrow(() ->
-                correoService.enviarBienvenida("ana@luany.com", "Ana", "clave-temporal-segura"));
+                correoService.enviarBienvenida(
+                        "ana@luany.com", "Ana", "ana.usuario", "clave-temporal-segura"));
         servidor.verify();
     }
 
@@ -71,7 +73,7 @@ class CorreoServiceTests {
 
         CorreoEnvioException error = assertThrows(CorreoEnvioException.class,
                 () -> correoService.enviarBienvenida(
-                        "ana@luany.com", "Ana", "clave-temporal-segura"));
+                        "ana@luany.com", "Ana", "ana.usuario", "clave-temporal-segura"));
 
         assertFalse(error.getMessage().contains("provider failure"));
         assertFalse(error.getMessage().contains("test-api-key"));
@@ -88,7 +90,7 @@ class CorreoServiceTests {
 
         CorreoEnvioException error = assertThrows(CorreoEnvioException.class,
                 () -> correoService.enviarBienvenida(
-                        "ana@luany.com", "Ana", "clave-temporal-segura"));
+                        "ana@luany.com", "Ana", "ana.usuario", "clave-temporal-segura"));
 
         assertEquals("No se pudo enviar el correo de bienvenida.", error.getMessage());
         servidor.verify();
@@ -101,6 +103,6 @@ class CorreoServiceTests {
 
         assertThrows(CorreoEnvioException.class,
                 () -> correoService.enviarBienvenida(
-                        "ana@luany.com", "Ana", "clave-temporal-segura"));
+                        "ana@luany.com", "Ana", "ana.usuario", "clave-temporal-segura"));
     }
 }

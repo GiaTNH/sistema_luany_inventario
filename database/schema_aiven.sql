@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS proveedores (
 CREATE TABLE IF NOT EXISTS usuarios (
   id                    BIGINT       NOT NULL AUTO_INCREMENT,
   email                 VARCHAR(120) NOT NULL,
+  nombre_usuario        VARCHAR(100) NOT NULL,
   nombre                VARCHAR(100) NOT NULL,
   password              VARCHAR(100) NOT NULL,   -- hash BCrypt
   rol                   VARCHAR(20)  NOT NULL,
@@ -37,7 +38,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   estado                VARCHAR(20)  DEFAULT 'ACTIVO',
   debe_cambiar_password TINYINT(1)   NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_usuarios_email (email)
+  UNIQUE KEY uk_usuarios_email (email),
+  UNIQUE KEY uk_usuarios_nombre_usuario (nombre_usuario)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS clientes (

@@ -73,10 +73,35 @@
         </div>
       </div>
 
+      <div class="panel usuarios-listado">
+        <div class="panel-header">
+          <h3>Usuarios registrados</h3>
+          <button type="button" class="btn btn-secundario" id="btn-recargar-usuarios">Actualizar</button>
+        </div>
+        <div class="tabla-wrapper usuarios-tabla-wrapper">
+          <table class="usuarios-tabla">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Correo electrónico</th>
+                <th>Nombre de usuario</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-usuarios-body">
+              <tr><td colspan="6">Cargando usuarios...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="panel usuarios-resultado" id="resultado-crear-empleado" aria-live="polite" hidden>
         <div class="panel-header"><h3>Invitación enviada</h3></div>
         <div class="panel-body">
           <p id="empleado-creado"></p>
+          <p id="empleado-nombre-usuario"></p>
           <p class="usuarios-ayuda" id="correo-bienvenida"></p>
         </div>
       </div>

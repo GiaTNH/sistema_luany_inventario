@@ -6,11 +6,17 @@ El inicio de sesión usa cuentas gestionadas por LUANY y el backend mantiene una
 
 ## 2. Creación de cuentas de empleados
 
-El administrador crea una cuenta desde **Usuarios** o mediante `POST /api/usuarios`, enviando únicamente nombre y correo electrónico. El servidor valida ambos campos, normaliza el correo y rechaza duplicados.
+El administrador crea una cuenta desde **Usuarios** o mediante `POST /api/usuarios`, enviando únicamente nombre y correo electrónico. El servidor valida ambos campos, normaliza el correo y rechaza duplicados. También genera un nombre de usuario único basado en el nombre del empleado.
 
-El servidor genera una contraseña temporal aleatoria, almacena únicamente su hash BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. Envía las credenciales temporales al correo del empleado mediante la API HTTPS de Resend. La contraseña temporal no se incluye en la respuesta HTTP ni se registra en logs. Si Resend falla, se revierte la creación y la API responde con un error.
+El servidor genera una contraseña temporal aleatoria, almacena únicamente su hash BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. Envía el nombre de usuario, correo, contraseña temporal y enlace al sistema mediante la API HTTPS de Resend. La contraseña temporal no se incluye en la respuesta HTTP ni se registra en logs. Si Resend falla, se revierte la creación y la API responde con un error.
 
-El endpoint no acepta contraseña ni rol en la solicitud. Los usuarios no autenticados y los empleados no pueden crear cuentas, aunque intenten llamar directamente a la API. Las operaciones de escritura usan un token CSRF.
+El endpoint no acepta contraseña ni rol en la solicitud. Solo ADMIN puede listar usuarios, crear empleados y cambiar roles; los empleados no pueden realizar estas operaciones aunque llamen directamente a la API. Las operaciones de escritura usan un token CSRF. El endpoint `GET /api/usuarios` devuelve datos de perfil sin hashes ni contraseñas; `PUT /api/usuarios/{id}/rol` valida los roles `ADMIN` y `EMPLEADO`, impide que el administrador se quite su propio rol y conserva al menos un administrador.
+
+El inicio de sesión continúa usando el correo electrónico; el nombre de usuario se genera para identificar la cuenta, pero no sustituye al correo como credencial de acceso.
+
+### Migración manual del nombre de usuario
+
+El esquema mantiene `spring.jpa.hibernate.ddl-auto=validate` y no se ejecuta una migración automática. Antes de desplegar esta versión, ejecutar una sola vez `database/gestion_usuarios.sql` en la base de datos configurada para la aplicación. La migración agrega `nombre_usuario`, rellena las cuentas actuales con valores únicos `usuario<ID>` y crea un índice único. No se ejecutó sobre Aiven. Para bases nuevas, `database/schema_aiven.sql` ya incluye la columna y su índice.
 
 ## 2.1 Registro inicial del administrador
 

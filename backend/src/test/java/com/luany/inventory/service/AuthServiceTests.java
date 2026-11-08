@@ -66,11 +66,16 @@ class AuthServiceTests {
         verify(usuarioRepository).saveAndFlush(captor.capture());
         Usuario guardado = captor.getValue();
         ArgumentCaptor<String> passwordCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> usernameCaptor = ArgumentCaptor.forClass(String.class);
         verify(correoService).enviarBienvenida(
-                eq("empleado@luany.com"), eq("Ana López"), passwordCaptor.capture());
+                eq("empleado@luany.com"), eq("Ana López"),
+                usernameCaptor.capture(), passwordCaptor.capture());
 
         assertEquals("Ana López", guardado.getNombre());
         assertEquals("empleado@luany.com", guardado.getEmail());
+        assertEquals("ana.lopez", guardado.getNombreUsuario());
+        assertEquals(guardado.getNombreUsuario(), respuesta.nombreUsuario());
+        assertEquals(guardado.getNombreUsuario(), usernameCaptor.getValue());
         assertEquals("EMPLEADO", guardado.getRol());
         assertTrue(guardado.isDebeCambiarPassword());
         assertNotEquals(passwordCaptor.getValue(), guardado.getPassword());
@@ -78,7 +83,7 @@ class AuthServiceTests {
         assertEquals(10L, respuesta.usuario().id());
         assertEquals("EMPLEADO", respuesta.usuario().rol());
         assertTrue(respuesta.usuario().debeCambiarPassword());
-        assertEquals(1, respuesta.getClass().getRecordComponents().length);
+        assertEquals(2, respuesta.getClass().getRecordComponents().length);
     }
 
     @Test
@@ -86,7 +91,7 @@ class AuthServiceTests {
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.empty());
         when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doThrow(new CorreoEnvioException()).when(correoService)
-                .enviarBienvenida(eq("empleado@luany.com"), eq("Ana"), anyString());
+                .enviarBienvenida(eq("empleado@luany.com"), eq("Ana"), anyString(), anyString());
 
         CrearEmpleadoRequest request = new CrearEmpleadoRequest();
         request.setNombre("Ana");
@@ -256,6 +261,7 @@ class AuthServiceTests {
         usuario.setId(5L);
         usuario.setNombre("Empleado");
         usuario.setEmail("empleado@luany.com");
+        usuario.setNombreUsuario("empleado");
         usuario.setRol("EMPLEADO");
         usuario.setPassword(passwordEncoder.encode(passwordTemporal));
         usuario.setDebeCambiarPassword(true);
