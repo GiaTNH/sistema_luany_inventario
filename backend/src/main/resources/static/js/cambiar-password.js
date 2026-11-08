@@ -103,9 +103,9 @@
                 confirmarPassword,
             });
 
-            formulario.hidden = true;
-            panelExito.hidden = false;
             if (cambioObligatorio) {
+                formulario.hidden = true;
+                panelExito.hidden = false;
                 enlaceDashboard.hidden = true;
                 botonCerrarSesion.hidden = true;
                 mensajeExito.textContent =
@@ -116,9 +116,7 @@
                     botonCerrarSesion.textContent = 'Reintentar cierre de sesión';
                 }
             } else {
-                mensajeExito.textContent = 'Tu contraseña se actualizó correctamente.';
-                enlaceDashboard.hidden = false;
-                botonCerrarSesion.hidden = false;
+                window.location.replace('/dashboard.html');
             }
 
         } catch (error) {
