@@ -96,8 +96,12 @@ public class AuthController {
             Authentication authentication,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
+        boolean cambioObligatorio = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "PASSWORD_CHANGE_REQUIRED".equals(authority.getAuthority()));
         UsuarioResponse usuario = authService.cambiarPassword(authentication.getName(), request);
-        actualizarAutenticacion(usuario, httpRequest, httpResponse);
+        if (cambioObligatorio) {
+            actualizarAutenticacion(usuario, httpRequest, httpResponse);
+        }
         return usuario;
     }
 

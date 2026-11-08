@@ -70,7 +70,7 @@ public class ConfiguracionSeguridad {
                         .requestMatchers(HttpMethod.POST, "/api/auth/registro-inicial").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/cambiar-password")
-                        .hasAuthority("PASSWORD_CHANGE_REQUIRED")
+                        .hasAnyAuthority("PASSWORD_CHANGE_REQUIRED", "ROLE_ADMIN", "ROLE_EMPLEADO")
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").hasRole("ADMIN")
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "EMPLEADO")
                         .anyRequest().permitAll())

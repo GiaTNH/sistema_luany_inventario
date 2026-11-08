@@ -73,31 +73,46 @@ class RecuperacionPasswordServiceTests {
         when(tokenService.crearSolicitud("ana@luany.com"))
                 .thenReturn(Optional.of(solicitudCorreo));
 
-        processor.procesar("ana@luany.com");
+        assertEquals(RecuperacionPasswordSolicitudProcessor.Resultado.CORREO_ENVIADO,
+                processor.procesar("ana@luany.com").join());
 
         verify(correoService).enviarRecuperacion(
                 "ana@luany.com", "Ana", solicitudCorreo.enlace());
     }
 
     @Test
-    void correosRegistradosYNoRegistradosRecibenLaMismaRespuesta() {
+    void solicitudesMuestranElResultadoDeLaRecuperacionSinDatosAdicionales() {
         SolicitudRecuperacionPasswordRequest existente = solicitud("ana@luany.com");
         SolicitudRecuperacionPasswordRequest inexistente = solicitud("nadie@luany.com");
+        SolicitudRecuperacionPasswordRequest falloEnvio = solicitud("fallo@luany.com");
+        when(solicitudProcessor.procesar("ana@luany.com"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                        RecuperacionPasswordSolicitudProcessor.Resultado.CORREO_ENVIADO));
+        when(solicitudProcessor.procesar("nadie@luany.com"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                        RecuperacionPasswordSolicitudProcessor.Resultado.CUENTA_NO_ENCONTRADA));
+        when(solicitudProcessor.procesar("fallo@luany.com"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                        RecuperacionPasswordSolicitudProcessor.Resultado.ERROR_ENVIO));
 
         String respuestaExistente = service.solicitarRecuperacion(existente);
         String respuestaInexistente = service.solicitarRecuperacion(inexistente);
+        String respuestaFalloEnvio = service.solicitarRecuperacion(falloEnvio);
 
-        assertEquals(respuestaExistente, respuestaInexistente);
-        assertEquals(RecuperacionPasswordService.MENSAJE_SOLICITUD, respuestaExistente);
+        assertEquals(RecuperacionPasswordService.MENSAJE_CORREO_ENVIADO, respuestaExistente);
+        assertEquals(RecuperacionPasswordService.MENSAJE_CUENTA_NO_ENCONTRADA, respuestaInexistente);
+        assertEquals(RecuperacionPasswordService.MENSAJE_ERROR_ENVIO, respuestaFalloEnvio);
         verify(solicitudProcessor).procesar("ana@luany.com");
         verify(solicitudProcessor).procesar("nadie@luany.com");
+        verify(solicitudProcessor).procesar("fallo@luany.com");
     }
 
     @Test
     void cuentaInactivaNoRecibeCorreoNiToken() {
         when(tokenService.crearSolicitud("ana@luany.com")).thenReturn(Optional.empty());
 
-        processor.procesar("ana@luany.com");
+        assertEquals(RecuperacionPasswordSolicitudProcessor.Resultado.CUENTA_NO_ENCONTRADA,
+                processor.procesar("ana@luany.com").join());
 
         verifyNoInteractions(tokenRepository, correoService);
     }
@@ -111,7 +126,8 @@ class RecuperacionPasswordServiceTests {
         doThrow(new CorreoRecuperacionException())
                 .when(correoService).enviarRecuperacion(eq("ana@luany.com"), eq("Ana"), anyString());
 
-        processor.procesar("ana@luany.com");
+        assertEquals(RecuperacionPasswordSolicitudProcessor.Resultado.ERROR_ENVIO,
+                processor.procesar("ana@luany.com").join());
 
         verify(tokenService).invalidarToken("hash-generado");
     }

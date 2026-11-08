@@ -121,16 +121,25 @@ public class AuthService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "La sesión ya no es válida"));
 
-        if (!usuario.isDebeCambiarPassword()) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, "El usuario no tiene un cambio pendiente");
+        if (!Objects.equals(request.getNuevaPassword(), request.getConfirmarPassword())) {
+            throw new IllegalArgumentException("La contraseña y su confirmación no coinciden");
         }
 
         String nuevaPassword = request.getNuevaPassword();
-
         if (nuevaPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new IllegalArgumentException(
                     "La nueva contraseña no puede superar 72 bytes UTF-8");
+        }
+
+        if (!usuario.isDebeCambiarPassword()) {
+            String passwordActual = request.getPasswordActual();
+            if (passwordActual == null || passwordActual.isBlank()) {
+                throw new IllegalArgumentException("Ingresa tu contraseña actual");
+            }
+            if (passwordActual.getBytes(StandardCharsets.UTF_8).length > 72
+                    || !passwordEncoder.matches(passwordActual, usuario.getPassword())) {
+                throw new IllegalArgumentException("La contraseña actual es incorrecta");
+            }
         }
 
         if (passwordEncoder.matches(nuevaPassword, usuario.getPassword())) {

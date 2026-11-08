@@ -269,12 +269,8 @@ async function protegerPagina(opciones = {}) {
     return null;
   }
 
-  // Pantalla exclusiva para usuarios con contraseña temporal.
-  if (opciones.cambioPassword) {
-    if (!usuario.debeCambiarPassword) {
-      window.location.replace('/dashboard.html');
-      return null;
-    }
+  // La pantalla de contraseña sirve tanto para el primer acceso como para la gestión de cuenta.
+  if (opciones.gestionarPassword) {
     return usuario;
   }
 

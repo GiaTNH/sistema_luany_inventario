@@ -92,7 +92,7 @@ class UsuarioControllerSecurityTests {
     @Test
     void solicitudesDeRecuperacionSonPublicasPeroRequierenCsrf() throws Exception {
         when(recuperacionPasswordService.solicitarRecuperacion(any()))
-                .thenReturn("Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.");
+                .thenReturn("Enviamos un enlace para restablecer tu contraseña al correo registrado.");
         when(recuperacionPasswordService.restablecerPassword(any()))
                 .thenReturn("Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.");
 
@@ -108,7 +108,7 @@ class UsuarioControllerSecurityTests {
                         .content("{\"email\":\"ana@luany.com\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña."))
+                        "Enviamos un enlace para restablecer tu contraseña al correo registrado."))
                 .andExpect(jsonPath("$.token").doesNotExist());
 
         mockMvc.perform(post("/api/auth/restablecer-password")
@@ -267,7 +267,7 @@ class UsuarioControllerSecurityTests {
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"NuevaClaveSegura2026!\"}"))
+                        .content("{\"nuevaPassword\":\"NuevaClaveSegura2026!\",\"confirmarPassword\":\"NuevaClaveSegura2026!\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.debeCambiarPassword").value(false))
                 .andExpect(jsonPath("$.password").doesNotExist());
@@ -287,24 +287,27 @@ class UsuarioControllerSecurityTests {
         mockMvc.perform(post("/api/auth/cambiar-password")
                         .session(session)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"NuevaClaveSegura2026!\"}"))
+                        .content("{\"nuevaPassword\":\"NuevaClaveSegura2026!\",\"confirmarPassword\":\"NuevaClaveSegura2026!\"}"))
                 .andExpect(status().isForbidden());
 
         verify(authService, never()).cambiarPassword(any(), any());
     }
 
     @Test
-    void empleadoSinCambioPendienteNoPuedeUsarEndpointDeCambio() throws Exception {
+    void empleadoSinCambioPendientePuedeUsarEndpointAutenticadoDeCambio() throws Exception {
         MockHttpSession session = iniciarSesion("EMPLEADO");
+        when(authService.cambiarPassword(eq("prueba@luany.com"), any()))
+                .thenReturn(usuario("EMPLEADO", false));
 
         mockMvc.perform(post("/api/auth/cambiar-password")
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"NuevaClaveSegura2026!\"}"))
-                .andExpect(status().isForbidden());
+                        .content("{\"passwordActual\":\"ContrasenaActual2026!\",\"nuevaPassword\":\"NuevaClaveSegura2026!\",\"confirmarPassword\":\"NuevaClaveSegura2026!\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.debeCambiarPassword").value(false));
 
-        verify(authService, never()).cambiarPassword(any(), any());
+        verify(authService).cambiarPassword(eq("prueba@luany.com"), any());
     }
 
     @Test
@@ -315,7 +318,7 @@ class UsuarioControllerSecurityTests {
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"passwordTemporal\":\"temporal-segura\",\"nuevaPassword\":\"corta\"}"))
+                        .content("{\"nuevaPassword\":\"corta\",\"confirmarPassword\":\"corta\"}"))
                 .andExpect(status().isBadRequest());
 
         verify(authService, never()).cambiarPassword(any(), any());

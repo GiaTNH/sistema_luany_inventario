@@ -4152,6 +4152,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .login-screen #link-olvidaste svg { width: 14px; height: 14px; }
 .login-screen #link-olvidaste:hover { color: #5127B6; text-decoration: underline; }
 .login-screen .login-recovery-result { margin: 0; color: #15803D; font-size: 12px; line-height: 1.5; text-align: center; }
+.login-screen .login-recovery-result.login-recovery-result-error { color: #A73D5E; }
 .login-screen .login-recovery-result[hidden] { display: none; }
 
 .login-screen .login-api-error { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border: 1px solid #F4C9D5; border-radius: 13px; background: #FFF3F6; color: #A73D5E; font-size: 12px; line-height: 1.4; }
@@ -5749,4 +5750,41 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .login-screen #form-cambiar-password .login-field .form-control {
     width: 100%;
     box-sizing: border-box;
+}
+
+.login-screen #form-cambiar-password [hidden],
+.login-screen .password-update-success[hidden],
+.login-screen .password-update-success [hidden] {
+    display: none !important;
+}
+
+.login-screen .password-update-success {
+    width: 100%;
+    text-align: center;
+}
+
+.login-screen .password-update-success > p:first-child {
+    margin: 0 0 18px;
+    color: #15803D;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.login-screen .password-update-success .login-api-error {
+    margin: 0 0 12px;
+}
+
+.login-screen .password-success-actions {
+    display: grid;
+    width: 100%;
+    gap: 10px;
+}
+
+.login-screen .password-success-actions .btn-login-full {
+    display: grid;
+    min-height: 46px;
+    place-items: center;
+    box-sizing: border-box;
+    color: #fff;
+    text-decoration: none;
 }

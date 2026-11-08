@@ -23,14 +23,19 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
 public class RecuperacionPasswordService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RecuperacionPasswordService.class);
-    static final String MENSAJE_SOLICITUD =
-            "Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.";
+    static final String MENSAJE_CORREO_ENVIADO =
+            "Enviamos un enlace para restablecer tu contraseña al correo registrado.";
+    static final String MENSAJE_CUENTA_NO_ENCONTRADA =
+            "No existe una cuenta activa asociada a ese correo.";
+    static final String MENSAJE_ERROR_ENVIO =
+            "No pudimos enviar el enlace de recuperación. Inténtalo más tarde.";
     private final UsuarioRepository usuarioRepository;
     private final RecuperacionPasswordTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -40,11 +45,22 @@ public class RecuperacionPasswordService {
     public String solicitarRecuperacion(SolicitudRecuperacionPasswordRequest request) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
         try {
-            solicitudProcessor.procesar(email);
+            RecuperacionPasswordSolicitudProcessor.Resultado resultado =
+                    solicitudProcessor.procesar(email).get();
+            return switch (resultado) {
+                case CORREO_ENVIADO -> MENSAJE_CORREO_ENVIADO;
+                case CUENTA_NO_ENCONTRADA -> MENSAJE_CUENTA_NO_ENCONTRADA;
+                case ERROR_ENVIO -> MENSAJE_ERROR_ENVIO;
+            };
         } catch (TaskRejectedException exception) {
             LOGGER.warn("No se pudo encolar una solicitud de recuperación.");
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            LOGGER.warn("Se interrumpió el procesamiento de una solicitud de recuperación.");
+        } catch (ExecutionException exception) {
+            LOGGER.error("No se pudo completar una solicitud de recuperación.", exception.getCause());
         }
-        return MENSAJE_SOLICITUD;
+        return MENSAJE_ERROR_ENVIO;
     }
 
     @Transactional
