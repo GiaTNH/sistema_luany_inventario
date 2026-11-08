@@ -189,6 +189,10 @@ formularioSolicitudRecuperacion.addEventListener('submit', async (evento) => {
     const respuesta = await apiPost('/api/auth/solicitar-recuperacion', { email });
     const resultado = document.getElementById('recuperacion-resultado');
     resultado.textContent = respuesta.mensaje;
+    resultado.classList.toggle(
+      'login-recovery-result-error',
+      !respuesta.mensaje.startsWith('Enviamos un enlace'),
+    );
     resultado.hidden = false;
   } catch (error) {
     mostrarAvisoApi('recuperacion-api-error', error.message);

@@ -121,6 +121,7 @@ class AuthServiceTests {
 
         CambioPasswordRequest request = new CambioPasswordRequest();
         request.setNuevaPassword("NuevaClaveSegura2026!");
+        request.setConfirmarPassword("NuevaClaveSegura2026!");
 
         UsuarioResponse respuesta = authService.cambiarPassword("empleado@luany.com", request);
 
@@ -143,6 +144,7 @@ class AuthServiceTests {
 
         CambioPasswordRequest request = new CambioPasswordRequest();
         request.setNuevaPassword(passwordActual);
+        request.setConfirmarPassword(passwordActual);
 
         assertThrows(IllegalArgumentException.class,
                 () -> authService.cambiarPassword("empleado@luany.com", request));
@@ -150,19 +152,75 @@ class AuthServiceTests {
     }
 
     @Test
-    void cambioPasswordRechazaUsuarioSinCambioPendiente() {
-        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+    void usuarioAutenticadoPuedeActualizarPasswordConSuPasswordActual() {
+        String passwordActual = "ContrasenaActual2026!";
+        Usuario usuario = usuarioConPasswordTemporal(passwordActual);
+        usuario.setDebeCambiarPassword(false);
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordActual(passwordActual);
+        request.setNuevaPassword("NuevaClaveSegura2026!");
+        request.setConfirmarPassword("NuevaClaveSegura2026!");
+
+        UsuarioResponse respuesta = authService.cambiarPassword("empleado@luany.com", request);
+
+        assertTrue(passwordEncoder.matches("NuevaClaveSegura2026!", usuario.getPassword()));
+        assertFalse(respuesta.debeCambiarPassword());
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void usuarioAutenticadoNoPuedeActualizarPasswordConPasswordActualIncorrecta() {
+        Usuario usuario = usuarioConPasswordTemporal("ContrasenaActual2026!");
         usuario.setDebeCambiarPassword(false);
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
 
         CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordActual("ClaveIncorrecta2026!");
         request.setNuevaPassword("NuevaClaveSegura2026!");
+        request.setConfirmarPassword("NuevaClaveSegura2026!");
 
-        ResponseStatusException error = assertThrows(
-                ResponseStatusException.class,
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
                 () -> authService.cambiarPassword("empleado@luany.com", request));
 
-        assertEquals(HttpStatus.CONFLICT, error.getStatusCode());
+        assertEquals("La contraseña actual es incorrecta", error.getMessage());
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void usuarioAutenticadoNoPuedeReutilizarSuPasswordActual() {
+        String passwordActual = "ContrasenaActual2026!";
+        Usuario usuario = usuarioConPasswordTemporal(passwordActual);
+        usuario.setDebeCambiarPassword(false);
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setPasswordActual(passwordActual);
+        request.setNuevaPassword(passwordActual);
+        request.setConfirmarPassword(passwordActual);
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.cambiarPassword("empleado@luany.com", request));
+
+        assertEquals("La nueva contraseña debe ser diferente a la actual", error.getMessage());
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void cambioPasswordRechazaConfirmacionDistinta() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        CambioPasswordRequest request = new CambioPasswordRequest();
+        request.setNuevaPassword("NuevaClaveSegura2026!");
+        request.setConfirmarPassword("OtraClaveSegura2026!");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.cambiarPassword("empleado@luany.com", request));
         verify(usuarioRepository, never()).save(any());
     }
 
@@ -173,6 +231,7 @@ class AuthServiceTests {
 
         CambioPasswordRequest request = new CambioPasswordRequest();
         request.setNuevaPassword("á".repeat(37));
+        request.setConfirmarPassword("á".repeat(37));
 
         assertThrows(IllegalArgumentException.class,
                 () -> authService.cambiarPassword("empleado@luany.com", request));

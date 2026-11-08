@@ -54,9 +54,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class InventoryApplicationTests {
 
-    private static final String MENSAJE_RECUPERACION =
-            "Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.";
-
     @Autowired
     private AuthService authService;
 
@@ -232,15 +229,14 @@ class InventoryApplicationTests {
     }
 
     @Test
-    void fallaCorreoDeRecuperacionInvalidaElTokenGenerado() throws InterruptedException {
+    void fallaCorreoDeRecuperacionInvalidaElTokenGenerado() {
         Usuario usuario = usuarioActivo("recuperacion@luany.com");
         usuarioRepository.saveAndFlush(usuario);
         SolicitudRecuperacionPasswordRequest request = new SolicitudRecuperacionPasswordRequest();
         request.setEmail(usuario.getEmail());
 
-        assertEquals(MENSAJE_RECUPERACION,
+        assertEquals("No pudimos enviar el enlace de recuperación. Inténtalo más tarde.",
                 recuperacionPasswordService.solicitarRecuperacion(request));
-        esperarTokenRecuperacion();
         assertEquals(1, tokenRepository.count());
         assertNotNull(tokenRepository.findAll().get(0).getUtilizadoEn());
         assertTrue(tokenRepository.findByTokenHashAndUtilizadoEnIsNull(
@@ -248,7 +244,7 @@ class InventoryApplicationTests {
     }
 
     @Test
-    void respuestasHttpSonGenericasTantoSiElCorreoExisteComoSiResendFalla() throws Exception {
+    void respuestaHttpDistingueCuentaInexistenteDeFalloDeEnvioSinDetallesTecnicos() throws Exception {
         String cuerpo = """
                 {"email":"desconocido@luany.com"}
                 """;
@@ -258,7 +254,7 @@ class InventoryApplicationTests {
                         .content(cuerpo))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje")
-                        .value(MENSAJE_RECUPERACION))
+                        .value("No existe una cuenta activa asociada a ese correo."))
                 .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn()
                 .getResponse()
@@ -273,14 +269,13 @@ class InventoryApplicationTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje")
-                        .value(MENSAJE_RECUPERACION))
+                        .value("No pudimos enviar el enlace de recuperación. Inténtalo más tarde."))
                 .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        assertEquals(correoInexistente, correoRegistradoConFalloResend);
-        esperarTokenRecuperacion();
+        assertNotEquals(correoInexistente, correoRegistradoConFalloResend);
         assertEquals(1, tokenRepository.count());
         assertNotNull(tokenRepository.findAll().get(0).getUtilizadoEn());
     }
@@ -355,6 +350,53 @@ class InventoryApplicationTests {
                 .andExpect(jsonPath("$.mensaje")
                         .value("Tu sesión ha expirado. Inicia sesión nuevamente."))
                 .andExpect(result -> assertNull(result.getHandler()));
+    }
+
+    @Test
+    void usuarioAutenticadoActualizaPasswordConservaSesionYPuedeCerrarSesion() throws Exception {
+        String email = "actualizacion-password@luany.com";
+        String passwordActual = "ContrasenaActual2026!";
+        String nuevaPassword = "NuevaClaveSegura2026!";
+        Usuario usuario = usuarioActivo(email);
+        usuario.setPassword(passwordEncoder.encode(passwordActual));
+        usuario.setDebeCambiarPassword(false);
+        usuarioRepository.saveAndFlush(usuario);
+
+        var loginResultado = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s"}
+                                """.formatted(email, passwordActual)))
+                .andExpect(status().isOk())
+                .andReturn();
+        MockHttpSession sesion = (MockHttpSession) loginResultado.getRequest().getSession(false);
+        assertNotNull(sesion);
+
+        mockMvc.perform(post("/api/auth/cambiar-password")
+                        .session(sesion)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"passwordActual":"%s","nuevaPassword":"%s",
+                                 "confirmarPassword":"%s"}
+                                """.formatted(passwordActual, nuevaPassword, nuevaPassword)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.debeCambiarPassword").value(false));
+
+        Usuario actualizado = usuarioRepository.buscarPorEmail(email).orElseThrow();
+        assertTrue(passwordEncoder.matches(nuevaPassword, actualizado.getPassword()));
+        assertNotEquals(nuevaPassword, actualizado.getPassword());
+        mockMvc.perform(get("/api/auth/me").session(sesion))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .session(sesion)
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -478,16 +520,4 @@ class InventoryApplicationTests {
                 .digest(token.getBytes(StandardCharsets.UTF_8)));
     }
 
-    private void esperarTokenRecuperacion() throws InterruptedException {
-        long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        while (System.nanoTime() < limite) {
-            if (tokenRepository.count() > 0
-                    && tokenRepository.findAll().stream()
-                    .allMatch(token -> token.getUtilizadoEn() != null)) {
-                return;
-            }
-            Thread.sleep(25);
-        }
-        fail("No se procesó la solicitud de recuperación dentro del tiempo esperado");
-    }
 }
