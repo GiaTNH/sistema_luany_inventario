@@ -184,9 +184,96 @@ function normalizarFecha(fecha) {
 /** Marca el enlace activo en la barra lateral según la URL actual */
 function marcarNavActivo() {
   const ruta = window.location.pathname.split('/').pop() || 'index.html';
+  const seccion = window.location.hash.slice(1);
   document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('activo', el.dataset.pagina === ruta);
+    const esProveedor = el.dataset.tab === 'proveedores';
+    const esAlerta = el.dataset.seccion === 'alertas';
+    const activo = esProveedor
+      ? ruta === 'productos.html' && seccion === 'proveedores'
+      : esAlerta
+        ? ruta === 'dashboard.html' && seccion === 'dashboard-alertas'
+        : el.dataset.pagina === ruta
+          && !(ruta === 'productos.html' && seccion === 'proveedores')
+          && !(ruta === 'dashboard.html' && seccion === 'dashboard-alertas');
+    el.classList.toggle('activo', activo);
   });
+}
+
+const ICONOS_SIDEBAR = {
+  dashboard: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+  productos: '<path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 7 9 5 9-5M3 7v10l9 5 9-5V7M12 12v10"/>',
+  alertas: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+  proveedores: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 4.5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4.6V20"/>',
+  movimientos: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5m4-1v5l3 2"/>',
+  usuarios: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 11a3 3 0 1 0 0-6M18 14a5 5 0 0 1 3 4.6V20"/>',
+  asistente: '<path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.4-.7L4 20l1.5-3.5A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z"/><path d="M9 10h6M9 14h4"/>',
+  chevron: '<path d="m9 18 6-6-6-6"/>',
+};
+
+const ENLACES_SIDEBAR = [
+  { label: 'Dashboard', href: '/dashboard.html', pagina: 'dashboard.html', icono: 'dashboard' },
+  { label: 'Productos', href: '/productos.html', pagina: 'productos.html', icono: 'productos' },
+  { label: 'Alertas', href: '/dashboard.html#dashboard-alertas', pagina: 'dashboard.html', seccion: 'alertas', icono: 'alertas' },
+  { label: 'Proveedores', href: '/productos.html#proveedores', pagina: 'productos.html', tab: 'proveedores', icono: 'proveedores' },
+  { label: 'Movimientos', href: '/movimientos.html', pagina: 'movimientos.html', icono: 'movimientos' },
+  { label: 'Usuarios', href: '/usuarios.html', pagina: 'usuarios.html', admin: true, icono: 'usuarios' },
+  { label: 'Asistente IA', href: '/asistente.html', pagina: 'asistente.html', icono: 'asistente' },
+];
+
+function crearIconoSidebar(contenido, clase) {
+  const icono = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icono.setAttribute('viewBox', '0 0 24 24');
+  icono.setAttribute('fill', 'none');
+  icono.setAttribute('stroke', 'currentColor');
+  icono.setAttribute('stroke-width', '1.8');
+  icono.setAttribute('stroke-linecap', 'round');
+  icono.setAttribute('stroke-linejoin', 'round');
+  icono.setAttribute('aria-hidden', 'true');
+  if (clase) icono.setAttribute('class', clase);
+  icono.innerHTML = contenido;
+  return icono;
+}
+
+function renderizarNavegacionSidebar(rol) {
+  const nav = document.querySelector('.sidebar-nav');
+  if (!nav) return;
+
+  const titulo = document.createElement('div');
+  titulo.className = 'sidebar-seccion';
+  const rayosIzq = document.createElement('span');
+  rayosIzq.className = 'sidebar-section-rays';
+  rayosIzq.setAttribute('aria-hidden', 'true');
+  const rayosDer = rayosIzq.cloneNode();
+  titulo.append(rayosIzq, document.createTextNode('MENÚ PRINCIPAL'), rayosDer);
+
+  const enlaces = ENLACES_SIDEBAR
+    .filter(enlace => !enlace.admin || rol === 'ADMIN')
+    .map(enlace => {
+      const link = document.createElement('a');
+      link.href = enlace.href;
+      link.className = 'nav-item';
+      link.dataset.pagina = enlace.pagina;
+      if (enlace.seccion) link.dataset.seccion = enlace.seccion;
+      if (enlace.tab) link.dataset.tab = enlace.tab;
+      link.setAttribute('aria-label', enlace.label);
+      link.title = enlace.label;
+
+      const iconoContenedor = document.createElement('span');
+      iconoContenedor.className = 'sidebar-nav-icon';
+      iconoContenedor.appendChild(crearIconoSidebar(ICONOS_SIDEBAR[enlace.icono]));
+      const etiqueta = document.createElement('span');
+      etiqueta.className = 'sidebar-nav-label';
+      etiqueta.textContent = enlace.label;
+      link.append(
+        iconoContenedor,
+        etiqueta,
+        crearIconoSidebar(ICONOS_SIDEBAR.chevron, 'sidebar-chevron'),
+      );
+      return link;
+    });
+
+  nav.replaceChildren(titulo, ...enlaces);
+  nav.classList.remove('sidebar-nav-pending');
 }
 
 /** Inicializa el botón de cerrar sesión y el avatar del topbar */
@@ -204,7 +291,11 @@ function iniciarLayout(tituloPagina) {
 
   const nombreEl = document.getElementById('nombre-usuario');
   if (nombreEl) nombreEl.textContent = usuario.nombre;
+  const rolEl = document.getElementById('rol-usuario');
+  if (rolEl) rolEl.textContent = usuario.rol === 'ADMIN' ? 'Administrador' : 'Empleado';
   const saludoEl = document.getElementById('nombre-asistente'); if (saludoEl) saludoEl.textContent = usuario.nombre.split(/\s+/)[0];
+
+  renderizarNavegacionSidebar(usuario.rol);
 
   // Botón cerrar sesión
   document.querySelectorAll('.btn-cerrar-sesion').forEach(btn => {
@@ -212,22 +303,7 @@ function iniciarLayout(tituloPagina) {
   });
 
   marcarNavActivo();
-
-  if (usuario.rol === 'ADMIN' && !document.querySelector('[data-pagina="usuarios.html"]')) {
-    const enlaceUsuarios = document.createElement('a');
-    enlaceUsuarios.href = '/usuarios.html';
-    enlaceUsuarios.className = 'nav-item';
-    enlaceUsuarios.dataset.pagina = 'usuarios.html';
-    enlaceUsuarios.setAttribute('aria-label', 'Gestión de usuarios');
-    const etiqueta = document.createElement('span');
-    etiqueta.className = 'sidebar-nav-label';
-    etiqueta.textContent = 'Usuarios';
-    enlaceUsuarios.appendChild(etiqueta);
-    const nav = document.querySelector('.sidebar-nav');
-    if (nav) nav.appendChild(enlaceUsuarios);
-  }
-
-  marcarNavActivo();
+  window.addEventListener('hashchange', marcarNavActivo);
 
   // Menú móvil
   const btnMenu = document.getElementById('btn-menu-movil');
