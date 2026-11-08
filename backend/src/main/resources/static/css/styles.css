@@ -4146,6 +4146,19 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .login-screen .login-password-toggle { display: grid; width: 28px; height: 28px; place-items: center; padding: 3px; border: 0; background: transparent; color: #9B82D3; cursor: pointer; }
 .login-screen .login-password-toggle svg { width: 20px; height: 20px; }
 .login-screen .login-field .form-error { position: absolute; bottom: -16px; left: 58px; margin: 0; font-size: 10px; }
+.login-screen #form-restablecer-password .login-password-toggle {
+  z-index: 1;
+  width: 32px;
+  height: 36px;
+  color: #7136D5;
+  visibility: visible;
+  opacity: 1;
+}
+.login-screen #form-restablecer-password .login-password-toggle svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
 
 .login-screen .login-olvidaste-fila { margin: -1px 0 0; text-align: right; }
 .login-screen #link-olvidaste { display: inline-flex; align-items: center; gap: 4px; color: #8D4DE2; cursor: pointer; font-size: 11px; font-weight: 600; text-decoration: none; }
