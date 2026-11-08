@@ -4148,10 +4148,11 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .login-screen .login-field .form-error { position: absolute; bottom: -16px; left: 58px; margin: 0; font-size: 10px; }
 
 .login-screen .login-olvidaste-fila { margin: -1px 0 0; text-align: right; }
-.login-screen .link-deshabilitado { color: #8D4DE2; cursor: pointer; font-size: 11px; font-weight: 600; opacity: 1; }
-.login-screen .link-deshabilitado svg { width: 14px; height: 14px; }
-.login-screen .link-deshabilitado:hover::after { content: ''; }
-.login-screen .login-forgot-notice { margin: -9px 0 0; color: #A179DB; font-size: 11px; text-align: right; }
+.login-screen #link-olvidaste { display: inline-flex; align-items: center; gap: 4px; color: #8D4DE2; cursor: pointer; font-size: 11px; font-weight: 600; text-decoration: none; }
+.login-screen #link-olvidaste svg { width: 14px; height: 14px; }
+.login-screen #link-olvidaste:hover { color: #5127B6; text-decoration: underline; }
+.login-screen .login-recovery-result { margin: 0; color: #15803D; font-size: 12px; line-height: 1.5; text-align: center; }
+.login-screen .login-recovery-result[hidden] { display: none; }
 
 .login-screen .login-api-error { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border: 1px solid #F4C9D5; border-radius: 13px; background: #FFF3F6; color: #A73D5E; font-size: 12px; line-height: 1.4; }
 .login-screen .login-api-error[hidden] { display: none; }

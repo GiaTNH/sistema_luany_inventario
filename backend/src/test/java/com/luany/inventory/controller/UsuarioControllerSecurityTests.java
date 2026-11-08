@@ -7,6 +7,7 @@ import com.luany.inventory.model.Producto;
 import com.luany.inventory.service.ProductoService;
 import com.luany.inventory.service.AuthService;
 import com.luany.inventory.service.CorreoEnvioException;
+import com.luany.inventory.service.RecuperacionPasswordService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -38,8 +40,14 @@ class UsuarioControllerSecurityTests {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SessionRegistry sessionRegistry;
+
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private RecuperacionPasswordService recuperacionPasswordService;
 
     @MockitoBean
     private ProductoService productoService;
@@ -66,6 +74,8 @@ class UsuarioControllerSecurityTests {
                         .content("{\"email\":\"prueba@luany.com\",\"password\":\"secreta\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.debeCambiarPassword").value(false));
+        org.junit.jupiter.api.Assertions.assertNotNull(
+                sessionRegistry.getSessionInformation(session.getId()));
     }
 
     @Test
@@ -77,6 +87,51 @@ class UsuarioControllerSecurityTests {
                 .andExpect(jsonPath("$.disponible").value(true));
 
         verify(authService).registroInicialDisponible();
+    }
+
+    @Test
+    void solicitudesDeRecuperacionSonPublicasPeroRequierenCsrf() throws Exception {
+        when(recuperacionPasswordService.solicitarRecuperacion(any()))
+                .thenReturn("Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña.");
+        when(recuperacionPasswordService.restablecerPassword(any()))
+                .thenReturn("Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.");
+
+        mockMvc.perform(post("/api/auth/solicitar-recuperacion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"ana@luany.com\"}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(recuperacionPasswordService);
+
+        mockMvc.perform(post("/api/auth/solicitar-recuperacion")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"ana@luany.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje").value(
+                        "Si el correo corresponde a una cuenta activa, recibirás un enlace para restablecer tu contraseña."))
+                .andExpect(jsonPath("$.token").doesNotExist());
+
+        mockMvc.perform(post("/api/auth/restablecer-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"token":"token-secreto","nuevaPassword":"NuevaClaveSegura2026!",
+                                 "confirmarPassword":"NuevaClaveSegura2026!"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/auth/restablecer-password")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"token":"token-secreto","nuevaPassword":"NuevaClaveSegura2026!",
+                                 "confirmarPassword":"NuevaClaveSegura2026!"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje").exists())
+                .andExpect(jsonPath("$.token").doesNotExist());
+
+        verify(recuperacionPasswordService).solicitarRecuperacion(any());
+        verify(recuperacionPasswordService).restablecerPassword(any());
     }
 
     @Test
