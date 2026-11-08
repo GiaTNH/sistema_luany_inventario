@@ -55,13 +55,13 @@
         boton.textContent = 'Guardando...';
 
         try {
-            const usuario = await apiPost('/api/auth/cambiar-password', {
+            await apiPost('/api/auth/cambiar-password', {
                 nuevaPassword
             });
 
-            guardarSesion(usuario);
-
-            window.location.replace('/dashboard.html');
+            await apiPost('/api/auth/logout', {});
+            sessionStorage.removeItem('usuario');
+            window.location.replace('/index.html?passwordChanged=1');
 
         } catch (error) {
             mostrarError(error.message || 'No se pudo cambiar la contraseña. Inténtalo nuevamente.');

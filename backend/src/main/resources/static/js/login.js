@@ -1,5 +1,11 @@
 /* ===== login.js ===== */
 
+const cambioPasswordCompletado =
+  new URLSearchParams(window.location.search).get('passwordChanged') === '1';
+if (cambioPasswordCompletado) {
+  history.replaceState(null, document.title, window.location.pathname + window.location.hash);
+}
+
 // Un enlace de recuperación debe poder utilizarse aunque exista una sesión activa.
 if (!window.location.hash.startsWith('#restablecer')) {
   redirigirSiHaySesionActiva();
@@ -93,6 +99,13 @@ const formularioSolicitudRecuperacion = document.getElementById('form-solicitar-
 const formularioRestablecerPassword = document.getElementById('form-restablecer-password');
 const tituloLogin = document.getElementById('login-bienvenida');
 const subtituloLogin = document.getElementById('login-subtitulo');
+
+if (cambioPasswordCompletado) {
+  const avisoExito = document.getElementById('login-initial-success');
+  avisoExito.textContent =
+    'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con tu nueva contraseña.';
+  avisoExito.hidden = false;
+}
 
 function mostrarFormulario(formulario, titulo, subtitulo) {
   [formularioLogin, formularioRegistroInicial, formularioSolicitudRecuperacion, formularioRestablecerPassword]
