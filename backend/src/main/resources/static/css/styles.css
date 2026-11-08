@@ -5247,6 +5247,41 @@ td:first-child { font-weight: 600; color: var(--texto); }
   box-shadow: none;
 }
 
+.sidebar-password-link {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 8px;
+  padding: 7px 13px;
+  border: 1px solid rgba(196,181,253,.15);
+  border-radius: 12px;
+  color: #C4B5FD;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.sidebar-password-link svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  color: #A78BFA;
+}
+
+.sidebar-password-link:hover,
+.sidebar-password-link:focus-visible {
+  border-color: #8B5CF6;
+  background: rgba(139,92,246,.14);
+  color: #fff;
+}
+
+.sidebar-password-link:focus-visible {
+  outline: 3px solid #C4B5FD;
+  outline-offset: 3px;
+}
+
 .sidebar-avatar {
   position: relative;
   display: grid;
@@ -5738,11 +5773,13 @@ td:first-child { font-weight: 600; color: var(--texto); }
 /* Ajustes exclusivos para el formulario de cambio de contraseña */
 .login-screen #form-cambiar-password .login-field {
     width: 100%;
-    grid-template-columns: minmax(0, 1fr) 25px;
+    grid-template-columns: minmax(0, 1fr) 32px;
     box-sizing: border-box;
 }
 
 .login-screen #form-cambiar-password .login-field-copy {
+    grid-column: 1;
+    min-width: 0;
     width: 100%;
     box-sizing: border-box;
 }
@@ -5750,6 +5787,22 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .login-screen #form-cambiar-password .login-field .form-control {
     width: 100%;
     box-sizing: border-box;
+}
+
+.login-screen #form-cambiar-password .login-password-toggle {
+    grid-column: 2;
+    z-index: 1;
+    width: 32px;
+    height: 36px;
+    color: #7136D5;
+    visibility: visible;
+    opacity: 1;
+}
+
+.login-screen #form-cambiar-password .login-password-toggle svg {
+    display: block;
+    width: 22px;
+    height: 22px;
 }
 
 .login-screen #form-cambiar-password [hidden],
