@@ -2,12 +2,16 @@
 
 const cambioPasswordCompletado =
   new URLSearchParams(window.location.search).get('passwordChanged') === '1';
-if (cambioPasswordCompletado) {
+const restablecimientoPasswordCompletado =
+  new URLSearchParams(window.location.search).get('passwordReset') === '1';
+if (cambioPasswordCompletado || restablecimientoPasswordCompletado) {
   history.replaceState(null, document.title, window.location.pathname + window.location.hash);
 }
 
 // Un enlace de recuperación debe poder utilizarse aunque exista una sesión activa.
-if (!window.location.hash.startsWith('#restablecer')) {
+if (!window.location.hash.startsWith('#restablecer')
+    && !cambioPasswordCompletado
+    && !restablecimientoPasswordCompletado) {
   redirigirSiHaySesionActiva();
 }
 
@@ -23,15 +27,24 @@ function limpiarAvisoApi(id) {
   if (aviso) aviso.hidden = true;
 }
 
-document.getElementById('login-password-toggle').addEventListener('click', () => {
-  const campo = document.getElementById('login-password');
-  const boton = document.getElementById('login-password-toggle');
-  const visible = campo.type === 'password';
-  campo.type = visible ? 'text' : 'password';
-  boton.setAttribute('aria-pressed', String(visible));
-  boton.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
-  boton.title = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
-});
+function configurarOjito(idCampo, idBoton) {
+  const campo = document.getElementById(idCampo);
+  const boton = document.getElementById(idBoton);
+  boton.addEventListener('click', () => {
+    const visible = campo.type === 'password';
+    campo.type = visible ? 'text' : 'password';
+    boton.setAttribute('aria-pressed', String(visible));
+    boton.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    boton.title = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+  });
+}
+
+configurarOjito('login-password', 'login-password-toggle');
+configurarOjito('recuperacion-password', 'recuperacion-password-toggle');
+configurarOjito(
+  'recuperacion-confirmar-password',
+  'recuperacion-confirmar-password-toggle',
+);
 
 document.getElementById('link-olvidaste').addEventListener('click', (evento) => {
   evento.preventDefault();
@@ -100,10 +113,11 @@ const formularioRestablecerPassword = document.getElementById('form-restablecer-
 const tituloLogin = document.getElementById('login-bienvenida');
 const subtituloLogin = document.getElementById('login-subtitulo');
 
-if (cambioPasswordCompletado) {
+if (cambioPasswordCompletado || restablecimientoPasswordCompletado) {
   const avisoExito = document.getElementById('login-initial-success');
-  avisoExito.textContent =
-    'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con tu nueva contraseña.';
+  avisoExito.textContent = restablecimientoPasswordCompletado
+    ? 'Tu contraseña se restableció correctamente. Ya puedes iniciar sesión con tu nueva contraseña.'
+    : 'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con tu nueva contraseña.';
   avisoExito.hidden = false;
 }
 
@@ -238,6 +252,7 @@ formularioRestablecerPassword.addEventListener('submit', async (evento) => {
     tokenRecuperacion = null;
     restablecido = true;
     formularioRestablecerPassword.reset();
+    window.location.replace('/index.html?passwordReset=1');
   } catch (error) {
     mostrarAvisoApi('restablecer-api-error', error.message);
   } finally {
