@@ -35,7 +35,7 @@
       
     </div>
     <div class="sidebar-location" aria-hidden="true"><span class="sidebar-location-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg></span><span>Juega · Viste · Crece</span><svg class="sidebar-location-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></div>
-    <nav class="sidebar-nav">
+    <nav class="sidebar-nav sidebar-nav-pending" aria-label="Navegación principal">
       <div class="sidebar-seccion"><span class="sidebar-section-rays" aria-hidden="true"></span>MENÚ PRINCIPAL<span class="sidebar-section-rays" aria-hidden="true"></span></div>
       <a href="/dashboard.html" class="nav-item" data-pagina="dashboard.html" aria-label="Dashboard"><span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg></span><span class="sidebar-nav-label">Dashboard</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
       <a href="/productos.html" class="nav-item" data-pagina="productos.html" aria-label="Productos"><span class="sidebar-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 7 9 5 9-5M3 7v10l9 5 9-5V7M12 12v10"/></svg></span><span class="sidebar-nav-label">Productos</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
@@ -48,7 +48,15 @@
         <path d="m151 28 3 10 10 3-10 3-3 10-3-10-10-3 10-3 3-10Z" stroke="#8B5CF6" stroke-width="1.6" stroke-linejoin="round"/>
       </svg>
     </div>
-    <div class="sidebar-footer"><div class="sidebar-usuario"><div class="sidebar-avatar" id="avatar-inicial">U</div><div class="sidebar-usuario-info"><span class="sidebar-usuario-nombre" id="nombre-usuario"></span><span class="sidebar-usuario-rol">Personal autorizado</span></div><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></div><button class="btn-cerrar-sesion" aria-label="Cerrar sesión"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17 15 12 10 7M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>Cerrar sesión</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div></aside>
+    <div class="sidebar-footer">
+      <div class="sidebar-usuario" aria-label="Perfil" title="Perfil">
+        <div class="sidebar-avatar" id="avatar-inicial">U</div>
+        <div class="sidebar-usuario-info"><span class="sidebar-profile-label">Perfil</span><span class="sidebar-usuario-nombre" id="nombre-usuario"></span><span class="sidebar-usuario-rol" id="rol-usuario"></span></div>
+        <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <a class="sidebar-password-link" href="/cambiar-password.html" aria-label="Cambiar contraseña" title="Cambiar contraseña"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg><span>Cambiar contraseña</span></a>
+      <button class="btn-cerrar-sesion" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17 15 12 10 7M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg><span>Cerrar sesión</span><svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+    </div></aside>
 
   <!-- CONTENIDO -->
   <main class="contenido-principal">

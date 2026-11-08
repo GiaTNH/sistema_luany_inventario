@@ -10,7 +10,7 @@ let ordenProductos = { campo: null, direccion: 1 };
 
 // ---------- PESTAÑAS ----------
 
-function cambiarTab(nombre) {
+function cambiarTab(nombre, cargarDatos = true) {
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
     const tabs = ['productos', 'categorias', 'proveedores'];
     btn.classList.toggle('activo', tabs[i] === nombre);
@@ -27,8 +27,10 @@ function cambiarTab(nombre) {
   if (nombre === 'productos') history.replaceState(null, '', `${location.pathname}${location.search}`);
   else history.replaceState(null, '', `#${nombre}`);
 
-  if (nombre === 'categorias')  cargarCategorias();
-  if (nombre === 'proveedores') cargarProveedores();
+  marcarNavActivo();
+
+  if (cargarDatos && nombre === 'categorias') cargarCategorias();
+  if (cargarDatos && nombre === 'proveedores') cargarProveedores();
 }
 
 // ---------- MODALES ----------
@@ -65,14 +67,19 @@ function mostrarErrForm(id, visible) {
 
 function limpiarErrs(ids) { ids.forEach(id => mostrarErrForm(id, false)); }
 
+window.addEventListener('hashchange', () => {
+  const tab = location.hash.slice(1);
+  if (tab === 'categorias' || tab === 'proveedores') cambiarTab(tab);
+  else cambiarTab('productos');
+});
+
 // ---------- CARGA INICIAL ----------
 
 async function cargarTodo() {
   try {
-    [todosProductos, todasCategorias, todosProveedores] = await Promise.all([
+    [todosProductos, todasCategorias] = await Promise.all([
       apiGet('/api/productos'),
       apiGet('/api/categorias'),
-      apiGet('/api/proveedores'),
     ]);
     renderTablaProductos(todosProductos);
     poblarFiltroCategoria();
@@ -80,6 +87,15 @@ async function cargarTodo() {
     mostrarToast(err.message, 'error');
     document.getElementById('tabla-productos-body').innerHTML =
       `<tr><td colspan="9" style="text-align:center;color:var(--rojo);padding:24px;">${escapar(err.message)}</td></tr>`;
+    return;
+  }
+
+  try {
+    todosProveedores = await apiGet('/api/proveedores');
+    renderTablaProveedores();
+    poblarSelectsCatalogos();
+  } catch (err) {
+    mostrarToast(err.message, 'error');
   }
 }
 
@@ -642,5 +658,5 @@ async function eliminarProveedor(id) {
 
 // ---------- INICIO ----------
 const tabInicial = location.hash.slice(1);
-if (tabInicial === 'categorias' || tabInicial === 'proveedores') cambiarTab(tabInicial);
+if (tabInicial === 'categorias' || tabInicial === 'proveedores') cambiarTab(tabInicial, false);
 cargarTodo();
