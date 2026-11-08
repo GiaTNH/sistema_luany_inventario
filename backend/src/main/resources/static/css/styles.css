@@ -5086,7 +5086,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 
 .sidebar-nav {
   min-height: 0;
-  flex: 1 1 0;
+  flex: 0 1 auto;
   padding: 0 5px;
   overflow-x: hidden;
   overflow-y: auto;
@@ -5207,7 +5207,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   position: relative;
   display: block;
   min-height: 0;
-  flex: 0 1 120px;
+  flex: 1 1 0;
   overflow: hidden;
   margin: 0;
 }
@@ -5393,7 +5393,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .sidebar-brand { justify-content: center; }
   .sidebar-brand-bag,
   .sidebar-brand-bag > img { width: 54px; height: 58px; }
-  .sidebar-nav { flex: 1 1 0; padding: 8px 0; }
+  .sidebar-nav { flex: 0 1 auto; padding: 8px 0; }
   .sidebar .nav-item { min-height: 50px; justify-content: center; gap: 0; margin: 0 0 7px; padding: 3px; }
   .sidebar .nav-item::before { left: -6px; width: 3px; height: 24px; }
   .sidebar .nav-item::after { display: none; }
@@ -5437,11 +5437,11 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .sidebar-brand { justify-content: flex-start; }
   .sidebar-brand-bag,
   .sidebar-brand-bag > img { width: 60px; height: 64px; }
-  .sidebar-nav { flex: 1 1 0; padding: 0 5px; }
+  .sidebar-nav { flex: 0 1 auto; padding: 0 5px; }
   .sidebar .nav-item { min-height: 50px; justify-content: flex-start; gap: 10px; margin: 0 0 6px; padding: 4px 8px; }
   .sidebar .nav-item > .sidebar-nav-icon { display: grid !important; width: 42px; height: 42px; }
   .sidebar .nav-item > .sidebar-nav-label { flex: 1; }
-  .sidebar-mascot { flex: 0 1 80px; }
+  .sidebar-mascot { flex: 1 1 0; }
   .sidebar-footer { padding: 8px 0 4px; }
   .sidebar-usuario { min-height: 70px; justify-content: flex-start; margin: 0 0 8px; padding: 8px; border: 1px solid #4B3F9A; background: rgba(255,255,255,.05); }
   .sidebar-usuario-info { min-width: 0; flex: 1; }
@@ -5467,7 +5467,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .sidebar-nav-icon { width: 40px; height: 40px; border-radius: 14px; }
   .sidebar-nav-icon svg { width: 21px; height: 21px; }
   .sidebar-mascot { display: none !important; }
-  .sidebar-nav { min-height: 0; flex: 1 1 0; overflow-x: hidden; overflow-y: auto; }
+  .sidebar-nav { min-height: 0; flex: 0 1 auto; overflow-x: hidden; overflow-y: auto; }
   .sidebar-footer { flex: 0 0 auto; margin-top: auto; padding-top: 5px; }
   .sidebar-usuario { min-height: 62px; margin-bottom: 6px; padding: 6px 8px; }
   .sidebar-avatar { width: 44px; height: 44px; font-size: 19px; }
