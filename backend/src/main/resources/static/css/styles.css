@@ -569,7 +569,6 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .usuarios-contenido .panel { max-width: 720px; }
 .usuarios-ayuda { color: var(--texto-suave); margin-bottom: 18px; }
 .usuarios-mensaje-error { color: var(--rojo); margin: 0 0 14px; }
-.usuarios-password { padding: 14px; border: 1px solid var(--borde); border-radius: 12px; background: var(--primario-claro); font-family: monospace; overflow-wrap: anywhere; }
 
 /* ===== MODAL ===== */
 .modal-overlay {

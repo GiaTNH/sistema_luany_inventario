@@ -31,19 +31,22 @@ class AuthServiceTests {
     @Mock
     private UsuarioRepository usuarioRepository;
 
+    @Mock
+    private CorreoService correoService;
+
     private PasswordEncoder passwordEncoder;
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder();
-        authService = new AuthService(usuarioRepository, passwordEncoder);
+        authService = new AuthService(usuarioRepository, passwordEncoder, correoService);
     }
 
     @Test
     void crearEmpleadoGeneraPasswordHashYRolEsperados() {
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.empty());
-        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> {
+        when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(invocation -> {
             Usuario usuario = invocation.getArgument(0);
             usuario.setId(10L);
             return usuario;
@@ -56,17 +59,37 @@ class AuthServiceTests {
         UsuarioCreadoResponse respuesta = authService.crearEmpleado(request);
 
         ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
-        verify(usuarioRepository).save(captor.capture());
+        verify(usuarioRepository).saveAndFlush(captor.capture());
         Usuario guardado = captor.getValue();
+        ArgumentCaptor<String> passwordCaptor = ArgumentCaptor.forClass(String.class);
+        verify(correoService).enviarBienvenida(
+                eq("empleado@luany.com"), eq("Ana López"), passwordCaptor.capture());
 
         assertEquals("Ana López", guardado.getNombre());
         assertEquals("empleado@luany.com", guardado.getEmail());
         assertEquals("EMPLEADO", guardado.getRol());
         assertTrue(guardado.isDebeCambiarPassword());
-        assertNotEquals(respuesta.passwordTemporal(), guardado.getPassword());
-        assertTrue(passwordEncoder.matches(respuesta.passwordTemporal(), guardado.getPassword()));
+        assertNotEquals(passwordCaptor.getValue(), guardado.getPassword());
+        assertTrue(passwordEncoder.matches(passwordCaptor.getValue(), guardado.getPassword()));
         assertEquals(10L, respuesta.usuario().id());
         assertEquals("EMPLEADO", respuesta.usuario().rol());
+        assertTrue(respuesta.usuario().debeCambiarPassword());
+        assertEquals(1, respuesta.getClass().getRecordComponents().length);
+    }
+
+    @Test
+    void crearEmpleadoFallaSiNoPuedeEnviarCorreo() {
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.empty());
+        when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new CorreoEnvioException()).when(correoService)
+                .enviarBienvenida(eq("empleado@luany.com"), eq("Ana"), anyString());
+
+        CrearEmpleadoRequest request = new CrearEmpleadoRequest();
+        request.setNombre("Ana");
+        request.setEmail("empleado@luany.com");
+
+        assertThrows(CorreoEnvioException.class, () -> authService.crearEmpleado(request));
+        verify(usuarioRepository).saveAndFlush(any(Usuario.class));
     }
 
     @Test

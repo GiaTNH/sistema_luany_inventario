@@ -8,7 +8,7 @@ El acceso se realiza con cuentas creadas por un administrador. No hay registro p
 
 El administrador crea una cuenta desde **Usuarios** o mediante `POST /api/usuarios`, enviando únicamente nombre y correo electrónico. El servidor valida ambos campos, normaliza el correo y rechaza duplicados.
 
-El servidor genera una contraseña temporal aleatoria, la almacena mediante BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. La contraseña temporal se muestra una sola vez en la respuesta para que el administrador la comparta de forma segura. El envío por correo y el flujo de cambio obligatorio aún no están implementados.
+El servidor genera una contraseña temporal aleatoria, almacena únicamente su hash BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. Envía las credenciales temporales al correo del empleado mediante la API HTTPS de Resend. La contraseña temporal no se incluye en la respuesta HTTP ni se registra en logs. Si Resend falla, se revierte la creación y la API responde con un error.
 
 El endpoint no acepta contraseña ni rol en la solicitud. Los usuarios no autenticados y los empleados no pueden crear cuentas, aunque intenten llamar directamente a la API. Las operaciones de escritura usan un token CSRF.
 
@@ -18,7 +18,7 @@ El inicio de sesión busca el usuario por correo y comprueba la contraseña medi
 
 ## 4. Protección de contraseñas mediante BCrypt
 
-Las contraseñas se guardan como hashes BCrypt, no como texto legible. La contraseña temporal se devuelve únicamente al administrador al crear la cuenta; el hash no forma parte de la respuesta. No se debe registrar ni compartir el hash completo ni la contraseña temporal en logs o capturas.
+Las contraseñas se guardan como hashes BCrypt, no como texto legible. La contraseña temporal solo existe en memoria durante la operación y se transmite a Resend para el correo de bienvenida; no se devuelve al administrador vía HTTP ni se registra en logs.
 
 ## 5. Evidencia de la tabla usuarios
 
@@ -42,7 +42,8 @@ Las pruebas automatizadas verifican:
 | Correo duplicado | Repetir la creación con el mismo correo. | El backend responde conflicto y no guarda otra cuenta. |
 | Campos inválidos | Enviar nombre/correo vacíos o un correo inválido. | El backend rechaza la solicitud. |
 | Acceso restringido | Intentar `POST /api/usuarios` sin sesión o con rol `EMPLEADO`. | El backend rechaza la creación. |
-| Acceso ADMIN | Iniciar sesión con una cuenta ADMIN y crear un empleado. | El backend crea la cuenta y devuelve la contraseña temporal sin exponer el hash. |
+| Acceso ADMIN | Iniciar sesión con una cuenta ADMIN y crear un empleado. | El backend guarda la cuenta y solicita a Resend enviar el correo; la respuesta no incluye la contraseña temporal. |
+| Fallo de correo | Simular un error o timeout del proveedor durante la creación. | El backend responde con error y revierte la creación del usuario. |
 
 ## 7. Conclusión
 

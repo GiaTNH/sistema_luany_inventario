@@ -1,5 +1,6 @@
 package com.luany.inventory.controller;
 
+import com.luany.inventory.service.CorreoEnvioException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,7 +8,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.util.Map;
 
 @RestControllerAdvice
@@ -38,6 +38,12 @@ public class ManejadorErrores {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> servicioNoDisponible(IllegalStateException e) {
-    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", e.getMessage()));
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(CorreoEnvioException.class)
+    public ResponseEntity<Map<String, String>> correoNoEnviado(CorreoEnvioException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "No se pudo enviar el correo de bienvenida. No se creó la cuenta."));
     }
 }
