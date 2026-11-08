@@ -9,7 +9,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.session.SessionInformationExpiredStrategy;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
@@ -25,11 +29,30 @@ public class ConfiguracionSeguridad {
     }
 
     @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            SecurityContextRepository securityContextRepository) throws Exception {
+            SecurityContextRepository securityContextRepository,
+            SessionRegistry sessionRegistry) throws Exception {
         CsrfTokenRequestAttributeHandler csrfHandler = new CsrfTokenRequestAttributeHandler();
         HttpSessionCsrfTokenRepository csrfTokenRepository = new HttpSessionCsrfTokenRepository();
+        SessionInformationExpiredStrategy expiredSessionStrategy = event -> {
+            HttpServletResponse response = event.getResponse();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write(
+                    "{\"mensaje\":\"Tu sesión ha expirado. Inicia sesión nuevamente.\"}");
+        };
 
         http
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
@@ -40,7 +63,9 @@ public class ConfiguracionSeguridad {
                         .requestMatchers(
                                 "/api/auth/csrf",
                                 "/api/auth/login",
-                                "/api/auth/registro-inicial/disponible")
+                                "/api/auth/registro-inicial/disponible",
+                                "/api/auth/solicitar-recuperacion",
+                                "/api/auth/restablecer-password")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/registro-inicial").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
@@ -49,6 +74,10 @@ public class ConfiguracionSeguridad {
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").hasRole("ADMIN")
                         .requestMatchers("/api/**").hasAnyRole("ADMIN", "EMPLEADO")
                         .anyRequest().permitAll())
+                .sessionManagement(session -> session
+                        .maximumSessions(Integer.MAX_VALUE)
+                        .expiredSessionStrategy(expiredSessionStrategy)
+                        .sessionRegistry(sessionRegistry))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED)))

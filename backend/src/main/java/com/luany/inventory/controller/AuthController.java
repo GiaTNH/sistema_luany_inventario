@@ -3,8 +3,11 @@ package com.luany.inventory.controller;
 import com.luany.inventory.model.LoginRequest;
 import com.luany.inventory.model.CambioPasswordRequest;
 import com.luany.inventory.model.RegistroInicialRequest;
+import com.luany.inventory.model.RestablecerPasswordRequest;
+import com.luany.inventory.model.SolicitudRecuperacionPasswordRequest;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.service.AuthService;
+import com.luany.inventory.service.RecuperacionPasswordService;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -28,7 +32,9 @@ import java.util.List;
 public class AuthController {
 
     private final AuthService authService;
+    private final RecuperacionPasswordService recuperacionPasswordService;
     private final SecurityContextRepository securityContextRepository;
+    private final SessionRegistry sessionRegistry;
 
     @GetMapping("/csrf")
     public ResponseEntity<CsrfTokenResponse> csrfToken(CsrfToken csrfToken) {
@@ -49,6 +55,20 @@ public class AuthController {
     public UsuarioResponse registrarPrimerAdministrador(
             @Valid @RequestBody RegistroInicialRequest request) {
         return authService.registrarPrimerAdministrador(request);
+    }
+
+    @PostMapping("/solicitar-recuperacion")
+    public RecuperacionPasswordResponse solicitarRecuperacion(
+            @Valid @RequestBody SolicitudRecuperacionPasswordRequest request) {
+        return new RecuperacionPasswordResponse(
+                recuperacionPasswordService.solicitarRecuperacion(request));
+    }
+
+    @PostMapping("/restablecer-password")
+    public RecuperacionPasswordResponse restablecerPassword(
+            @Valid @RequestBody RestablecerPasswordRequest request) {
+        return new RecuperacionPasswordResponse(
+                recuperacionPasswordService.restablecerPassword(request));
     }
 
     @PostMapping("/login")
@@ -96,11 +116,15 @@ public class AuthController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
+        sessionRegistry.registerNewSession(httpRequest.getSession(true).getId(), usuario.email());
     }
 
     public record CsrfTokenResponse(String token, String headerName) {
     }
 
     public record RegistroInicialDisponibilidadResponse(boolean disponible) {
+    }
+
+    public record RecuperacionPasswordResponse(String mensaje) {
     }
 }

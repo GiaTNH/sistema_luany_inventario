@@ -1,7 +1,9 @@
 /* ===== login.js ===== */
 
-// Si ya hay sesión activa
-redirigirSiHaySesionActiva();
+// Un enlace de recuperación debe poder utilizarse aunque exista una sesión activa.
+if (!window.location.hash.startsWith('#restablecer')) {
+  redirigirSiHaySesionActiva();
+}
 
 function mostrarAvisoApi(id, mensaje) {
   const aviso = document.getElementById(id);
@@ -27,9 +29,7 @@ document.getElementById('login-password-toggle').addEventListener('click', () =>
 
 document.getElementById('link-olvidaste').addEventListener('click', (evento) => {
   evento.preventDefault();
-  const aviso = document.getElementById('forgot-status');
-  aviso.hidden = false;
-  window.setTimeout(() => { aviso.hidden = true; }, 2500);
+  mostrarFormularioSolicitarRecuperacion();
 });
 
 // ---------- Validaciones ----------
@@ -89,35 +89,157 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
 
 const formularioRegistroInicial = document.getElementById('form-registro-inicial');
 const formularioLogin = document.getElementById('form-login');
+const formularioSolicitudRecuperacion = document.getElementById('form-solicitar-recuperacion');
+const formularioRestablecerPassword = document.getElementById('form-restablecer-password');
 const tituloLogin = document.getElementById('login-bienvenida');
 const subtituloLogin = document.getElementById('login-subtitulo');
 
+function mostrarFormulario(formulario, titulo, subtitulo) {
+  [formularioLogin, formularioRegistroInicial, formularioSolicitudRecuperacion, formularioRestablecerPassword]
+    .forEach(form => {
+      form.classList.remove('activo');
+      form.hidden = true;
+    });
+  formulario.hidden = false;
+  formulario.classList.add('activo');
+  tituloLogin.textContent = titulo;
+  subtituloLogin.textContent = subtitulo;
+}
+
 function mostrarFormularioRegistroInicial() {
-  formularioLogin.classList.remove('activo');
-  formularioLogin.hidden = true;
-  formularioRegistroInicial.hidden = false;
-  formularioRegistroInicial.classList.add('activo');
-  tituloLogin.textContent = 'Configura tu administrador';
-  subtituloLogin.textContent = 'Crea la cuenta que administrará LUANY';
+  mostrarFormulario(
+    formularioRegistroInicial,
+    'Configura tu administrador',
+    'Crea la cuenta que administrará LUANY',
+  );
   document.getElementById('login-admin-note').hidden = true;
   document.getElementById('login-initial-success').hidden = true;
 }
 
 function mostrarFormularioLogin() {
-  formularioRegistroInicial.classList.remove('activo');
-  formularioRegistroInicial.hidden = true;
-  formularioLogin.hidden = false;
-  formularioLogin.classList.add('activo');
-  tituloLogin.textContent = '¡Bienvenida de vuelta!';
-  subtituloLogin.textContent = 'Ingresa a tu cuenta para continuar';
+  mostrarFormulario(formularioLogin, '¡Bienvenida de vuelta!', 'Ingresa a tu cuenta para continuar');
   document.getElementById('login-admin-note').hidden = false;
 }
+
+function mostrarFormularioSolicitarRecuperacion() {
+  history.replaceState(null, document.title, window.location.pathname + window.location.search);
+  mostrarFormulario(
+    formularioSolicitudRecuperacion,
+    'Recupera tu contraseña',
+    'Te enviaremos instrucciones a tu correo',
+  );
+  document.getElementById('recuperacion-email').value =
+    document.getElementById('login-email').value.trim();
+  document.getElementById('recuperacion-resultado').hidden = true;
+  limpiarAvisoApi('recuperacion-api-error');
+  document.getElementById('login-admin-note').hidden = true;
+}
+
+function mostrarFormularioRestablecer(token) {
+  mostrarFormulario(
+    formularioRestablecerPassword,
+    'Crea una nueva contraseña',
+    'Elige una contraseña segura para tu cuenta',
+  );
+  document.getElementById('login-admin-note').hidden = true;
+  tokenRecuperacion = token;
+  if (!tokenRecuperacion) {
+    mostrarAvisoApi('restablecer-api-error', 'El enlace no es válido o ha expirado. Solicita uno nuevo.');
+  } else {
+    limpiarAvisoApi('restablecer-api-error');
+  }
+}
+
+let tokenRecuperacion = null;
 
 function obtenerBytesUtf8(valor) {
   return new TextEncoder().encode(valor).length;
 }
 
 document.getElementById('btn-volver-login').addEventListener('click', mostrarFormularioLogin);
+document.getElementById('btn-volver-login-recuperacion').addEventListener('click', mostrarFormularioLogin);
+document.getElementById('btn-volver-login-restablecer').addEventListener('click', mostrarFormularioLogin);
+
+formularioSolicitudRecuperacion.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const email = document.getElementById('recuperacion-email').value.trim();
+  mostrarError('err-recuperacion-email', !validarEmail(email));
+  limpiarAvisoApi('recuperacion-api-error');
+  document.getElementById('recuperacion-resultado').hidden = true;
+  if (!validarEmail(email)) return;
+
+  const boton = document.getElementById('btn-solicitar-recuperacion');
+  const etiqueta = boton.querySelector('.login-button-label');
+  boton.disabled = true;
+  etiqueta.textContent = 'Enviando...';
+  try {
+    const respuesta = await apiPost('/api/auth/solicitar-recuperacion', { email });
+    const resultado = document.getElementById('recuperacion-resultado');
+    resultado.textContent = respuesta.mensaje;
+    resultado.hidden = false;
+  } catch (error) {
+    mostrarAvisoApi('recuperacion-api-error', error.message);
+  } finally {
+    boton.disabled = false;
+    etiqueta.textContent = 'Enviar enlace';
+  }
+});
+
+formularioRestablecerPassword.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const nuevaPassword = document.getElementById('recuperacion-password').value;
+  const confirmarPassword = document.getElementById('recuperacion-confirmar-password').value;
+  const passwordValida = nuevaPassword.length >= 12
+    && nuevaPassword.length <= 72
+    && obtenerBytesUtf8(nuevaPassword) <= 72;
+  const passwordsCoinciden = nuevaPassword === confirmarPassword;
+
+  mostrarError('err-recuperacion-password', !passwordValida);
+  mostrarError('err-recuperacion-confirmar', !confirmarPassword || !passwordsCoinciden);
+  limpiarAvisoApi('restablecer-api-error');
+  document.getElementById('restablecer-resultado').hidden = true;
+  if (!passwordValida || !confirmarPassword || !passwordsCoinciden) return;
+  if (!tokenRecuperacion) {
+    mostrarAvisoApi('restablecer-api-error', 'El enlace no es válido o ha expirado. Solicita uno nuevo.');
+    return;
+  }
+
+  const boton = document.getElementById('btn-restablecer-password');
+  const etiqueta = boton.querySelector('.login-button-label');
+  let restablecido = false;
+  boton.disabled = true;
+  etiqueta.textContent = 'Guardando...';
+  try {
+    const respuesta = await apiPost('/api/auth/restablecer-password', {
+      token: tokenRecuperacion,
+      nuevaPassword,
+      confirmarPassword,
+    });
+    const resultado = document.getElementById('restablecer-resultado');
+    resultado.textContent = respuesta.mensaje;
+    resultado.hidden = false;
+    tokenRecuperacion = null;
+    restablecido = true;
+    formularioRestablecerPassword.reset();
+  } catch (error) {
+    mostrarAvisoApi('restablecer-api-error', error.message);
+  } finally {
+    boton.disabled = restablecido;
+    etiqueta.textContent = restablecido ? 'Contraseña actualizada' : 'Guardar contraseña';
+  }
+});
+
+function cargarFlujoRecuperacion() {
+  if (!window.location.hash.startsWith('#restablecer')) return false;
+  const separador = window.location.hash.indexOf('?');
+  const parametros = separador >= 0
+    ? new URLSearchParams(window.location.hash.slice(separador + 1))
+    : new URLSearchParams();
+  const token = parametros.get('token');
+  history.replaceState(null, document.title, window.location.pathname + window.location.search);
+  mostrarFormularioRestablecer(token);
+  return true;
+}
 
 formularioRegistroInicial.addEventListener('submit', async (evento) => {
   evento.preventDefault();
@@ -189,4 +311,6 @@ async function verificarRegistroInicial() {
   }
 }
 
-verificarRegistroInicial();
+if (!cargarFlujoRecuperacion()) {
+  verificarRegistroInicial();
+}
