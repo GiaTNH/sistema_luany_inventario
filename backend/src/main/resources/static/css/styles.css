@@ -2975,6 +2975,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 
 .dashboard-page .dashboard-alert-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .dashboard-page .dashboard-alert-name { overflow: hidden; color: #17285F; font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-page .dashboard-alert-category { overflow: hidden; color: #7181B3; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-page .dashboard-alert-stock { color: #7181B3; font-size: 9px; white-space: nowrap; }
 
 .dashboard-page .dashboard-alert-status {
@@ -3093,9 +3094,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
 }
 
 @media (max-width: 560px) {
-  .dashboard-page .dashboard-alert-row { grid-template-columns: 38px minmax(0, 1fr) max-content 12px; gap: 6px; }
+  .dashboard-page .dashboard-alert-row { grid-template-columns: 38px minmax(0, 1fr) max-content max-content 12px; gap: 6px; }
   .dashboard-page .dashboard-alert-thumb { width: 38px; height: 42px; }
-  .dashboard-page .dashboard-alert-status { display: none; }
   .dashboard-page #grafico-ventas { min-height: 240px; }
   .dashboard-page .dashboard-ranking-row { grid-template-columns: 24px 36px minmax(75px, 1fr) minmax(50px, 1fr) 24px; gap: 5px; }
   .dashboard-page .dashboard-ranking-position { width: 23px; height: 23px; font-size: 10px; }

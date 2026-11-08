@@ -3,6 +3,7 @@ package com.luany.inventory.model;
 public record AlertaStock(
         Long productoId,
         String nombre,
+        String categoria,
         Integer stockActual,
         Integer stockMinimo,
         String estado,

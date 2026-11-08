@@ -379,7 +379,7 @@ function renderAlertas(alertas) {
     return;
   }
 
-  alertas.slice(0, 6).forEach((alerta) => {
+  alertas.forEach((alerta) => {
     const fila = document.createElement('a');
     fila.className = 'dashboard-alert-row';
     fila.href = '/productos.html';
@@ -393,10 +393,14 @@ function renderAlertas(alertas) {
     nombre.className = 'dashboard-alert-name';
     nombre.textContent = alerta.nombre || 'Producto';
 
+    const categoria = document.createElement('span');
+    categoria.className = 'dashboard-alert-category';
+    categoria.textContent = alerta.categoria || 'Categoría no disponible';
+
     const stock = document.createElement('span');
     stock.className = 'dashboard-alert-stock';
     stock.textContent = `Stock: ${Number(alerta.stockActual) || 0} / Mínimo: ${Number(alerta.stockMinimo) || 0}`;
-    detalle.append(nombre, stock);
+    detalle.append(nombre, categoria, stock);
 
     const estado = document.createElement('span');
     const slugEstado = alerta.estado === 'AGOTADO' ? 'agotado' : 'bajo';
