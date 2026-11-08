@@ -4156,15 +4156,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .login-screen .btn-login-full .login-submit-arrow { width: 20px; height: 20px; }
 .login-screen .btn-login-full .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
 
-.login-screen .login-social-area { width: 100%; }
-.login-screen .login-divider { display: flex; align-items: center; gap: 13px; margin: 18px 0 15px; color: #A69CBE; }
-.login-screen .login-divider span { height: 1px; flex: 1; background: #E8E1F4; }
-.login-screen .login-divider b { font-size: 11px; font-weight: 500; }
-.login-screen .login-social-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.login-screen .login-social-button { display: inline-flex; min-width: 0; min-height: 45px; align-items: center; justify-content: center; gap: 9px; padding: 8px 10px; border: 1px solid #E4DBF7; border-radius: 24px; background: #FBFAFF; color: #71658E; cursor: not-allowed; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 500; opacity: .82; }
-.login-screen .login-social-button svg { width: 18px; height: 18px; flex: 0 0 auto; }
-.login-screen .login-social-button:disabled { opacity: .82; }
-.login-screen .login-pie { margin: 19px 0 0; color: #A59BBE; font-size: 10px; text-align: center; }
+.login-screen .login-pie { margin: 12px 0 0; color: #A59BBE; font-size: 10px; text-align: center; }
+.login-screen .login-pie + .login-pie { margin-top: 4px; }
 
 .login-screen .form-grupo .form-error { color: #C34864; }
 
@@ -4175,9 +4168,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .login-screen .login-tabs { margin-bottom: 14px; }
   .login-screen .login-form.activo { gap: 9px; }
   .login-screen .login-field { height: 66px; margin-bottom: 2px; }
-  .login-screen .login-divider { margin: 11px 0 9px; }
   .login-screen .btn-login-full { min-height: 58px; }
-  .login-screen .login-pie { margin-top: 5px; }
+  .login-screen .login-pie { margin-top: 8px; }
 }
 
 @media (max-width: 900px) {
@@ -4205,9 +4197,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .login-screen .login-field > svg { width: 20px; height: 20px; }
   .login-screen .login-field .form-error { left: 45px; }
   .login-screen .btn-login-full { min-height: 58px; font-size: 14px; }
-  .login-screen .login-social-buttons { gap: 7px; }
-  .login-screen .login-social-button { gap: 5px; padding: 7px 5px; font-size: 9px; }
-  .login-screen .login-pie { margin-top: 15px; font-size: 9px; }
+  .login-screen .login-pie { margin-top: 8px; font-size: 9px; }
+  .login-screen .login-pie + .login-pie { margin-top: 3px; }
 }
 
 /* Sidebar común: panel flotante con logo y assets locales. */
