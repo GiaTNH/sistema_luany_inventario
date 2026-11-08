@@ -4129,6 +4129,13 @@ td:first-child { font-weight: 600; color: var(--texto); }
 
 .login-screen .login-form { display: none; width: 100%; max-width: 560px; }
 .login-screen .login-form.activo { display: grid; gap: 14px; }
+.login-screen .login-form[hidden] { display: none; }
+.login-screen #form-registro-inicial .login-field { height: 68px; }
+.login-screen #form-registro-inicial .login-field .form-error { left: 58px; }
+.login-screen .login-register-back { align-self: center; padding: 5px 10px; border: 0; background: transparent; color: #8D4DE2; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; }
+.login-screen .login-register-back:hover { color: #5127B6; text-decoration: underline; }
+.login-screen .login-initial-status { margin: 0 0 12px; color: #A73D5E; font-size: 12px; text-align: center; }
+.login-screen .login-initial-success { margin: 0 0 12px; color: #15803D; font-size: 12px; text-align: center; }
 .login-screen .login-field { position: relative; display: grid; height: 76px; grid-template-columns: 25px minmax(0, 1fr) 25px; align-items: center; gap: 12px; margin: 0 0 4px; padding: 11px 18px; border: 1px solid #E5DDFC; border-radius: 23px; background: #F8F5FF; transition: border-color .15s, box-shadow .15s, background .15s; }
 .login-screen .login-field:focus-within { border-color: #AB84ED; background: #fff; box-shadow: 0 0 0 3px rgba(124,58,237,.08); }
 .login-screen .login-field > svg { width: 23px; height: 23px; color: #9165DF; }
@@ -4168,6 +4175,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .login-screen .login-tabs { margin-bottom: 14px; }
   .login-screen .login-form.activo { gap: 9px; }
   .login-screen .login-field { height: 66px; margin-bottom: 2px; }
+  .login-screen #form-registro-inicial .login-field { height: 62px; }
   .login-screen .btn-login-full { min-height: 58px; }
   .login-screen .login-pie { margin-top: 8px; }
 }
@@ -4194,6 +4202,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .login-screen .login-tab { min-height: 46px; gap: 6px; padding: 8px 6px; font-size: 11px; }
   .login-screen .login-tab svg { width: 18px; height: 18px; }
   .login-screen .login-field { height: 70px; grid-template-columns: 21px minmax(0, 1fr) 24px; gap: 9px; padding: 9px 13px; border-radius: 19px; }
+  .login-screen #form-registro-inicial .login-field { height: 64px; }
   .login-screen .login-field > svg { width: 20px; height: 20px; }
   .login-screen .login-field .form-error { left: 45px; }
   .login-screen .btn-login-full { min-height: 58px; font-size: 14px; }

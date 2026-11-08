@@ -86,3 +86,107 @@ document.getElementById('form-login').addEventListener('submit', async (e) => {
     etiqueta.textContent = 'Iniciar sesión';
   }
 });
+
+const formularioRegistroInicial = document.getElementById('form-registro-inicial');
+const formularioLogin = document.getElementById('form-login');
+const tituloLogin = document.getElementById('login-bienvenida');
+const subtituloLogin = document.getElementById('login-subtitulo');
+
+function mostrarFormularioRegistroInicial() {
+  formularioLogin.classList.remove('activo');
+  formularioLogin.hidden = true;
+  formularioRegistroInicial.hidden = false;
+  formularioRegistroInicial.classList.add('activo');
+  tituloLogin.textContent = 'Configura tu administrador';
+  subtituloLogin.textContent = 'Crea la cuenta que administrará LUANY';
+  document.getElementById('login-admin-note').hidden = true;
+  document.getElementById('login-initial-success').hidden = true;
+}
+
+function mostrarFormularioLogin() {
+  formularioRegistroInicial.classList.remove('activo');
+  formularioRegistroInicial.hidden = true;
+  formularioLogin.hidden = false;
+  formularioLogin.classList.add('activo');
+  tituloLogin.textContent = '¡Bienvenida de vuelta!';
+  subtituloLogin.textContent = 'Ingresa a tu cuenta para continuar';
+  document.getElementById('login-admin-note').hidden = false;
+}
+
+function obtenerBytesUtf8(valor) {
+  return new TextEncoder().encode(valor).length;
+}
+
+document.getElementById('btn-volver-login').addEventListener('click', mostrarFormularioLogin);
+
+formularioRegistroInicial.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const nombre = document.getElementById('registro-nombre').value.trim();
+  const email = document.getElementById('registro-email').value.trim();
+  const password = document.getElementById('registro-password').value;
+  const confirmarPassword = document.getElementById('registro-confirmar-password').value;
+
+  const emailValido = validarEmail(email);
+  const passwordValida = password.length >= 12
+    && password.length <= 72
+    && obtenerBytesUtf8(password) <= 72;
+  const passwordsCoinciden = password === confirmarPassword;
+
+  mostrarError('err-registro-nombre', !nombre);
+  mostrarError('err-registro-email', !emailValido);
+  mostrarError('err-registro-password', !passwordValida);
+  mostrarError('err-registro-confirmar', !passwordsCoinciden || !confirmarPassword);
+  limpiarAvisoApi('registro-api-error');
+  if (!nombre || !emailValido || !passwordValida || !passwordsCoinciden || !confirmarPassword) return;
+
+  const boton = document.getElementById('btn-registro-inicial');
+  const etiqueta = boton.querySelector('.login-button-label');
+  boton.disabled = true;
+  etiqueta.textContent = 'Creando administrador...';
+
+  try {
+    await apiPost('/api/auth/registro-inicial', {
+      nombre,
+      email,
+      password,
+      confirmarPassword,
+    });
+    mostrarFormularioLogin();
+    document.getElementById('login-email').value = email;
+    const avisoExito = document.getElementById('login-initial-success');
+    avisoExito.textContent = 'Administrador creado. Ya puedes iniciar sesión.';
+    avisoExito.hidden = false;
+    formularioRegistroInicial.reset();
+  } catch (error) {
+    mostrarAvisoApi('registro-api-error', error.message);
+    try {
+      const estado = await apiGet('/api/auth/registro-inicial/disponible');
+      if (!estado.disponible) {
+        mostrarFormularioLogin();
+        mostrarAvisoApi('login-api-error', error.message);
+      }
+    } catch (errorEstado) {
+      const aviso = document.getElementById('login-initial-status');
+      aviso.textContent = `No se pudo verificar el registro inicial: ${errorEstado.message}`;
+      aviso.hidden = false;
+    }
+  } finally {
+    boton.disabled = false;
+    etiqueta.textContent = 'Crear administrador';
+  }
+});
+
+async function verificarRegistroInicial() {
+  try {
+    const estado = await apiGet('/api/auth/registro-inicial/disponible');
+    if (estado.disponible) {
+      mostrarFormularioRegistroInicial();
+    }
+  } catch (error) {
+    const aviso = document.getElementById('login-initial-status');
+    aviso.textContent = `No se pudo verificar el registro inicial: ${error.message}`;
+    aviso.hidden = false;
+  }
+}
+
+verificarRegistroInicial();

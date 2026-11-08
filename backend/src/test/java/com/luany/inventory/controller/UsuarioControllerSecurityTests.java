@@ -1,6 +1,7 @@
 package com.luany.inventory.controller;
 
 import com.luany.inventory.model.UsuarioCreadoResponse;
+import com.luany.inventory.model.RegistroInicialRequest;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.model.Producto;
 import com.luany.inventory.service.ProductoService;
@@ -17,12 +18,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.server.ResponseStatusException;
+import org.mockito.ArgumentCaptor;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,6 +66,52 @@ class UsuarioControllerSecurityTests {
                         .content("{\"email\":\"prueba@luany.com\",\"password\":\"secreta\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.debeCambiarPassword").value(false));
+    }
+
+    @Test
+    void estadoDeRegistroInicialEsPublico() throws Exception {
+        when(authService.registroInicialDisponible()).thenReturn(true);
+
+        mockMvc.perform(get("/api/auth/registro-inicial/disponible"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.disponible").value(true));
+
+        verify(authService).registroInicialDisponible();
+    }
+
+    @Test
+    void registroInicialEsPublicoPeroRequiereCsrfYNoAceptaRolDelCliente() throws Exception {
+        when(authService.registrarPrimerAdministrador(any())).thenReturn(
+                new UsuarioResponse(1L, "Admin", "admin@luany.com", "ADMIN", false));
+
+        mockMvc.perform(post("/api/auth/registro-inicial")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Admin","email":"admin@luany.com",
+                                 "password":"ClaveSegura2026!","confirmarPassword":"ClaveSegura2026!",
+                                 "rol":"EMPLEADO"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        verify(authService, never()).registrarPrimerAdministrador(any());
+
+        mockMvc.perform(post("/api/auth/registro-inicial")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Admin","email":"admin@luany.com",
+                                 "password":"ClaveSegura2026!","confirmarPassword":"ClaveSegura2026!",
+                                 "rol":"EMPLEADO"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.rol").value("ADMIN"))
+                .andExpect(jsonPath("$.debeCambiarPassword").value(false))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        ArgumentCaptor<RegistroInicialRequest> requestCaptor =
+                ArgumentCaptor.forClass(RegistroInicialRequest.class);
+        verify(authService).registrarPrimerAdministrador(requestCaptor.capture());
+        assertEquals("admin@luany.com", requestCaptor.getValue().getEmail());
     }
 
     @Test
@@ -116,7 +165,7 @@ class UsuarioControllerSecurityTests {
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\"}"))
+                        .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\",\"rol\":\"ADMIN\"}"))
                 .andExpect(status().isForbidden());
 
         verify(authService, never()).crearEmpleado(any());
@@ -237,7 +286,7 @@ class UsuarioControllerSecurityTests {
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\"}"))
+                        .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\",\"rol\":\"ADMIN\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.rol").value("EMPLEADO"))
                 .andExpect(jsonPath("$.passwordTemporal").doesNotExist())

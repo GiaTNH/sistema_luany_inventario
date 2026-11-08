@@ -37,7 +37,12 @@ public class ConfiguracionSeguridad {
                         .csrfTokenRepository(csrfTokenRepository)
                         .csrfTokenRequestHandler(csrfHandler))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/csrf", "/api/auth/login").permitAll()
+                        .requestMatchers(
+                                "/api/auth/csrf",
+                                "/api/auth/login",
+                                "/api/auth/registro-inicial/disponible")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/registro-inicial").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/cambiar-password")
                         .hasAuthority("PASSWORD_CHANGE_REQUIRED")

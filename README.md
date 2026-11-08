@@ -17,3 +17,18 @@ El sistema usa Java 17, Spring Boot y MySQL. El código está en `backend/`.
 Para desplegar en Render, usar `backend` como directorio raíz; ahí está el `Dockerfile`. La base de datos de producción está en Aiven (MySQL 8, SSL obligatorio) y el backend usa `spring.jpa.hibernate.ddl-auto=validate`: la estructura solo se cambia con scripts SQL.
 
 Para enviar correos de bienvenida, configurar en el servicio de Render `MAIL_API_KEY` con la clave secreta de Resend. `MAIL_FROM_EMAIL` y `MAIL_FROM_NAME` son opcionales y usan por defecto `onboarding@resend.dev` y `LUANY`; en producción, el remitente debe estar verificado en Resend.
+
+### Registro inicial del administrador
+
+Antes del despliegue, ejecutar `database/registro_inicial.sql` en la base `defaultdb` de Aiven usando un cliente MySQL (por ejemplo, MySQL Workbench). El script crea la tabla de control de forma idempotente: la primera vez inicializa `completado=1` si ya hay usuarios o `completado=0` si no hay ninguno. Si la fila ya existe, volver a ejecutar el script conserva su valor actual.
+
+Al terminar la validación del sistema, eliminar únicamente las cuentas de prueba que se hayan creado para esa validación; no eliminar cuentas reales. Confirmar que `usuarios` quedó vacía y habilitar el registro inicial con una actualización manual:
+
+```sql
+UPDATE registro_inicial
+SET completado = 0
+WHERE id = 1
+  AND NOT EXISTS (SELECT 1 FROM usuarios);
+```
+
+Registrar inmediatamente al administrador definitivo desde la pantalla de acceso. No volver a habilitar el registro después de crear al administrador.

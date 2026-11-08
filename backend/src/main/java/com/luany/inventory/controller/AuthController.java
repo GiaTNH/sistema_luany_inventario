@@ -2,6 +2,7 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.model.LoginRequest;
 import com.luany.inventory.model.CambioPasswordRequest;
+import com.luany.inventory.model.RegistroInicialRequest;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.service.AuthService;
 import jakarta.validation.Valid;
@@ -34,6 +35,20 @@ public class AuthController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(new CsrfTokenResponse(csrfToken.getToken(), csrfToken.getHeaderName()));
+    }
+
+    @GetMapping("/registro-inicial/disponible")
+    public ResponseEntity<RegistroInicialDisponibilidadResponse> registroInicialDisponible() {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(new RegistroInicialDisponibilidadResponse(authService.registroInicialDisponible()));
+    }
+
+    @PostMapping("/registro-inicial")
+    @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
+    public UsuarioResponse registrarPrimerAdministrador(
+            @Valid @RequestBody RegistroInicialRequest request) {
+        return authService.registrarPrimerAdministrador(request);
     }
 
     @PostMapping("/login")
@@ -84,5 +99,8 @@ public class AuthController {
     }
 
     public record CsrfTokenResponse(String token, String headerName) {
+    }
+
+    public record RegistroInicialDisponibilidadResponse(boolean disponible) {
     }
 }
