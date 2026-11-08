@@ -1,4 +1,4 @@
 package com.luany.inventory.model;
 
-public record UsuarioCreadoResponse(UsuarioResponse usuario) {
+public record UsuarioCreadoResponse(UsuarioResponse usuario, String nombreUsuario) {
 }

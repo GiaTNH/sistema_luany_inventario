@@ -1,6 +1,8 @@
 package com.luany.inventory.controller;
 
 import com.luany.inventory.model.UsuarioCreadoResponse;
+import com.luany.inventory.model.CambiarRolRequest;
+import com.luany.inventory.model.UsuarioGestionResponse;
 import com.luany.inventory.model.RegistroInicialRequest;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.model.Producto;
@@ -8,6 +10,7 @@ import com.luany.inventory.service.ProductoService;
 import com.luany.inventory.service.AuthService;
 import com.luany.inventory.service.CorreoEnvioException;
 import com.luany.inventory.service.RecuperacionPasswordService;
+import com.luany.inventory.service.UsuarioGestionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -51,6 +54,9 @@ class UsuarioControllerSecurityTests {
 
     @MockitoBean
     private ProductoService productoService;
+
+    @MockitoBean
+    private UsuarioGestionService usuarioGestionService;
 
     @Test
     void endpointCsrfEntregaTokenDeSesionAceptadoPorElLogin() throws Exception {
@@ -227,6 +233,67 @@ class UsuarioControllerSecurityTests {
     }
 
     @Test
+    void empleadoNoPuedeListarUsuariosNiModificarRoles() throws Exception {
+        MockHttpSession session = iniciarSesion("EMPLEADO");
+
+        mockMvc.perform(get("/api/usuarios").session(session))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/usuarios/2/rol")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rol\":\"ADMIN\"}"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(usuarioGestionService);
+    }
+
+    @Test
+    void administradorPuedeListarUsuariosSinExponerCamposSecretos() throws Exception {
+        MockHttpSession session = iniciarSesion("ADMIN");
+        when(usuarioGestionService.listar()).thenReturn(java.util.List.of(
+                new UsuarioGestionResponse(
+                        2L, "Ana", null, "ana@luany.com", "ana", "EMPLEADO", "ACTIVO")));
+
+        mockMvc.perform(get("/api/usuarios").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombreUsuario").value("ana"))
+                .andExpect(jsonPath("$[0].rol").value("EMPLEADO"))
+                .andExpect(jsonPath("$[0].password").doesNotExist());
+
+        verify(usuarioGestionService).listar();
+    }
+
+    @Test
+    void administradorPuedeCambiarRolYSeValidaElValor() throws Exception {
+        MockHttpSession session = iniciarSesion("ADMIN");
+        when(usuarioGestionService.cambiarRol(eq(2L), any(CambiarRolRequest.class), eq("prueba@luany.com")))
+                .thenReturn(new UsuarioGestionResponse(
+                        2L, "Ana", null, "ana@luany.com", "ana", "ADMIN", "ACTIVO"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/usuarios/2/rol")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rol\":\"ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").value("ADMIN"))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/usuarios/2/rol")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"rol\":\"SUPERADMIN\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(usuarioGestionService).cambiarRol(eq(2L), any(CambiarRolRequest.class), eq("prueba@luany.com"));
+    }
+
+    @Test
     void empleadoConCambioPendienteNoPuedeConsultarProductos() throws Exception {
         MockHttpSession session = iniciarSesion("EMPLEADO", true);
 
@@ -338,7 +405,8 @@ class UsuarioControllerSecurityTests {
     void administradorPuedeCrearEmpleadoYNoSeDevuelveElHash() throws Exception {
         MockHttpSession session = iniciarSesion("ADMIN");
         when(authService.crearEmpleado(any())).thenReturn(new UsuarioCreadoResponse(
-                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true)));
+                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true),
+                "ana"));
 
         mockMvc.perform(post("/api/usuarios")
                         .session(session)
@@ -347,6 +415,7 @@ class UsuarioControllerSecurityTests {
                         .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\",\"rol\":\"ADMIN\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.rol").value("EMPLEADO"))
+                .andExpect(jsonPath("$.nombreUsuario").value("ana"))
                 .andExpect(jsonPath("$.passwordTemporal").doesNotExist())
                 .andExpect(jsonPath("$.usuario.password").doesNotExist());
 

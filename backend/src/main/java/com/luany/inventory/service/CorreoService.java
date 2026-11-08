@@ -42,7 +42,11 @@ public class CorreoService {
         this.remitente = remitenteNombre + " <" + remitenteEmail + ">";
     }
 
-    public void enviarBienvenida(String destinatario, String nombre, String passwordTemporal) {
+    public void enviarBienvenida(
+            String destinatario,
+            String nombre,
+            String nombreUsuario,
+            String passwordTemporal) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new CorreoEnvioException();
         }
@@ -52,12 +56,13 @@ public class CorreoService {
 
                 Tu cuenta de empleado de LUANY ya está lista.
 
+                Nombre de usuario: %s
                 Correo electrónico: %s
                 Contraseña temporal: %s
 
                 Ingresa en %s. Por seguridad, deberás cambiar la contraseña en tu primer inicio de sesión.
                 Este es un mensaje automático de LUANY.
-                """.formatted(nombre, destinatario, passwordTemporal, URL_ACCESO);
+                """.formatted(nombre, nombreUsuario, destinatario, passwordTemporal, URL_ACCESO);
 
         String contenidoHtml = """
                 <!DOCTYPE html>
@@ -87,6 +92,12 @@ public class CorreoService {
                           <tr>
                             <td style="padding:22px 32px 10px;">
                               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%%" style="background-color:#F7F3FF; border:1px solid #E9D8FF; border-radius:12px;">
+                                <tr>
+                                  <td style="padding:20px 22px 8px; color:#81758F; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1px; text-transform:uppercase;">Nombre de usuario</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:0 22px 18px; color:#241442; font-size:16px; line-height:23px; word-break:break-word;">%s</td>
+                                </tr>
                                 <tr>
                                   <td style="padding:20px 22px 8px; color:#81758F; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1px; text-transform:uppercase;">Correo electrónico</td>
                                 </tr>
@@ -129,7 +140,7 @@ public class CorreoService {
                   </table>
                 </body>
                 </html>
-                """.formatted(escaparHtml(nombre), escaparHtml(destinatario),
+                """.formatted(escaparHtml(nombre), escaparHtml(nombreUsuario), escaparHtml(destinatario),
                 escaparHtml(passwordTemporal), URL_ACCESO);
 
         Map<String, Object> solicitud = Map.of(

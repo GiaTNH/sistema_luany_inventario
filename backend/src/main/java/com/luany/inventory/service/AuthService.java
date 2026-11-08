@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Objects;
@@ -62,6 +63,7 @@ public class AuthService {
         Usuario administrador = new Usuario();
         administrador.setNombre(request.getNombre().trim());
         administrador.setEmail(request.getEmail().trim().toLowerCase(Locale.ROOT));
+        administrador.setNombreUsuario(generarNombreUsuario(administrador.getNombre()));
         administrador.setPassword(passwordEncoder.encode(password));
         administrador.setRol("ADMIN");
         administrador.setDebeCambiarPassword(false);
@@ -84,13 +86,15 @@ public class AuthService {
             usuario.setApellido(request.getApellido().trim());
         }
         usuario.setEmail(email);
+        usuario.setNombreUsuario(generarNombreUsuario(usuario.getNombre()));
         usuario.setPassword(passwordEncoder.encode(passwordTemporal));
         usuario.setRol("EMPLEADO");
         usuario.setDebeCambiarPassword(true);
         usuarioRepository.saveAndFlush(usuario);
-        correoService.enviarBienvenida(email, usuario.getNombre(), passwordTemporal);
+        correoService.enviarBienvenida(
+                email, usuario.getNombre(), usuario.getNombreUsuario(), passwordTemporal);
 
-        return new UsuarioCreadoResponse(aRespuesta(usuario));
+        return new UsuarioCreadoResponse(aRespuesta(usuario), usuario.getNombreUsuario());
     }
 
     public UsuarioResponse iniciarSesion(LoginRequest request) {
@@ -163,5 +167,24 @@ public class AuthService {
         byte[] bytes = new byte[32];
         SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String generarNombreUsuario(String nombre) {
+        String base = Normalizer.normalize(nombre, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", ".")
+                .replaceAll("^\\.+|\\.+$", "");
+        if (base.isBlank()) base = "empleado";
+        base = base.substring(0, Math.min(base.length(), 80));
+
+        String candidato = base;
+        int sufijo = 2;
+        while (usuarioRepository.existsByNombreUsuario(candidato)) {
+            String finalSufijo = "." + sufijo++;
+            candidato = base.substring(0, Math.min(base.length(), 100 - finalSufijo.length()))
+                    + finalSufijo;
+        }
+        return candidato;
     }
 }

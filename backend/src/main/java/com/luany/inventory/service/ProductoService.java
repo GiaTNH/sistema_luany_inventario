@@ -73,9 +73,10 @@ public class ProductoService {
                 .map(p -> new AlertaStock(
                         p.getId(),
                         p.getNombre(),
+                        p.getCategoria() == null ? null : p.getCategoria().getNombre(),
                         p.getStockActual(),
                         p.getStockMinimo(),
-                        estadoStock(p),
+                        p.getStockActual() == 0 ? "AGOTADO" : "BAJO",
                         Math.max(p.getStockMaximo() - p.getStockActual(), 0)))
                 .toList();
     }

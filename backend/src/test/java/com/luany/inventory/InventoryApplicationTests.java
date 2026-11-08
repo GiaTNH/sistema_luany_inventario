@@ -179,6 +179,7 @@ class InventoryApplicationTests {
         Usuario existente = new Usuario();
         existente.setNombre("Empleado");
         existente.setEmail("empleado@luany.com");
+        existente.setNombreUsuario("empleado");
         existente.setPassword(passwordEncoder.encode("ClaveSegura2026!"));
         existente.setRol("EMPLEADO");
         usuarioRepository.saveAndFlush(existente);
@@ -488,6 +489,7 @@ class InventoryApplicationTests {
         Usuario usuario = new Usuario();
         usuario.setNombre("Usuario de prueba");
         usuario.setEmail(email);
+        usuario.setNombreUsuario("usuario." + email.substring(0, email.indexOf('@')));
         usuario.setPassword(passwordEncoder.encode("ContrasenaAnterior2026!"));
         usuario.setRol("EMPLEADO");
         usuario.setEstado("ACTIVO");
