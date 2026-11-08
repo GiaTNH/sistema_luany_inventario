@@ -30,7 +30,8 @@ if (!usuarioActual) {
 
       document.getElementById('empleado-creado').textContent =
         `${creado.usuario.nombre} (${creado.usuario.email})`;
-      document.getElementById('password-temporal').textContent = creado.passwordTemporal;
+      document.getElementById('correo-bienvenida').textContent =
+        `Se envió el correo de bienvenida a ${creado.usuario.email}.`;
       resultado.hidden = false;
       form.reset();
     } catch (err) {

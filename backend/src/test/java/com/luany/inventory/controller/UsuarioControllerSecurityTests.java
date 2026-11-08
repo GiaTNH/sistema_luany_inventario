@@ -5,6 +5,7 @@ import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.model.Producto;
 import com.luany.inventory.service.ProductoService;
 import com.luany.inventory.service.AuthService;
+import com.luany.inventory.service.CorreoEnvioException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -230,8 +231,7 @@ class UsuarioControllerSecurityTests {
     void administradorPuedeCrearEmpleadoYNoSeDevuelveElHash() throws Exception {
         MockHttpSession session = iniciarSesion("ADMIN");
         when(authService.crearEmpleado(any())).thenReturn(new UsuarioCreadoResponse(
-                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true),
-                "temporal-segura"));
+                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true)));
 
         mockMvc.perform(post("/api/usuarios")
                         .session(session)
@@ -240,10 +240,26 @@ class UsuarioControllerSecurityTests {
                         .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.usuario.rol").value("EMPLEADO"))
-                .andExpect(jsonPath("$.passwordTemporal").value("temporal-segura"))
+                .andExpect(jsonPath("$.passwordTemporal").doesNotExist())
                 .andExpect(jsonPath("$.usuario.password").doesNotExist());
 
         verify(authService).crearEmpleado(any());
+    }
+
+    @Test
+    void falloDeCorreoSeRespondeComoServicioNoDisponible() throws Exception {
+        MockHttpSession session = iniciarSesion("ADMIN");
+        when(authService.crearEmpleado(any())).thenThrow(
+                new CorreoEnvioException());
+
+        mockMvc.perform(post("/api/usuarios")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\"}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value(
+                        "No se pudo enviar el correo de bienvenida. No se creó la cuenta."));
     }
 
     @Test

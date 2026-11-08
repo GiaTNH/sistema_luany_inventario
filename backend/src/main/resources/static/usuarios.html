@@ -52,7 +52,7 @@
       <div class="panel">
         <div class="panel-header"><h3>Registrar trabajador</h3></div>
         <div class="panel-body">
-          <p class="usuarios-ayuda">Se generará una contraseña temporal de un solo uso. Compártela con el trabajador por un canal seguro.</p>
+          <p class="usuarios-ayuda">Se creará la cuenta y se enviará al trabajador un correo con sus credenciales temporales.</p>
           <form id="form-crear-empleado" novalidate>
             <div class="form-grupo">
               <label for="empleado-nombre">Nombre completo</label>
@@ -69,11 +69,10 @@
       </div>
 
       <div class="panel usuarios-resultado" id="resultado-crear-empleado" aria-live="polite" hidden>
-        <div class="panel-header"><h3>Cuenta creada</h3></div>
+        <div class="panel-header"><h3>Invitación enviada</h3></div>
         <div class="panel-body">
           <p id="empleado-creado"></p>
-          <p class="usuarios-ayuda">Esta contraseña temporal solo se muestra ahora. No cierres esta pantalla hasta compartirla de forma segura.</p>
-          <div class="usuarios-password" id="password-temporal"></div>
+          <p class="usuarios-ayuda" id="correo-bienvenida"></p>
         </div>
       </div>
     </section>

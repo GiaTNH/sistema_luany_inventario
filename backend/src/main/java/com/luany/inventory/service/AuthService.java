@@ -21,7 +21,9 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CorreoService correoService;
 
+    @Transactional
     public UsuarioCreadoResponse crearEmpleado(CrearEmpleadoRequest request) {
         String email = request.getEmail().trim().toLowerCase();
 
@@ -39,9 +41,10 @@ public class AuthService {
         usuario.setPassword(passwordEncoder.encode(passwordTemporal));
         usuario.setRol("EMPLEADO");
         usuario.setDebeCambiarPassword(true);
-        usuarioRepository.save(usuario);
+        usuarioRepository.saveAndFlush(usuario);
+        correoService.enviarBienvenida(email, usuario.getNombre(), passwordTemporal);
 
-        return new UsuarioCreadoResponse(aRespuesta(usuario), passwordTemporal);
+        return new UsuarioCreadoResponse(aRespuesta(usuario));
     }
 
     public UsuarioResponse iniciarSesion(LoginRequest request) {

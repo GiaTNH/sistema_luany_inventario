@@ -16,3 +16,4 @@ El sistema usa Java 17, Spring Boot y MySQL. El código está en `backend/`.
 
 Para desplegar en Render, usar `backend` como directorio raíz; ahí está el `Dockerfile`. La base de datos de producción está en Aiven (MySQL 8, SSL obligatorio) y el backend usa `spring.jpa.hibernate.ddl-auto=validate`: la estructura solo se cambia con scripts SQL.
 
+Para enviar correos de bienvenida, configurar en el servicio de Render `MAIL_API_KEY` con la clave secreta de Resend. `MAIL_FROM_EMAIL` y `MAIL_FROM_NAME` son opcionales y usan por defecto `onboarding@resend.dev` y `LUANY`; en producción, el remitente debe estar verificado en Resend.
