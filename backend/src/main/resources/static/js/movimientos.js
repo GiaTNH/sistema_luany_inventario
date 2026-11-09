@@ -69,7 +69,7 @@ function renderizarMovimientos() {
 
   if (desde && hasta && desde > hasta) {
     mensaje.textContent = 'La fecha inicial no puede ser posterior a la fecha final.';
-    tbody.innerHTML = '<tr><td colspan="6">Ajusta el rango de fechas para consultar los movimientos.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8">Ajusta el rango de fechas para consultar los movimientos.</td></tr>';
     return;
   }
 
@@ -83,7 +83,7 @@ function renderizarMovimientos() {
     mensaje.textContent = movimientos.length
       ? 'No hay movimientos que coincidan con los filtros seleccionados.'
       : 'Todavía no hay movimientos registrados.';
-    tbody.innerHTML = '<tr><td colspan="6"><div class="estado-vacio"><p>No se encontraron movimientos.</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="estado-vacio"><p>No se encontraron movimientos.</p></div></td></tr>';
     return;
   }
 
@@ -94,6 +94,8 @@ function renderizarMovimientos() {
       <td><span class="badge ${claseTipoMovimiento(tipo)}">${escapar(etiquetaTipoMovimiento(tipo))}</span></td>
       <td>${escapar(movimiento.producto?.nombre || 'Producto no disponible')}</td>
       <td>${Number(movimiento.cantidad) || 0}</td>
+      <td>${escapar(movimiento.stockAnterior ?? '—')}</td>
+      <td>${escapar(movimiento.stockNuevo ?? '—')}</td>
       <td>${escapar(normalizarFechaMovimiento(movimiento.fecha))}</td>
       <td>${escapar(movimiento.usuarioNombre || 'No disponible')}</td>
       <td>${escapar(movimiento.observacion || '—')}</td>
@@ -121,7 +123,7 @@ async function cargarMovimientos() {
   const tbody = document.getElementById('tabla-movimientos-body');
   const mensaje = document.getElementById('movimientos-mensaje');
   mensaje.textContent = 'Cargando movimientos...';
-  tbody.innerHTML = '<tr><td colspan="6">Cargando movimientos...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8">Cargando movimientos...</td></tr>';
 
   try {
     movimientos = await apiGet('/api/movimientos');
@@ -130,7 +132,7 @@ async function cargarMovimientos() {
   } catch (error) {
     movimientos = [];
     mensaje.textContent = 'No se pudo cargar el historial. Intenta actualizar nuevamente.';
-    tbody.innerHTML = '<tr><td colspan="6">Ocurrió un error al consultar los movimientos.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8">Ocurrió un error al consultar los movimientos.</td></tr>';
     mostrarToast(error.message, 'error');
   }
 }

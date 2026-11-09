@@ -12,7 +12,7 @@ let ordenProductos = { campo: null, direccion: 1 };
 
 function cambiarTab(nombre, cargarDatos = true) {
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    const tabs = ['productos', 'categorias', 'proveedores'];
+    const tabs = ['productos', 'categorias'];
     btn.classList.toggle('activo', tabs[i] === nombre);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('activo'));
@@ -30,7 +30,6 @@ function cambiarTab(nombre, cargarDatos = true) {
   marcarNavActivo();
 
   if (cargarDatos && nombre === 'categorias') cargarCategorias();
-  if (cargarDatos && nombre === 'proveedores') cargarProveedores();
 }
 
 // ---------- MODALES ----------
@@ -69,7 +68,7 @@ function limpiarErrs(ids) { ids.forEach(id => mostrarErrForm(id, false)); }
 
 window.addEventListener('hashchange', () => {
   const tab = location.hash.slice(1);
-  if (tab === 'categorias' || tab === 'proveedores') cambiarTab(tab);
+  if (tab === 'categorias') cambiarTab(tab);
   else cambiarTab('productos');
 });
 
@@ -86,13 +85,12 @@ async function cargarTodo() {
   } catch (err) {
     mostrarToast(err.message, 'error');
     document.getElementById('tabla-productos-body').innerHTML =
-      `<tr><td colspan="9" style="text-align:center;color:var(--rojo);padding:24px;">${escapar(err.message)}</td></tr>`;
+      `<tr><td colspan="10" style="text-align:center;color:var(--rojo);padding:24px;">${escapar(err.message)}</td></tr>`;
     return;
   }
 
   try {
     todosProveedores = await apiGet('/api/proveedores');
-    renderTablaProveedores();
     poblarSelectsCatalogos();
   } catch (err) {
     mostrarToast(err.message, 'error');
@@ -112,7 +110,7 @@ function poblarFiltroCategoria() {
 function renderTablaProductos(lista) {
   const tbody = document.getElementById('tabla-productos-body');
   if (!lista.length) {
-    tbody.innerHTML = `<tr><td colspan="9"><div class="productos-empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4M8 11h6"/></svg><p>No se encontraron productos con estos filtros.</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10"><div class="productos-empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4M8 11h6"/></svg><p>No se encontraron productos con estos filtros.</p></div></td></tr>`;
     return;
   }
 
@@ -130,6 +128,7 @@ function renderTablaProductos(lista) {
         </span>
         <span class="producto-table-copy"><strong>${nombre}</strong></span>
       </div></td>
+      <td>${escapar(p.codigo || '—')}</td>
       <td><span class="producto-category-tag ${categoriaClase}">${iconoCategoria}${escapar(p.categoria?.nombre || '—')}</span></td>
       <td><span class="producto-provider-name">${escapar(p.proveedor?.nombre || '—')}</span></td>
       <td class="producto-stock-current"><strong>${Number(p.stockActual) || 0}</strong></td>
@@ -312,6 +311,7 @@ function abrirModalProducto(id = null) {
   document.getElementById('prod-id').value           = '';
   document.getElementById('prod-nombre').value       = '';
   document.getElementById('prod-categoria').value    = '';
+  document.getElementById('prod-codigo').value       = '';
   document.getElementById('prod-proveedor').value    = '';
   document.getElementById('prod-stock-actual').value = '';
   document.getElementById('prod-precio').value       = '';
@@ -327,6 +327,7 @@ function abrirModalProducto(id = null) {
       document.getElementById('prod-id').value           = p.id;
       document.getElementById('prod-nombre').value       = p.nombre;
       document.getElementById('prod-categoria').value    = p.categoria?.id || '';
+      document.getElementById('prod-codigo').value       = p.codigo || '';
       document.getElementById('prod-proveedor').value    = p.proveedor?.id || '';
       document.getElementById('prod-stock-actual').value = p.stockActual;
       document.getElementById('prod-precio').value       = p.precio;
@@ -346,6 +347,7 @@ async function guardarProducto() {
 
   const nombre      = document.getElementById('prod-nombre').value.trim();
   const categoriaId = Number(document.getElementById('prod-categoria').value);
+  const codigo      = document.getElementById('prod-codigo').value.trim();
   const proveedorId = Number(document.getElementById('prod-proveedor').value);
   const stockActual = Number(document.getElementById('prod-stock-actual').value);
   const precio      = Number(document.getElementById('prod-precio').value);
@@ -363,7 +365,7 @@ async function guardarProducto() {
   if (isNaN(stockMaximo) || stockMaximo < stockMinimo) { mostrarErrForm('err-prod-stock-max', true); valido = false; }
   if (!valido) return;
 
-  const cuerpo = { nombre, categoriaId, proveedorId, stockActual, stockMinimo, stockMaximo, precio };
+  const cuerpo = { nombre, categoriaId, proveedorId, codigo, stockActual, stockMinimo, stockMaximo, precio };
   const btn = document.getElementById('btn-guardar-producto');
   btn.disabled = true;
 
@@ -571,92 +573,7 @@ async function eliminarCategoria(id) {
   }
 }
 
-// ---------- PROVEEDORES ----------
-
-async function cargarProveedores() {
-  try {
-    todosProveedores = await apiGet('/api/proveedores');
-    renderTablaProveedores();
-  } catch (err) {
-    mostrarToast(err.message, 'error');
-  }
-}
-
-function renderTablaProveedores() {
-  const tbody = document.getElementById('tabla-proveedores-body');
-  if (!todosProveedores.length) {
-    tbody.innerHTML = `<tr><td colspan="4"><div class="estado-vacio"><p>Sin proveedores.</p></div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = todosProveedores.map(p => `<tr class="productos-card-row">
-    <td><span class="productos-entity-id">${p.id}</span></td>
-    <td><strong class="productos-entity-name">${escapar(p.nombre)}</strong></td>
-    <td><span class="productos-entity-phone">${escapar(p.telefono || '—')}</span></td>
-    <td>
-      <div class="productos-row-actions productos-entity-actions">
-        <button type="button" class="productos-action-button productos-row-edit" title="Editar proveedor" aria-label="Editar proveedor ${escapar(p.nombre)}" onclick="abrirModalProveedor(${p.id},'${escapar(p.nombre)}','${escapar(p.telefono||'')}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"/></svg>
-        </button>
-        <button type="button" class="productos-action-button productos-row-delete" title="Eliminar proveedor" aria-label="Eliminar proveedor ${escapar(p.nombre)}" onclick="confirmarEliminarProv(${p.id},'${escapar(p.nombre)}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
-        </button>
-      </div>
-    </td>
-  </tr>`).join('');
-}
-
-function abrirModalProveedor(id = null, nombre = '', telefono = '') {
-  document.getElementById('prov-id').value       = id || '';
-  document.getElementById('prov-nombre').value   = nombre;
-  document.getElementById('prov-telefono').value = telefono;
-  document.getElementById('modal-prov-titulo').textContent = id ? 'Editar proveedor' : 'Nuevo proveedor';
-  limpiarErrs(['err-prov-nombre']);
-  abrirModal('modal-proveedor');
-}
-
-async function guardarProveedor() {
-  const nombre   = document.getElementById('prov-nombre').value.trim();
-  const telefono = document.getElementById('prov-telefono').value.trim();
-  const id       = document.getElementById('prov-id').value;
-  if (!nombre) { mostrarErrForm('err-prov-nombre', true); return; }
-
-  try {
-    if (id) {
-      await apiPut(`/api/proveedores/${id}`, { nombre, telefono });
-      mostrarToast('Proveedor actualizado.', 'exito');
-    } else {
-      await apiPost('/api/proveedores', { nombre, telefono });
-      mostrarToast('Proveedor creado.', 'exito');
-    }
-    cerrarModal('modal-proveedor');
-    await cargarProveedores();
-  } catch (err) {
-    mostrarToast(err.message, 'error');
-  }
-}
-
-function confirmarEliminarProv(id, nombre) {
-  document.getElementById('confirmar-mensaje').textContent = `¿Eliminar el proveedor "${nombre}"?`;
-  document.getElementById('btn-confirmar-ok').onclick = () => eliminarProveedor(id);
-  abrirModal('modal-confirmar');
-}
-
-async function eliminarProveedor(id) {
-  const btn = document.getElementById('btn-confirmar-ok');
-  btn.disabled = true;
-  try {
-    await apiDelete(`/api/proveedores/${id}`);
-    mostrarToast('Proveedor eliminado.', 'exito');
-    cerrarModal('modal-confirmar');
-    await cargarProveedores();
-  } catch (err) {
-    mostrarToast(err.message, 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 // ---------- INICIO ----------
 const tabInicial = location.hash.slice(1);
-if (tabInicial === 'categorias' || tabInicial === 'proveedores') cambiarTab(tabInicial, false);
+if (tabInicial === 'categorias') cambiarTab(tabInicial, false);
 cargarTodo();

@@ -186,15 +186,11 @@ function marcarNavActivo() {
   const ruta = window.location.pathname.split('/').pop() || 'index.html';
   const seccion = window.location.hash.slice(1);
   document.querySelectorAll('.nav-item').forEach(el => {
-    const esProveedor = el.dataset.tab === 'proveedores';
     const esAlerta = el.dataset.seccion === 'alertas';
-    const activo = esProveedor
-      ? ruta === 'productos.html' && seccion === 'proveedores'
-      : esAlerta
-        ? ruta === 'dashboard.html' && seccion === 'dashboard-alertas'
-        : el.dataset.pagina === ruta
-          && !(ruta === 'productos.html' && seccion === 'proveedores')
-          && !(ruta === 'dashboard.html' && seccion === 'dashboard-alertas');
+    const activo = esAlerta
+      ? ruta === 'dashboard.html' && seccion === 'dashboard-alertas'
+      : el.dataset.pagina === ruta
+        && !(ruta === 'dashboard.html' && seccion === 'dashboard-alertas');
     el.classList.toggle('activo', activo);
   });
 }
@@ -214,7 +210,7 @@ const ENLACES_SIDEBAR = [
   { label: 'Dashboard', href: '/dashboard.html', pagina: 'dashboard.html', icono: 'dashboard' },
   { label: 'Productos', href: '/productos.html', pagina: 'productos.html', icono: 'productos' },
   { label: 'Alertas', href: '/dashboard.html#dashboard-alertas', pagina: 'dashboard.html', seccion: 'alertas', icono: 'alertas' },
-  { label: 'Proveedores', href: '/productos.html#proveedores', pagina: 'productos.html', tab: 'proveedores', icono: 'proveedores' },
+  { label: 'Proveedores', href: '/proveedores.html', pagina: 'proveedores.html', icono: 'proveedores' },
   { label: 'Movimientos', href: '/movimientos.html', pagina: 'movimientos.html', icono: 'movimientos' },
   { label: 'Usuarios', href: '/usuarios.html', pagina: 'usuarios.html', admin: true, icono: 'usuarios' },
   { label: 'Asistente IA', href: '/asistente.html', pagina: 'asistente.html', icono: 'asistente' },

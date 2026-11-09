@@ -3369,8 +3369,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .productos-page .productos-row-delete { background: #F04444 !important; color: #fff !important; }
 .productos-page .productos-row-actions .btn:hover { filter: brightness(.96); transform: translateY(-1px); }
 .productos-page .tab-panel:not(#tab-productos) .tabla-wrapper table { min-width: 520px; }
-.productos-page #tabla-categorias-body td, .productos-page #tabla-proveedores-body td { padding: 14px 12px; font-size: 10px; }
-.productos-page #tabla-categorias-body .btn, .productos-page #tabla-proveedores-body .btn { width: 31px; height: 31px; border-radius: 9px; }
+.productos-page #tabla-categorias-body td { padding: 14px 12px; font-size: 10px; }
+.productos-page #tabla-categorias-body .btn { width: 31px; height: 31px; border-radius: 9px; }
 
 @media (max-width: 1180px) {
   .productos-page .productos-header { grid-template-columns: minmax(190px, 1fr) auto; }
@@ -3801,8 +3801,9 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .productos-page .productos-entity-table tbody { display: block; width: 100%; }
 .productos-page .productos-category-table { min-width: 680px !important; }
 .productos-page .productos-category-table tr { display: grid; grid-template-columns: 90px minmax(0, 1fr) 120px; align-items: center; }
-.productos-page .productos-provider-table { min-width: 780px !important; }
-.productos-page .productos-provider-table tr { display: grid; grid-template-columns: 90px minmax(0, 1.5fr) minmax(0, 1fr) 120px; align-items: center; }
+.productos-page .productos-provider-table { min-width: 1100px !important; }
+.productos-page .productos-provider-table tr { display: grid; grid-template-columns: minmax(150px, 1.25fr) minmax(115px, .9fr) minmax(120px, 1fr) minmax(170px, 1.35fr) minmax(180px, 1.45fr) minmax(230px, 1.8fr); align-items: center; }
+.productos-page .productos-provider-status-cell { display: flex; align-items: center; gap: 10px; }
 .productos-page .productos-entity-table thead tr { min-height: 45px; border-radius: 12px; background: #F4F1FB; }
 .productos-page .productos-entity-table thead th { display: block; padding: 9px 12px; border: 0; background: transparent; color: #8062CC; font-size: 9px; letter-spacing: .55px; text-transform: uppercase; }
 .productos-page .productos-entity-table tbody { display: grid; gap: 7px; padding-top: 7px; }
@@ -3821,7 +3822,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .productos-page .productos-action-button { width: 32px; height: 32px; }
   .productos-page .productos-action-button svg { width: 16px; height: 16px; }
   .productos-page .productos-category-table { min-width: 580px !important; }
-  .productos-page .productos-provider-table { min-width: 680px !important; }
+  .productos-page .productos-provider-table { min-width: 1100px !important; }
 }
 
 /* Sidebar ilustrado compartido por las pantallas internas. */
