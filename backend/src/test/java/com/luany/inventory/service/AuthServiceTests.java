@@ -256,6 +256,22 @@ class AuthServiceTests {
         assertTrue(authService.obtenerUsuarioAutenticado("empleado@luany.com").debeCambiarPassword());
     }
 
+    @Test
+    void usuarioInactivoNoPuedeIniciarSesionAunqueLaPasswordSeaCorrecta() {
+        Usuario usuario = usuarioConPasswordTemporal("temporal-segura");
+        usuario.setEstado("INACTIVO");
+        when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.of(usuario));
+
+        LoginRequest login = new LoginRequest();
+        login.setEmail("empleado@luany.com");
+        login.setPassword("temporal-segura");
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class, () -> authService.iniciarSesion(login));
+
+        assertEquals("Tu usuario está inactivo. Contacta al administrador", error.getMessage());
+    }
+
     private Usuario usuarioConPasswordTemporal(String passwordTemporal) {
         Usuario usuario = new Usuario();
         usuario.setId(5L);

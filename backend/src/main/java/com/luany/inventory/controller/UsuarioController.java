@@ -1,6 +1,7 @@
 package com.luany.inventory.controller;
 
 import com.luany.inventory.model.CrearEmpleadoRequest;
+import com.luany.inventory.model.ActualizarUsuarioRequest;
 import com.luany.inventory.model.CambiarRolRequest;
 import com.luany.inventory.model.UsuarioGestionResponse;
 import com.luany.inventory.model.UsuarioCreadoResponse;
@@ -38,6 +39,14 @@ public class UsuarioController {
     @ResponseStatus(HttpStatus.CREATED)
     public UsuarioCreadoResponse crearEmpleado(@Valid @RequestBody CrearEmpleadoRequest request) {
         return authService.crearEmpleado(request);
+    }
+
+    @PutMapping("/{id}")
+    public UsuarioGestionResponse actualizar(
+            @PathVariable Long id,
+            @Valid @RequestBody ActualizarUsuarioRequest request,
+            Authentication authentication) {
+        return usuarioGestionService.actualizar(id, request, authentication.getName());
     }
 
     @PutMapping("/{id}/rol")

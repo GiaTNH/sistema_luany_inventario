@@ -568,6 +568,18 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .usuarios-contenido { display: grid; align-content: start; gap: 22px; }
 .usuarios-contenido .panel { max-width: 720px; }
 .usuarios-contenido .usuarios-listado { max-width: 1100px; }
+.usuarios-listado .panel-header { flex-wrap: wrap; }
+.usuarios-acciones-listado,
+.usuarios-acciones-formulario { display: flex; align-items: center; gap: 10px; }
+.usuarios-filtros {
+  display: grid;
+  grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) minmax(160px, 1fr) auto;
+  gap: 14px;
+  padding: 0 24px 18px;
+  align-items: end;
+}
+.usuarios-filtros .form-grupo { margin: 0; }
+.usuarios-filtros > .btn { min-height: 42px; }
 .usuarios-tabla-wrapper { overflow-x: auto; }
 .usuarios-tabla { width: 100%; min-width: 760px; border-collapse: collapse; }
 .usuarios-tabla th,
@@ -578,6 +590,14 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .usuarios-tabla .btn { padding: 8px 12px; font-size: 12px; }
 .usuarios-ayuda { color: var(--texto-suave); margin-bottom: 18px; }
 .usuarios-mensaje-error { color: var(--rojo); margin: 0 0 14px; }
+#panel-registro-empleado[hidden],
+#panel-editar-usuario[hidden] { display: none; }
+
+@media (max-width: 768px) {
+  .usuarios-filtros { grid-template-columns: 1fr; padding: 0 18px 18px; }
+  .usuarios-acciones-listado { width: 100%; flex-wrap: wrap; }
+  .usuarios-acciones-formulario { flex-wrap: wrap; }
+}
 
 /* ===== MODAL ===== */
 .modal-overlay {
