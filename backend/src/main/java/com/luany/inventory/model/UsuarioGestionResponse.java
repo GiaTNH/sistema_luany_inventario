@@ -7,6 +7,7 @@ public record UsuarioGestionResponse(
         String email,
         String nombreUsuario,
         String rol,
-        String estado
+        String estado,
+        boolean debeCambiarPassword
 ) {
 }

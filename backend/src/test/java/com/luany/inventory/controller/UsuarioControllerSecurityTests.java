@@ -262,12 +262,14 @@ class UsuarioControllerSecurityTests {
         MockHttpSession session = iniciarSesion("ADMIN");
         when(usuarioGestionService.listar()).thenReturn(java.util.List.of(
                 new UsuarioGestionResponse(
-                        2L, "Ana", null, "ana@luany.com", "ana", "EMPLEADO", "ACTIVO")));
+                        2L, "Ana", null, "ana@luany.com", "ana", "EMPLEADO", "ACTIVO", true)));
 
         mockMvc.perform(get("/api/usuarios").session(session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombreUsuario").value("ana"))
                 .andExpect(jsonPath("$[0].rol").value("EMPLEADO"))
+                .andExpect(jsonPath("$[0].estado").value("ACTIVO"))
+                .andExpect(jsonPath("$[0].debeCambiarPassword").value(true))
                 .andExpect(jsonPath("$[0].password").doesNotExist());
 
         verify(usuarioGestionService).listar();
@@ -278,7 +280,7 @@ class UsuarioControllerSecurityTests {
         MockHttpSession session = iniciarSesion("ADMIN");
         when(usuarioGestionService.cambiarRol(eq(2L), any(CambiarRolRequest.class), eq("prueba@luany.com")))
                 .thenReturn(new UsuarioGestionResponse(
-                        2L, "Ana", null, "ana@luany.com", "ana", "ADMIN", "ACTIVO"));
+                        2L, "Ana", null, "ana@luany.com", "ana", "ADMIN", "ACTIVO", false));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put("/api/usuarios/2/rol")
@@ -307,7 +309,7 @@ class UsuarioControllerSecurityTests {
         when(usuarioGestionService.actualizar(
                 eq(2L), any(ActualizarUsuarioRequest.class), eq("prueba@luany.com")))
                 .thenReturn(new UsuarioGestionResponse(
-                        2L, "Ana", "Pérez", "ana@luany.com", "ana", "EMPLEADO", "INACTIVO"));
+                        2L, "Ana", "Pérez", "ana@luany.com", "ana", "EMPLEADO", "INACTIVO", false));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put("/api/usuarios/2")

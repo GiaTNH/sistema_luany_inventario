@@ -134,6 +134,7 @@ public class UsuarioGestionService {
                 usuario.getEmail(),
                 usuario.getNombreUsuario(),
                 usuario.getRol(),
-                usuario.getEstado());
+                usuario.getEstado(),
+                usuario.isDebeCambiarPassword());
     }
 }
