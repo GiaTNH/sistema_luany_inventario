@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -85,6 +86,7 @@ class UsuarioGestionServiceTests {
     void actualizarDatosYDesactivarCuentaExpiraLasSesiones() {
         Usuario admin = usuario(1L, "admin@luany.com", "ADMIN", "ACTIVO");
         Usuario empleado = usuario(2L, "empleado@luany.com", "EMPLEADO", "ACTIVO");
+        String passwordHashOriginal = empleado.getPassword();
         when(usuarioRepository.buscarAdministradoresParaActualizar()).thenReturn(List.of(admin));
         when(usuarioRepository.buscarPorIdParaActualizar(2L)).thenReturn(Optional.of(empleado));
         when(usuarioRepository.buscarPorEmail("nuevo@luany.com")).thenReturn(Optional.empty());
@@ -99,8 +101,24 @@ class UsuarioGestionServiceTests {
         assertEquals("Pérez", empleado.getApellido());
         assertEquals("nuevo@luany.com", empleado.getEmail());
         assertEquals("INACTIVO", empleado.getEstado());
+        assertEquals(passwordHashOriginal, empleado.getPassword());
         assertEquals("INACTIVO", respuesta.estado());
+        assertFalse(respuesta.debeCambiarPassword());
         verify(sessionRegistry).getAllSessions("empleado@luany.com", false);
+    }
+
+    @Test
+    void listarIncluyeElIndicadorDeCambioObligatorioDePassword() {
+        Usuario pendiente = usuario(2L, "pendiente@luany.com", "EMPLEADO", "ACTIVO");
+        pendiente.setDebeCambiarPassword(true);
+        when(usuarioRepository.findAll(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(pendiente));
+
+        List<UsuarioGestionResponse> resultado = usuarioGestionService.listar();
+
+        assertEquals(1, resultado.size());
+        assertTrue(resultado.get(0).debeCambiarPassword());
+        assertEquals("ACTIVO", resultado.get(0).estado());
     }
 
     @Test

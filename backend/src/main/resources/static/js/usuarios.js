@@ -11,7 +11,6 @@ if (!usuarioActual) {
   const modalRegistro = document.getElementById('modal-registro-empleado');
   const botonCrear = document.getElementById('btn-crear-empleado');
   const errorCrear = document.getElementById('error-crear-empleado');
-  const resultado = document.getElementById('resultado-crear-empleado');
   const formEditar = document.getElementById('form-editar-usuario');
   const modalEdicion = document.getElementById('modal-editar-usuario');
   const errorEdicion = document.getElementById('error-editar-usuario');
@@ -39,7 +38,7 @@ if (!usuarioActual) {
   function usuariosFiltrados() {
     const busqueda = normalizar(filtroBusqueda.value.trim());
     return usuarios
-      .filter((usuario) => filtroEstado.value === 'TODOS' || usuario.estado === filtroEstado.value)
+      .filter((usuario) => filtroEstado.value === 'TODOS' || estadoVisible(usuario) === filtroEstado.value)
       .filter((usuario) => filtroRol.value === 'TODOS' || usuario.rol === filtroRol.value)
       .filter((usuario) => {
         const campos = [usuario.nombre, usuario.apellido, usuario.email, usuario.nombreUsuario];
@@ -49,6 +48,20 @@ if (!usuarioActual) {
         const apellido = (a.apellido || '').localeCompare(b.apellido || '', 'es', { sensitivity: 'base' });
         return apellido || (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' });
       });
+  }
+
+  function estadoVisible(usuario) {
+    if (usuario.estado === 'INACTIVO') return 'INACTIVO';
+    return usuario.debeCambiarPassword ? 'PENDIENTE' : 'ACTIVO';
+  }
+
+  function etiquetaEstado(usuario) {
+    const estado = estadoVisible(usuario);
+    return {
+      PENDIENTE: 'Pendiente',
+      ACTIVO: 'Activo',
+      INACTIVO: 'Inactivo',
+    }[estado];
   }
 
   function renderizarUsuarios() {
@@ -70,7 +83,7 @@ if (!usuarioActual) {
       fila.appendChild(celda([usuario.nombre, usuario.apellido].filter(Boolean).join(' ')));
       fila.appendChild(celda(usuario.email));
       fila.appendChild(celda(usuario.rol === 'ADMIN' ? 'Administrador' : 'Empleado'));
-      fila.appendChild(celda(usuario.estado === 'ACTIVO' ? 'Activo' : 'Inactivo'));
+      fila.appendChild(celda(etiquetaEstado(usuario)));
 
       const celdaAccion = document.createElement('td');
       const editar = document.createElement('button');
@@ -227,7 +240,6 @@ if (!usuarioActual) {
   formCrear.addEventListener('submit', async (evento) => {
     evento.preventDefault();
     errorCrear.hidden = true;
-    resultado.hidden = true;
 
     if (!formCrear.reportValidity()) return;
 
@@ -235,20 +247,14 @@ if (!usuarioActual) {
     botonCrear.textContent = 'Creando cuenta...';
 
     try {
-      const creado = await apiPost('/api/usuarios', {
+      await apiPost('/api/usuarios', {
         nombre: document.getElementById('empleado-nombre').value.trim(),
         apellido: document.getElementById('empleado-apellido').value.trim(),
         email: document.getElementById('empleado-email').value.trim(),
       });
 
-      document.getElementById('empleado-creado').textContent =
-        `${creado.usuario.nombre} (${creado.usuario.email})`;
-      document.getElementById('empleado-nombre-usuario').textContent =
-        `Nombre de usuario: ${creado.nombreUsuario}`;
-      document.getElementById('correo-bienvenida').textContent =
-        `Se envió el correo de bienvenida a ${creado.usuario.email}.`;
-      resultado.hidden = false;
       cerrarRegistro();
+      mostrarToast('Invitación enviada correctamente.', 'exito');
       await cargarUsuarios();
     } catch (err) {
       errorCrear.textContent = err.message;
