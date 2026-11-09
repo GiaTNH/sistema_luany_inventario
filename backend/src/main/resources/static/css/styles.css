@@ -612,6 +612,37 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .clientes-modal-confirmar { max-width: 420px !important; }
 .clientes-error { margin: 0; color: var(--rojo); font-size: 13px; }
 
+.pedidos-contenido > .panel { max-width: 1200px; }
+.pedidos-panel-header { flex-wrap: wrap; }
+.pedidos-panel-header .btn { display: inline-flex; align-items: center; gap: 8px; }
+.pedidos-panel-header .btn svg { width: 18px; height: 18px; }
+.pedidos-filtros { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(180px, 1fr); gap: 14px; padding: 18px 24px 0; }
+.pedidos-filtros .form-grupo { margin: 0; }
+.pedidos-tabla-wrapper { padding-top: 16px; }
+.pedidos-mensaje { min-height: 20px; margin: 0 0 12px; }
+.pedidos-tabla { width: 100%; min-width: 760px; border-collapse: collapse; }
+.pedidos-tabla th,
+.pedidos-tabla td { padding: 11px 12px; border-bottom: 1px solid var(--borde); text-align: left; vertical-align: middle; }
+.pedidos-tabla th { color: var(--texto-suave); font-size: 12px; font-weight: 700; }
+.pedidos-tabla td { color: var(--texto); font-size: 13px; }
+.pedidos-tabla-form { min-width: 620px; }
+.pedidos-accion { margin: 2px 6px 2px 0; padding: 8px 11px; font-size: 12px; }
+.pedidos-modal[hidden] { display: none; }
+.pedidos-modal .modal { max-width: 760px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.pedidos-modal .modal-footer { margin: 18px -26px -24px; }
+.pedidos-modal-ancho { width: min(760px, 100%); }
+.pedidos-lineas-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 10px; }
+.pedidos-lineas-header h4,
+.pedidos-historial-titulo { margin: 0; color: var(--texto); font-size: 15px; }
+.pedidos-tabla .form-control { min-width: 90px; padding: 9px 10px; }
+.pedidos-tabla-form td:first-child .form-control { min-width: 190px; }
+.pedidos-quitar-linea { padding: 8px 10px; font-size: 12px; }
+.pedidos-error { margin: 12px 0 0; color: var(--rojo); font-size: 13px; }
+.pedidos-historial-titulo { margin-top: 24px; }
+.pedido-recepcion-historica { margin-top: 12px; padding: 12px 14px; border: 1px solid var(--borde); border-radius: 12px; }
+.pedido-recepcion-historica p { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+.pedido-recepcion-historica ul { margin: 0; padding-left: 20px; color: var(--texto-suave); font-size: 13px; }
+
 @media (max-width: 768px) {
   .usuarios-filtros { grid-template-columns: 1fr; padding: 0 18px 18px; }
   .usuarios-acciones-listado { width: 100%; flex-wrap: wrap; }
@@ -623,6 +654,12 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .clientes-modal .modal-header,
   .clientes-modal .modal-body { padding: 20px; }
   .clientes-modal .modal-footer { padding: 16px 20px; }
+  .pedidos-filtros { grid-template-columns: 1fr; padding: 0 18px; }
+  .pedidos-modal .modal { max-height: calc(100vh - 32px); }
+  .pedidos-modal .modal-header,
+  .pedidos-modal .modal-body { padding: 20px; }
+  .pedidos-modal .modal-footer { margin: 18px -20px -20px; padding: 16px 20px; }
+  .pedidos-lineas-header { align-items: flex-start; flex-direction: column; }
 }
 
 /* ===== MODAL ===== */
