@@ -8,7 +8,7 @@ El inicio de sesión usa cuentas gestionadas por LUANY y el backend mantiene una
 
 El administrador crea una cuenta desde **Usuarios** o mediante `POST /api/usuarios`, enviando únicamente nombre y correo electrónico. El servidor valida ambos campos, normaliza el correo y rechaza duplicados. También genera un nombre de usuario único basado en el nombre del empleado.
 
-El servidor genera una contraseña temporal aleatoria, almacena únicamente su hash BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. Envía el nombre de usuario, correo, contraseña temporal y enlace al sistema mediante la API HTTPS de Resend. La contraseña temporal no se incluye en la respuesta HTTP ni se registra en logs. Si Resend falla, se revierte la creación y la API responde con un error.
+El servidor genera una contraseña temporal aleatoria, almacena únicamente su hash BCrypt, asigna el rol `EMPLEADO` y marca `debe_cambiar_password` como `true`. Envía el nombre de usuario, correo, contraseña temporal y enlace al sistema mediante la API HTTPS de Brevo. La contraseña temporal no se incluye en la respuesta HTTP ni se registra en logs. Si Brevo falla, se revierte la creación y la API responde con un error.
 
 El endpoint no acepta contraseña ni rol en la solicitud. Solo ADMIN puede listar usuarios, crear empleados y cambiar roles; los empleados no pueden realizar estas operaciones aunque llamen directamente a la API. Las operaciones de escritura usan un token CSRF. El endpoint `GET /api/usuarios` devuelve datos de perfil sin hashes ni contraseñas; `PUT /api/usuarios/{id}/rol` valida los roles `ADMIN` y `EMPLEADO`, impide que el administrador se quite su propio rol y conserva al menos un administrador.
 
@@ -46,7 +46,7 @@ El inicio de sesión busca el usuario por correo y comprueba la contraseña medi
 
 ## 4. Protección de contraseñas mediante BCrypt
 
-Las contraseñas se guardan como hashes BCrypt, no como texto legible. La contraseña temporal solo existe en memoria durante la operación y se transmite a Resend para el correo de bienvenida; no se devuelve al administrador vía HTTP ni se registra en logs.
+Las contraseñas se guardan como hashes BCrypt, no como texto legible. La contraseña temporal solo existe en memoria durante la operación y se transmite a Brevo para el correo de bienvenida; no se devuelve al administrador vía HTTP ni se registra en logs.
 
 ## 5. Evidencia de la tabla usuarios
 
@@ -70,9 +70,9 @@ Las pruebas automatizadas verifican:
 | Correo duplicado | Repetir la creación con el mismo correo. | El backend responde conflicto y no guarda otra cuenta. |
 | Campos inválidos | Enviar nombre/correo vacíos o un correo inválido. | El backend rechaza la solicitud. |
 | Acceso restringido | Intentar `POST /api/usuarios` sin sesión o con rol `EMPLEADO`. | El backend rechaza la creación. |
-| Acceso ADMIN | Iniciar sesión con una cuenta ADMIN y crear un empleado. | El backend guarda la cuenta y solicita a Resend enviar el correo; la respuesta no incluye la contraseña temporal. |
+| Acceso ADMIN | Iniciar sesión con una cuenta ADMIN y crear un empleado. | El backend guarda la cuenta y solicita a Brevo enviar el correo; la respuesta no incluye la contraseña temporal. |
 | Fallo de correo | Simular un error o timeout del proveedor durante la creación. | El backend responde con error y revierte la creación del usuario. |
 
 ## 7. Conclusión
 
-La creación de empleados está centralizada en el administrador y se valida en el backend. Las cuentas nuevas tienen una contraseña temporal protegida con BCrypt, el rol `EMPLEADO` y el cambio obligatorio de contraseña inicial. El correo de bienvenida se envía mediante Resend.
+La creación de empleados está centralizada en el administrador y se valida en el backend. Las cuentas nuevas tienen una contraseña temporal protegida con BCrypt, el rol `EMPLEADO` y el cambio obligatorio de contraseña inicial. El correo de bienvenida se envía mediante la API HTTPS de Brevo.

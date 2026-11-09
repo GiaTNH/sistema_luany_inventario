@@ -46,9 +46,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "MAIL_API_KEY=",
-        "MAIL_FROM_EMAIL=onboarding@resend.dev",
-        "MAIL_FROM_NAME=LUANY",
+        "BREVO_API_KEY=",
+        "BREVO_SENDER_EMAIL=",
+        "BREVO_SENDER_NAME=LUANY",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @AutoConfigureMockMvc
@@ -262,7 +262,7 @@ class InventoryApplicationTests {
                 .getContentAsString();
 
         usuarioRepository.saveAndFlush(usuarioActivo("recuperacion@luany.com"));
-        var correoRegistradoConFalloResend = mockMvc.perform(post("/api/auth/solicitar-recuperacion")
+        var correoRegistradoConFalloProveedor = mockMvc.perform(post("/api/auth/solicitar-recuperacion")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -276,7 +276,7 @@ class InventoryApplicationTests {
                 .getResponse()
                 .getContentAsString();
 
-        assertNotEquals(correoInexistente, correoRegistradoConFalloResend);
+        assertNotEquals(correoInexistente, correoRegistradoConFalloProveedor);
         assertEquals(1, tokenRepository.count());
         assertNotNull(tokenRepository.findAll().get(0).getUtilizadoEn());
     }
