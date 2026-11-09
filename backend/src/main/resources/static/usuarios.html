@@ -54,46 +54,124 @@
       </div>
     </header>
     <section class="pagina usuarios-contenido">
-      <div class="panel">
+      <div class="panel usuarios-registro" id="panel-registro-empleado" hidden>
         <div class="panel-header"><h3>Registrar trabajador</h3></div>
         <div class="panel-body">
           <p class="usuarios-ayuda">Se creará la cuenta y se enviará al trabajador un correo con sus credenciales temporales.</p>
           <form id="form-crear-empleado" novalidate>
-            <div class="form-grupo">
-              <label for="empleado-nombre">Nombre completo</label>
-              <input id="empleado-nombre" class="form-control" type="text" maxlength="100" autocomplete="name" required />
+            <div class="form-fila">
+              <div class="form-grupo">
+                <label for="empleado-nombre">Nombre</label>
+                <input id="empleado-nombre" class="form-control" type="text" maxlength="100" autocomplete="given-name" required />
+              </div>
+              <div class="form-grupo">
+                <label for="empleado-apellido">Apellido</label>
+                <input id="empleado-apellido" class="form-control" type="text" maxlength="100" autocomplete="family-name" />
+              </div>
             </div>
             <div class="form-grupo">
               <label for="empleado-email">Correo electrónico</label>
               <input id="empleado-email" class="form-control" type="email" maxlength="120" autocomplete="email" required />
             </div>
             <p class="usuarios-mensaje-error" id="error-crear-empleado" role="alert" hidden></p>
-            <button type="submit" class="btn btn-primario" id="btn-crear-empleado">Crear cuenta de empleado</button>
+            <div class="usuarios-acciones-formulario">
+              <button type="submit" class="btn btn-primario" id="btn-crear-empleado">Crear cuenta de empleado</button>
+              <button type="button" class="btn btn-secundario" id="btn-cancelar-registro">Cancelar</button>
+            </div>
           </form>
         </div>
       </div>
 
       <div class="panel usuarios-listado">
         <div class="panel-header">
-          <h3>Usuarios registrados</h3>
-          <button type="button" class="btn btn-secundario" id="btn-recargar-usuarios">Actualizar</button>
+          <h3>Personal registrado</h3>
+          <div class="usuarios-acciones-listado">
+            <button type="button" class="btn btn-secundario" id="btn-recargar-usuarios">Actualizar</button>
+          </div>
+        </div>
+        <div class="usuarios-filtros">
+          <div class="form-grupo usuarios-busqueda">
+            <label for="filtro-busqueda">Buscar personal</label>
+            <input id="filtro-busqueda" class="form-control" type="search" placeholder="Nombre, apellido, correo o usuario" autocomplete="off" />
+          </div>
+          <div class="form-grupo">
+            <label for="filtro-estado">Estado</label>
+            <select id="filtro-estado" class="form-control">
+              <option value="TODOS">Todos</option>
+              <option value="ACTIVO">Activos</option>
+              <option value="INACTIVO">Inactivos</option>
+            </select>
+          </div>
+          <div class="form-grupo">
+            <label for="filtro-rol">Rol</label>
+            <select id="filtro-rol" class="form-control">
+              <option value="TODOS">Todos</option>
+              <option value="ADMIN">Administradores</option>
+              <option value="EMPLEADO">Empleados</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primario" id="btn-anadir-personal">Añadir personal</button>
         </div>
         <div class="tabla-wrapper usuarios-tabla-wrapper">
           <table class="usuarios-tabla">
             <thead>
               <tr>
-                <th>Nombre</th>
+                <th>Nombre completo</th>
                 <th>Correo electrónico</th>
                 <th>Nombre de usuario</th>
                 <th>Rol</th>
                 <th>Estado</th>
-                <th>Acción</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="tabla-usuarios-body">
               <tr><td colspan="6">Cargando usuarios...</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="panel usuarios-edicion" id="panel-editar-usuario" hidden>
+        <div class="panel-header"><h3>Editar personal</h3></div>
+        <div class="panel-body">
+          <form id="form-editar-usuario" novalidate>
+            <input id="edicion-id" type="hidden" />
+            <div class="form-fila">
+              <div class="form-grupo">
+                <label for="edicion-nombre">Nombre</label>
+                <input id="edicion-nombre" class="form-control" type="text" maxlength="100" required />
+              </div>
+              <div class="form-grupo">
+                <label for="edicion-apellido">Apellido</label>
+                <input id="edicion-apellido" class="form-control" type="text" maxlength="100" />
+              </div>
+            </div>
+            <div class="form-grupo">
+              <label for="edicion-email">Correo electrónico</label>
+              <input id="edicion-email" class="form-control" type="email" maxlength="120" required />
+            </div>
+            <div class="form-fila">
+              <div class="form-grupo">
+                <label for="edicion-rol">Rol</label>
+                <select id="edicion-rol" class="form-control">
+                  <option value="ADMIN">Administrador</option>
+                  <option value="EMPLEADO">Empleado</option>
+                </select>
+              </div>
+              <div class="form-grupo">
+                <label for="edicion-estado">Estado</label>
+                <select id="edicion-estado" class="form-control">
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
+                </select>
+              </div>
+            </div>
+            <p class="usuarios-mensaje-error" id="error-editar-usuario" role="alert" hidden></p>
+            <div class="usuarios-acciones-formulario">
+              <button type="submit" class="btn btn-primario" id="btn-guardar-edicion">Guardar cambios</button>
+              <button type="button" class="btn btn-secundario" id="btn-cancelar-edicion">Cancelar</button>
+            </div>
+          </form>
         </div>
       </div>
 

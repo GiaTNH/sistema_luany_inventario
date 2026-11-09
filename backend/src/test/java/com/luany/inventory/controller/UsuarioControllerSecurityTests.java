@@ -2,6 +2,7 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.model.UsuarioCreadoResponse;
 import com.luany.inventory.model.CambiarRolRequest;
+import com.luany.inventory.model.ActualizarUsuarioRequest;
 import com.luany.inventory.model.UsuarioGestionResponse;
 import com.luany.inventory.model.RegistroInicialRequest;
 import com.luany.inventory.model.UsuarioResponse;
@@ -245,6 +246,13 @@ class UsuarioControllerSecurityTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"rol\":\"ADMIN\"}"))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/usuarios/2")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\",\"rol\":\"ADMIN\",\"estado\":\"INACTIVO\"}"))
+                .andExpect(status().isForbidden());
 
         verifyNoInteractions(usuarioGestionService);
     }
@@ -291,6 +299,43 @@ class UsuarioControllerSecurityTests {
                 .andExpect(status().isBadRequest());
 
         verify(usuarioGestionService).cambiarRol(eq(2L), any(CambiarRolRequest.class), eq("prueba@luany.com"));
+    }
+
+    @Test
+    void administradorPuedeEditarPersonalYSeValidanRolYEstado() throws Exception {
+        MockHttpSession session = iniciarSesion("ADMIN");
+        when(usuarioGestionService.actualizar(
+                eq(2L), any(ActualizarUsuarioRequest.class), eq("prueba@luany.com")))
+                .thenReturn(new UsuarioGestionResponse(
+                        2L, "Ana", "Pérez", "ana@luany.com", "ana", "EMPLEADO", "INACTIVO"));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/usuarios/2")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Ana","apellido":"Pérez","email":"ana@luany.com",
+                                 "rol":"EMPLEADO","estado":"INACTIVO"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("INACTIVO"))
+                .andExpect(jsonPath("$.email").value("ana@luany.com"))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/usuarios/2")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Ana","apellido":"Pérez","email":"ana@luany.com",
+                                 "rol":"EMPLEADO","estado":"PAUSADO"}
+                                """))
+                .andExpect(status().isBadRequest());
+
+        verify(usuarioGestionService, times(1)).actualizar(
+                eq(2L), any(ActualizarUsuarioRequest.class), eq("prueba@luany.com"));
     }
 
     @Test
