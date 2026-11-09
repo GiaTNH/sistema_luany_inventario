@@ -54,9 +54,17 @@
       </div>
     </header>
     <section class="pagina usuarios-contenido">
-      <div class="panel usuarios-registro" id="panel-registro-empleado" hidden>
-        <div class="panel-header"><h3>Registrar trabajador</h3></div>
-        <div class="panel-body">
+      <div class="modal-overlay usuarios-modal" id="modal-registro-empleado" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-registro" aria-hidden="true" hidden>
+        <div class="modal">
+          <div class="modal-header">
+            <h3 id="titulo-modal-registro">Añadir personal</h3>
+            <button type="button" class="btn-cerrar-modal" id="btn-cerrar-registro" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
           <p class="usuarios-ayuda">Se creará la cuenta y se enviará al trabajador un correo con sus credenciales temporales.</p>
           <form id="form-crear-empleado" novalidate>
             <div class="form-fila">
@@ -74,11 +82,12 @@
               <input id="empleado-email" class="form-control" type="email" maxlength="120" autocomplete="email" required />
             </div>
             <p class="usuarios-mensaje-error" id="error-crear-empleado" role="alert" hidden></p>
-            <div class="usuarios-acciones-formulario">
+            <div class="modal-footer usuarios-acciones-formulario">
               <button type="submit" class="btn btn-primario" id="btn-crear-empleado">Crear cuenta de empleado</button>
               <button type="button" class="btn btn-secundario" id="btn-cancelar-registro">Cancelar</button>
             </div>
           </form>
+          </div>
         </div>
       </div>
 
@@ -118,22 +127,29 @@
               <tr>
                 <th>Nombre completo</th>
                 <th>Correo electrónico</th>
-                <th>Nombre de usuario</th>
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="tabla-usuarios-body">
-              <tr><td colspan="6">Cargando usuarios...</td></tr>
+              <tr><td colspan="5">Cargando usuarios...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <div class="panel usuarios-edicion" id="panel-editar-usuario" hidden>
-        <div class="panel-header"><h3>Editar personal</h3></div>
-        <div class="panel-body">
+      <div class="modal-overlay usuarios-modal" id="modal-editar-usuario" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-edicion" aria-hidden="true" hidden>
+        <div class="modal">
+          <div class="modal-header">
+            <h3 id="titulo-modal-edicion">Editar personal</h3>
+            <button type="button" class="btn-cerrar-modal" id="btn-cerrar-edicion" aria-label="Cerrar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
           <form id="form-editar-usuario" novalidate>
             <input id="edicion-id" type="hidden" />
             <div class="form-fila">
@@ -167,11 +183,12 @@
               </div>
             </div>
             <p class="usuarios-mensaje-error" id="error-editar-usuario" role="alert" hidden></p>
-            <div class="usuarios-acciones-formulario">
+            <div class="modal-footer usuarios-acciones-formulario">
               <button type="submit" class="btn btn-primario" id="btn-guardar-edicion">Guardar cambios</button>
               <button type="button" class="btn btn-secundario" id="btn-cancelar-edicion">Cancelar</button>
             </div>
           </form>
+          </div>
         </div>
       </div>
 
