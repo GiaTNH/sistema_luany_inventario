@@ -594,6 +594,24 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .usuarios-modal .modal { max-width: 620px; }
 .usuarios-modal .modal-footer { margin: 18px -26px -24px; }
 
+.clientes-contenido > .panel { max-width: 1200px; }
+.clientes-panel-header { flex-wrap: wrap; }
+.clientes-panel-header .btn { display: inline-flex; align-items: center; gap: 8px; }
+.clientes-panel-header .btn svg { width: 18px; height: 18px; }
+.clientes-busqueda { max-width: 520px; margin-bottom: 18px; }
+.clientes-busqueda label { display: block; margin-bottom: 7px; color: var(--texto); font-size: 13px; font-weight: 600; }
+.clientes-mensaje { min-height: 20px; margin: 0 0 12px; font-size: 13px; }
+.clientes-tabla { width: 100%; min-width: 800px; border-collapse: collapse; }
+.clientes-tabla th,
+.clientes-tabla td { padding: 11px 12px; border-bottom: 1px solid var(--borde); text-align: left; }
+.clientes-tabla th { color: var(--texto-suave); font-size: 12px; font-weight: 700; }
+.clientes-tabla td { color: var(--texto); font-size: 13px; }
+.clientes-tabla .clientes-accion { margin: 2px 6px 2px 0; padding: 8px 11px; font-size: 12px; }
+.clientes-modal[hidden] { display: none; }
+.clientes-modal .modal { max-width: 640px; }
+.clientes-modal-confirmar { max-width: 420px !important; }
+.clientes-error { margin: 0; color: var(--rojo); font-size: 13px; }
+
 @media (max-width: 768px) {
   .usuarios-filtros { grid-template-columns: 1fr; padding: 0 18px 18px; }
   .usuarios-acciones-listado { width: 100%; flex-wrap: wrap; }
@@ -601,6 +619,10 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .usuarios-modal .modal-header { padding: 20px 20px 16px; }
   .usuarios-modal .modal-body { padding: 20px; }
   .usuarios-modal .modal-footer { margin: 18px -20px -20px; }
+  .clientes-modal .modal { max-height: calc(100vh - 32px); }
+  .clientes-modal .modal-header,
+  .clientes-modal .modal-body { padding: 20px; }
+  .clientes-modal .modal-footer { padding: 16px 20px; }
 }
 
 /* ===== MODAL ===== */
