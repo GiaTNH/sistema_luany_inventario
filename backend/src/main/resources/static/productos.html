@@ -89,8 +89,6 @@
       <div class="productos-tabs-card">
         <div class="tabs">
           <button class="tab-btn activo" onclick="cambiarTab('productos')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Productos</button>
-          <button class="tab-btn" onclick="cambiarTab('categorias')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13V6a2 2 0 0 0-2-2H7L3 8l8 8 4-4Z"/><circle cx="8" cy="8" r="1"/></svg>Categorías</button>
-          <button class="tab-btn" data-tab="proveedores" onclick="cambiarTab('proveedores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 4.5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4.6V20"/></svg>Proveedores</button>
         </div>
       </div>
 
@@ -129,6 +127,7 @@
               <thead>
                 <tr>
                   <th><button type="button" class="productos-sort-button" data-sort="nombre" aria-sort="none" onclick="ordenarProductos('nombre')">Nombre<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
+                  <th>Código</th>
                   <th><button type="button" class="productos-sort-button" data-sort="categoria" aria-sort="none" onclick="ordenarProductos('categoria')">Categoría<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
                   <th><button type="button" class="productos-sort-button" data-sort="proveedor" aria-sort="none" onclick="ordenarProductos('proveedor')">Proveedor<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
                   <th><button type="button" class="productos-sort-button" data-sort="stockActual" aria-sort="none" onclick="ordenarProductos('stockActual')">Stock actual<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 6 3-3 3 3M5 10l3 3 3-3"/></svg></button></th>
@@ -141,7 +140,7 @@
               </thead>
               <tbody id="tabla-productos-body">
                 <tr class="cargando-fila">
-                  <td colspan="9"><span class="spinner spinner-dark"></span> Cargando productos...</td>
+                  <td colspan="10"><span class="spinner spinner-dark"></span> Cargando productos...</td>
                 </tr>
               </tbody>
             </table>
@@ -167,24 +166,6 @@
         </div>
       </div>
 
-      <!-- TAB PROVEEDORES -->
-      <div class="tab-panel" id="tab-proveedores" data-tab="proveedores">
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Proveedores</h3>
-            <button class="btn btn-primario" onclick="abrirModalProveedor()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo proveedor</button>
-          </div>
-          <div class="tabla-wrapper">
-            <table class="productos-list-table productos-entity-table productos-provider-table">
-              <thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Acciones</th></tr></thead>
-              <tbody id="tabla-proveedores-body">
-                <tr class="cargando-fila"><td colspan="4"><span class="spinner spinner-dark"></span> Cargando...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
     </div><!-- /pagina -->
   </main>
 </div>
@@ -196,7 +177,7 @@
       <h3 id="modal-producto-titulo">Nuevo producto</h3>
       <button class="btn-cerrar-modal" onclick="cerrarModal('modal-producto')" aria-label="Cerrar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/>
         </svg>
       </button>
     </div>
@@ -215,10 +196,14 @@
             <span class="form-error" id="err-prod-categoria">Selecciona una categoría.</span>
           </div>
           <div class="form-grupo">
-            <label for="prod-proveedor">Proveedor *</label>
-            <select id="prod-proveedor" class="form-control"><option value="">Seleccionar...</option></select>
-            <span class="form-error" id="err-prod-proveedor">Selecciona un proveedor.</span>
+            <label for="prod-codigo">Código</label>
+            <input type="text" id="prod-codigo" class="form-control" maxlength="50" placeholder="Ej. LU-001" />
           </div>
+        </div>
+        <div class="form-grupo">
+          <label for="prod-proveedor">Proveedor asociado *</label>
+          <select id="prod-proveedor" class="form-control"><option value="">Seleccionar...</option></select>
+          <span class="form-error" id="err-prod-proveedor">Selecciona un proveedor.</span>
         </div>
         <div class="form-fila">
           <div class="form-grupo">
@@ -347,36 +332,6 @@
     <div class="modal-footer">
       <button class="btn btn-primario" onclick="guardarCategoria()">Guardar categoría</button>
       <button class="btn btn-secundario" onclick="cerrarModal('modal-categoria')">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL PROVEEDOR — id="modal-proveedor" ===== -->
-<div class="modal-overlay" id="modal-proveedor">
-  <div class="modal" style="max-width:400px;">
-    <div class="modal-header">
-      <h3 id="modal-prov-titulo">Nuevo proveedor</h3>
-      <button class="btn-cerrar-modal" onclick="cerrarModal('modal-proveedor')" aria-label="Cerrar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="prov-id" />
-      <div class="form-grupo">
-        <label for="prov-nombre">Nombre *</label>
-        <input type="text" id="prov-nombre" class="form-control" maxlength="120" placeholder="Nombre del proveedor" />
-        <span class="form-error" id="err-prov-nombre">El nombre es obligatorio.</span>
-      </div>
-      <div class="form-grupo">
-        <label for="prov-telefono">Teléfono</label>
-        <input type="text" id="prov-telefono" class="form-control" maxlength="20" placeholder="Opcional" />
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primario" onclick="guardarProveedor()">Guardar proveedor</button>
-      <button class="btn btn-secundario" onclick="cerrarModal('modal-proveedor')">Cancelar</button>
     </div>
   </div>
 </div>
