@@ -3730,7 +3730,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .productos-page .productos-product-table thead tr,
 .productos-page .productos-product-table tbody tr {
   display: grid;
-  grid-template-columns: minmax(205px, 2.2fr) minmax(110px, 1.15fr) minmax(118px, 1.3fr) minmax(68px, .7fr) minmax(44px, .44fr) minmax(44px, .44fr) minmax(75px, .76fr) minmax(88px, .9fr) minmax(180px, 1.72fr);
+  grid-template-columns: minmax(205px, 2.2fr) minmax(110px, 1.15fr) minmax(118px, 1.3fr) minmax(68px, .7fr) minmax(44px, .44fr) minmax(44px, .44fr) minmax(75px, .76fr) minmax(88px, .9fr) minmax(88px, .9fr) minmax(200px, 1.72fr);
   align-items: center;
 }
 
