@@ -152,3 +152,29 @@ CREATE TABLE IF NOT EXISTS detalle_pedido (
   CONSTRAINT fk_dp_producto FOREIGN KEY (producto_id) REFERENCES productos (id),
   CONSTRAINT chk_detalle_pedido_cantidad CHECK (cantidad > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla auxiliar para controlar el registro inicial
+CREATE TABLE IF NOT EXISTS registro_inicial (
+  id          TINYINT     NOT NULL,
+  completado  TINYINT(1)  NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  CONSTRAINT chk_registro_inicial_id CHECK (id = 1)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- Tabla para gestionar los tokens de recuperación de contraseñas
+CREATE TABLE IF NOT EXISTS tokens_recuperacion_password (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  usuario_id  BIGINT       NOT NULL,
+  token_hash  VARCHAR(64)  NOT NULL,
+  expira_en   DATETIME(6)  NOT NULL,
+  utilizado_en DATETIME(6) DEFAULT NULL,
+  creado_en   DATETIME(6)  NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_token_recuperacion_hash (token_hash),
+  KEY idx_token_recuperacion_usuario (usuario_id),
+  CONSTRAINT fk_token_recuperacion_usuario
+    FOREIGN KEY (usuario_id)
+    REFERENCES usuarios (id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
