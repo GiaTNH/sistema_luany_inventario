@@ -8,12 +8,12 @@ if (!usuarioActual) {
   iniciarLayout('Gestión de usuarios');
 
   const formCrear = document.getElementById('form-crear-empleado');
-  const panelRegistro = document.getElementById('panel-registro-empleado');
+  const modalRegistro = document.getElementById('modal-registro-empleado');
   const botonCrear = document.getElementById('btn-crear-empleado');
   const errorCrear = document.getElementById('error-crear-empleado');
   const resultado = document.getElementById('resultado-crear-empleado');
   const formEditar = document.getElementById('form-editar-usuario');
-  const panelEdicion = document.getElementById('panel-editar-usuario');
+  const modalEdicion = document.getElementById('modal-editar-usuario');
   const errorEdicion = document.getElementById('error-editar-usuario');
   const tablaUsuarios = document.getElementById('tabla-usuarios-body');
   const filtroBusqueda = document.getElementById('filtro-busqueda');
@@ -21,6 +21,7 @@ if (!usuarioActual) {
   const filtroRol = document.getElementById('filtro-rol');
   const usuarioIdActual = Number(usuarioActual.id);
   let usuarios = [];
+  let elementoDisparadorModal = null;
 
   function celda(texto) {
     const td = document.createElement('td');
@@ -58,7 +59,7 @@ if (!usuarioActual) {
       const mensaje = celda(usuarios.length
         ? 'No hay personal que coincida con los filtros.'
         : 'No hay usuarios registrados.');
-      mensaje.colSpan = 6;
+      mensaje.colSpan = 5;
       filaVacia.appendChild(mensaje);
       tablaUsuarios.appendChild(filaVacia);
       return;
@@ -68,7 +69,6 @@ if (!usuarioActual) {
       const fila = document.createElement('tr');
       fila.appendChild(celda([usuario.nombre, usuario.apellido].filter(Boolean).join(' ')));
       fila.appendChild(celda(usuario.email));
-      fila.appendChild(celda(usuario.nombreUsuario));
       fila.appendChild(celda(usuario.rol === 'ADMIN' ? 'Administrador' : 'Empleado'));
       fila.appendChild(celda(usuario.estado === 'ACTIVO' ? 'Activo' : 'Inactivo'));
 
@@ -88,7 +88,7 @@ if (!usuarioActual) {
     tablaUsuarios.replaceChildren();
     const filaCarga = document.createElement('tr');
     const celdaCarga = celda('Cargando usuarios...');
-    celdaCarga.colSpan = 6;
+    celdaCarga.colSpan = 5;
     filaCarga.appendChild(celdaCarga);
     tablaUsuarios.appendChild(filaCarga);
 
@@ -99,32 +99,65 @@ if (!usuarioActual) {
       tablaUsuarios.replaceChildren();
       const filaError = document.createElement('tr');
       const mensaje = celda(`No se pudo cargar la lista de usuarios: ${err.message}`);
-      mensaje.colSpan = 6;
+      mensaje.colSpan = 5;
       filaError.appendChild(mensaje);
       tablaUsuarios.appendChild(filaError);
     }
   }
 
+  function abrirModal(modal) {
+    elementoDisparadorModal = document.activeElement;
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(() => {
+      if (!modal.hidden) modal.classList.add('visible');
+    });
+  }
+
+  function cerrarModal(modal, formulario, error) {
+    modal.classList.remove('visible');
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    formulario.reset();
+    error.hidden = true;
+    if (elementoDisparadorModal instanceof HTMLElement && elementoDisparadorModal.isConnected) {
+      elementoDisparadorModal.focus();
+    }
+  }
+
+  function cerrarRegistro() {
+    cerrarModal(modalRegistro, formCrear, errorCrear);
+  }
+
   function cerrarEdicion() {
-    panelEdicion.hidden = true;
-    formEditar.reset();
-    errorEdicion.hidden = true;
+    cerrarModal(modalEdicion, formEditar, errorEdicion);
   }
 
   document.getElementById('btn-anadir-personal').addEventListener('click', () => {
-    panelRegistro.hidden = false;
-    panelEdicion.hidden = true;
-    panelRegistro.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    formCrear.reset();
+    errorCrear.hidden = true;
+    abrirModal(modalRegistro);
     document.getElementById('empleado-nombre').focus();
   });
 
-  document.getElementById('btn-cancelar-registro').addEventListener('click', () => {
-    panelRegistro.hidden = true;
-    formCrear.reset();
-    errorCrear.hidden = true;
+  document.getElementById('btn-cancelar-registro').addEventListener('click', cerrarRegistro);
+  document.getElementById('btn-cerrar-registro').addEventListener('click', cerrarRegistro);
+  document.getElementById('btn-cancelar-edicion').addEventListener('click', cerrarEdicion);
+  document.getElementById('btn-cerrar-edicion').addEventListener('click', cerrarEdicion);
+
+  [modalRegistro, modalEdicion].forEach((modal) => {
+    modal.addEventListener('click', (evento) => {
+      if (evento.target !== modal) return;
+      if (modal === modalRegistro) cerrarRegistro();
+      else cerrarEdicion();
+    });
   });
 
-  document.getElementById('btn-cancelar-edicion').addEventListener('click', cerrarEdicion);
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key !== 'Escape') return;
+    if (!modalRegistro.hidden) cerrarRegistro();
+    else if (!modalEdicion.hidden) cerrarEdicion();
+  });
 
   tablaUsuarios.addEventListener('click', (evento) => {
     const botonEditar = evento.target.closest('.usuarios-editar');
@@ -141,9 +174,7 @@ if (!usuarioActual) {
     selectorRol.disabled = Number(usuario.id) === usuarioIdActual;
     document.getElementById('edicion-estado').value = usuario.estado;
     errorEdicion.hidden = true;
-    panelRegistro.hidden = true;
-    panelEdicion.hidden = false;
-    panelEdicion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    abrirModal(modalEdicion);
     document.getElementById('edicion-nombre').focus();
   });
 
@@ -217,8 +248,7 @@ if (!usuarioActual) {
       document.getElementById('correo-bienvenida').textContent =
         `Se envió el correo de bienvenida a ${creado.usuario.email}.`;
       resultado.hidden = false;
-      panelRegistro.hidden = true;
-      formCrear.reset();
+      cerrarRegistro();
       await cargarUsuarios();
     } catch (err) {
       errorCrear.textContent = err.message;
