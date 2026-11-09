@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -17,16 +16,17 @@ import java.util.Map;
 public class CorreoService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CorreoService.class);
-    private static final String RESEND_EMAILS_URL = "https://api.resend.com/emails";
+    private static final String BREVO_EMAILS_URL = "https://api.brevo.com/v3/smtp/email";
     private static final String URL_ACCESO = "https://sistema-luany-inventario.onrender.com/";
 
     private final RestClient restClient;
     private final String apiKey;
-    private final String remitente;
+    private final String remitenteEmail;
+    private final String remitenteNombre;
 
     @Autowired
     public CorreoService(
-            @Value("${resend.api-key}") String apiKey,
+            @Value("${brevo.api-key:}") String apiKey,
             @Value("${mail.from.email}") String remitenteEmail,
             @Value("${mail.from.name}") String remitenteNombre) {
         this(RestClient.create(), apiKey, remitenteEmail, remitenteNombre);
@@ -39,7 +39,8 @@ public class CorreoService {
             String remitenteNombre) {
         this.restClient = restClient;
         this.apiKey = apiKey;
-        this.remitente = remitenteNombre + " <" + remitenteEmail + ">";
+        this.remitenteEmail = remitenteEmail;
+        this.remitenteNombre = remitenteNombre;
     }
 
     public void enviarBienvenida(
@@ -47,7 +48,7 @@ public class CorreoService {
             String nombre,
             String nombreUsuario,
             String passwordTemporal) {
-        if (apiKey == null || apiKey.isBlank()) {
+        if (!configuracionCompleta()) {
             throw new CorreoEnvioException();
         }
 
@@ -144,28 +145,22 @@ public class CorreoService {
                 escaparHtml(passwordTemporal), URL_ACCESO);
 
         Map<String, Object> solicitud = Map.of(
-                "from", remitente,
-                "to", List.of(destinatario),
+                "sender", remitente(),
+                "to", List.of(Map.of("email", destinatario)),
                 "subject", "Bienvenido a LUANY",
-                "text", contenidoTexto,
-                "html", contenidoHtml);
+                "textContent", contenidoTexto,
+                "htmlContent", contenidoHtml);
 
         try {
-            restClient.post()
-                    .uri(RESEND_EMAILS_URL)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(solicitud)
-                    .retrieve()
-                    .toBodilessEntity();
+            enviar(solicitud);
         } catch (RestClientException exception) {
             throw new CorreoEnvioException();
         }
     }
 
     public void enviarRecuperacion(String destinatario, String nombre, String enlace) {
-        if (apiKey == null || apiKey.isBlank()) {
-            LOGGER.error("No se pudo enviar correo de recuperación: MAIL_API_KEY no está configurada.");
+        if (!configuracionCompleta()) {
+            LOGGER.error("No se pudo enviar correo de recuperación: la configuración de Brevo está incompleta.");
             throw new CorreoRecuperacionException();
         }
 
@@ -217,24 +212,38 @@ public class CorreoService {
                 """.formatted(escaparHtml(nombre), escaparHtml(enlace));
 
         Map<String, Object> solicitud = Map.of(
-                "from", remitente,
-                "to", List.of(destinatario),
+                "sender", remitente(),
+                "to", List.of(Map.of("email", destinatario)),
                 "subject", "Restablece tu contraseña de LUANY",
-                "text", contenidoTexto,
-                "html", contenidoHtml);
+                "textContent", contenidoTexto,
+                "htmlContent", contenidoHtml);
 
         try {
-            restClient.post()
-                    .uri(RESEND_EMAILS_URL)
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(solicitud)
-                    .retrieve()
-                    .toBodilessEntity();
+            enviar(solicitud);
         } catch (RestClientException exception) {
-            LOGGER.error("Falló el envío del correo de recuperación mediante Resend.", exception);
+            LOGGER.error("Falló el envío del correo de recuperación mediante Brevo.");
             throw new CorreoRecuperacionException();
         }
+    }
+
+    private Map<String, String> remitente() {
+        return Map.of("name", remitenteNombre, "email", remitenteEmail);
+    }
+
+    private boolean configuracionCompleta() {
+        return apiKey != null && !apiKey.isBlank()
+                && remitenteEmail != null && !remitenteEmail.isBlank()
+                && remitenteNombre != null && !remitenteNombre.isBlank();
+    }
+
+    private void enviar(Map<String, Object> solicitud) {
+        restClient.post()
+                .uri(BREVO_EMAILS_URL)
+                .header("api-key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(solicitud)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     private static String escaparHtml(String valor) {
