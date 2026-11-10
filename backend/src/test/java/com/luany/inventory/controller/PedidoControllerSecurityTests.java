@@ -1,6 +1,7 @@
 package com.luany.inventory.controller;
 
 import com.luany.inventory.model.PedidoDetalleResponse;
+import com.luany.inventory.model.PedidoKanbanResponse;
 import com.luany.inventory.service.PedidoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,6 +108,36 @@ class PedidoControllerSecurityTests {
         mockMvc.perform(get("/api/pedidos/5").with(user("almacen").roles("EMPLEADO")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5));
+    }
+
+    @Test
+    void tableroRequiereSesionPermiteAmbosRolesYAplicaFiltros() throws Exception {
+        var desde = java.time.LocalDate.of(2026, 11, 1);
+        var hasta = java.time.LocalDate.of(2026, 11, 30);
+        var pedido = new PedidoKanbanResponse(
+                5L, java.time.LocalDateTime.of(2026, 11, 4, 10, 0), hasta,
+                "PARCIAL", 4L, "Proveedor", 2, 8, 3, 5);
+        when(pedidoService.listarTablero("Proveedor", "PARCIAL", desde, hasta))
+                .thenReturn(List.of(pedido));
+
+        mockMvc.perform(get("/api/pedidos/tablero?buscar=Proveedor&estado=PARCIAL"
+                        + "&desde=2026-11-01&hasta=2026-11-30")
+                        .with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].estado").value("PARCIAL"))
+                .andExpect(jsonPath("$[0].cantidadTotalSolicitada").value(8))
+                .andExpect(jsonPath("$[0].cantidadRecibida").value(3))
+                .andExpect(jsonPath("$[0].cantidadPendiente").value(5));
+
+        mockMvc.perform(get("/api/pedidos/tablero?buscar=Proveedor&estado=PARCIAL"
+                        + "&desde=2026-11-01&hasta=2026-11-30")
+                        .with(user("almacen").roles("EMPLEADO")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/pedidos/tablero"))
+                .andExpect(status().isUnauthorized());
+
+        verify(pedidoService, org.mockito.Mockito.times(2))
+                .listarTablero("Proveedor", "PARCIAL", desde, hasta);
     }
 
     @Test

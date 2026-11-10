@@ -643,6 +643,41 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .pedido-recepcion-historica p { margin: 0 0 8px; font-size: 13px; font-weight: 700; }
 .pedido-recepcion-historica ul { margin: 0; padding-left: 20px; color: var(--texto-suave); font-size: 13px; }
 
+.pedidos-kanban-contenido { display: grid; gap: 16px; }
+.pedidos-kanban-filtros > .panel-body { display: grid; grid-template-columns: minmax(210px, 2fr) repeat(3, minmax(150px, 1fr)) auto; align-items: end; gap: 12px; }
+.pedidos-kanban-filtro { display: grid; gap: 6px; }
+.pedidos-kanban-filtro label { color: var(--texto); font-size: 12px; font-weight: 700; }
+.pedidos-kanban-filtros .btn { min-height: 42px; }
+.pedidos-kanban-mensaje { min-height: 18px; margin: 0; font-size: 13px; }
+.pedidos-kanban-columnas { display: grid; grid-template-columns: repeat(3, minmax(270px, 1fr)); align-items: start; gap: 16px; overflow-x: auto; padding: 2px 2px 12px; }
+.pedidos-kanban-columna { min-height: 260px; overflow: hidden; border: 1px solid #E5E8F4; border-radius: 17px; background: #F7F8FC; box-shadow: 0 4px 14px rgba(41,63,131,.05); }
+.pedidos-kanban-columna > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #E5E8F4; background: #fff; }
+.pedidos-kanban-columna > header h3 { margin: 0; color: #25215A; font: 600 15px 'Fredoka', sans-serif; }
+.kanban-conteo { display: grid; min-width: 27px; height: 27px; place-items: center; border-radius: 50%; background: #EEEAFB; color: #684BB5; font-size: 12px; font-weight: 800; }
+.estado-pendiente > header { border-top: 3px solid #E3A328; }
+.estado-parcial > header { border-top: 3px solid #7655D9; }
+.estado-recibido > header { border-top: 3px solid #2D9B68; }
+.kanban-tarjetas { display: grid; gap: 11px; padding: 12px; }
+.kanban-tarjeta { display: grid; gap: 11px; border: 1px solid #E3E7F2; border-radius: 13px; padding: 14px; background: #fff; box-shadow: 0 3px 10px rgba(41,63,131,.05); }
+.kanban-tarjeta-encabezado { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.kanban-tarjeta-encabezado h4 { margin: 0; color: #26205D; font: 600 15px 'Fredoka', sans-serif; }
+.kanban-estado-badge { flex: 0 0 auto; border-radius: 20px; padding: 5px 8px; font-size: 10px; font-weight: 800; }
+.kanban-estado-badge.badge-pendiente { background: #FFF4D9; color: #986500; }
+.kanban-estado-badge.badge-parcial { background: #EEE9FD; color: #6341C1; }
+.kanban-estado-badge.badge-recibido { background: #E1F5E9; color: #187447; }
+.kanban-proveedor { margin: -5px 0 0; color: #4F5C83; font-size: 13px; font-weight: 700; }
+.kanban-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.kanban-dato { display: grid; gap: 3px; min-width: 0; }
+.kanban-dato span { color: #7A85A5; font-size: 10px; }
+.kanban-dato strong { overflow-wrap: anywhere; color: #303B68; font-size: 11px; font-weight: 700; }
+.kanban-acciones { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 3px; border-top: 1px solid #EEF0F6; }
+.kanban-acciones .btn { flex: 1 1 auto; justify-content: center; padding: 8px 10px; font-size: 11px; text-decoration: none; }
+.kanban-vacio { margin: 0; padding: 25px 14px; color: #818BA7; text-align: center; font-size: 12px; }
+.pedidos-kanban-modal[hidden] { display: none; }
+.pedidos-kanban-modal .modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; }
+.pedidos-kanban-modal .modal-footer { margin: 18px -26px -24px; }
+.pedidos-kanban-modal-ancho { width: min(760px, 100%); }
+
 .ventas-contenido > .panel { max-width: 1200px; }
 .ventas-panel-header { flex-wrap: wrap; }
 .ventas-panel-header .btn { display: inline-flex; align-items: center; gap: 8px; }
@@ -689,6 +724,14 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .pedidos-modal .modal-body { padding: 20px; }
   .pedidos-modal .modal-footer { margin: 18px -20px -20px; padding: 16px 20px; }
   .pedidos-lineas-header { align-items: flex-start; flex-direction: column; }
+  .pedidos-kanban-filtros > .panel-body { grid-template-columns: 1fr 1fr; }
+  .pedidos-kanban-filtro:first-child { grid-column: 1 / -1; }
+  .pedidos-kanban-filtros .btn { width: 100%; }
+  .pedidos-kanban-columnas { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
+  .pedidos-kanban-modal .modal { max-height: calc(100vh - 32px); }
+  .pedidos-kanban-modal .modal-header,
+  .pedidos-kanban-modal .modal-body { padding: 20px; }
+  .pedidos-kanban-modal .modal-footer { margin: 18px -20px -20px; padding: 16px 20px; }
   .ventas-filtros { grid-template-columns: 1fr; padding: 0 18px; }
   .ventas-modal .modal { max-height: calc(100vh - 32px); }
   .ventas-modal .modal-header,

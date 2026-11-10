@@ -4,6 +4,7 @@ const tbodyPedidos = document.getElementById('tabla-pedidos-body');
 const mensajePedidos = document.getElementById('pedidos-mensaje');
 const filtroBuscar = document.getElementById('buscar-pedido');
 const filtroEstado = document.getElementById('filtro-pedido-estado');
+filtroBuscar.value = new URLSearchParams(window.location.search).get('buscar') || '';
 const modalPedido = document.getElementById('modal-pedido');
 const modalDetallePedido = document.getElementById('modal-detalle-pedido');
 const modalRecepcion = document.getElementById('modal-recepcion');
