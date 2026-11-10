@@ -204,6 +204,7 @@ const ICONOS_SIDEBAR = {
   ventas: '<path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z"/><path d="M8 8h8M8 12h8M8 16h4"/>',
   pedidos: '<path d="M6 3h12l3 5v13H3V8l3-5Z"/><path d="M3 8h18M8 12h8M8 16h5"/>',
   movimientos: '<path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5m4-1v5l3 2"/>',
+  reportes: '<path d="M4 19V5m0 14h17"/><path d="M8 15v-4m5 4V7m5 8v-6"/>',
   usuarios: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 11a3 3 0 1 0 0-6M18 14a5 5 0 0 1 3 4.6V20"/>',
   asistente: '<path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.4-.7L4 20l1.5-3.5A7.2 7.2 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z"/><path d="M9 10h6M9 14h4"/>',
   chevron: '<path d="m9 18 6-6-6-6"/>',
@@ -218,6 +219,7 @@ const ENLACES_SIDEBAR = [
   { label: 'Notas de venta', href: '/notas-venta.html', pagina: 'notas-venta.html', icono: 'ventas' },
   { label: 'Pedidos', href: '/pedidos.html', pagina: 'pedidos.html', icono: 'pedidos' },
   { label: 'Movimientos', href: '/movimientos.html', pagina: 'movimientos.html', icono: 'movimientos' },
+  { label: 'Reportes', href: '/reportes.html', pagina: 'reportes.html', icono: 'reportes' },
   { label: 'Usuarios', href: '/usuarios.html', pagina: 'usuarios.html', admin: true, icono: 'usuarios' },
   { label: 'Asistente IA', href: '/asistente.html', pagina: 'asistente.html', icono: 'asistente' },
 ];
