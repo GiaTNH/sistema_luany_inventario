@@ -113,6 +113,18 @@ class PedidoServiceTests {
     }
 
     @Test
+    void crearPedidoRechazaProveedorInactivoSinCrearPedido() {
+        proveedor.setEstado("INACTIVO");
+        when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> pedidoService.crear(crearRequest(5), "almacen@luany.com"));
+
+        verify(pedidoRepository, never()).save(any(Pedido.class));
+        verifyNoInteractions(movimientoService);
+    }
+
+    @Test
     void crearPedidoRechazaProductosDeOtroProveedor() {
         Proveedor otroProveedor = new Proveedor();
         otroProveedor.setId(99L);

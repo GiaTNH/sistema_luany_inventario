@@ -116,8 +116,8 @@ public class PedidoService {
     public PedidoDetalleResponse crear(CrearPedidoRequest request, String emailUsuario) {
         Proveedor proveedor = proveedorRepository.findById(request.getProveedorId())
                 .orElseThrow(() -> new IllegalArgumentException("El proveedor no existe"));
-        if ("INACTIVO".equalsIgnoreCase(proveedor.getEstado())) {
-            throw new IllegalArgumentException("No se pueden registrar pedidos a un proveedor inactivo");
+        if (proveedor.getEstado() == null || !"ACTIVO".equalsIgnoreCase(proveedor.getEstado().trim())) {
+            throw new IllegalArgumentException("Solo se pueden registrar pedidos a proveedores activos");
         }
         validarLineasPedido(request.getProductos(), proveedor.getId());
         Usuario usuario = usuarioRepository.buscarPorEmail(emailUsuario)

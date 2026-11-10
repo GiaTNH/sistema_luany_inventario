@@ -19,11 +19,11 @@ function abrirModalProveedor(id = null) {
   document.getElementById('prov-estado').value = proveedor?.estado ?? 'ACTIVO';
   document.getElementById('modal-prov-titulo').textContent = proveedor ? 'Editar proveedor' : 'Nuevo proveedor';
   mostrarErrorProveedor('err-prov-nombre', false);
-  document.getElementById('modal-proveedor').classList.add('visible');
+  abrirModalAccesible(document.getElementById('modal-proveedor'));
 }
 
 function cerrarModalProveedor(id) {
-  document.getElementById(id)?.classList.remove('visible');
+  cerrarModalAccesible(document.getElementById(id));
 }
 
 function renderizarProveedores() {
@@ -75,13 +75,23 @@ async function guardarProveedor() {
     mostrarErrorProveedor('err-prov-nombre', true);
     return;
   }
+  const correoInput = document.getElementById('prov-correo');
+  if (!correoInput.checkValidity()) {
+    correoInput.reportValidity();
+    return;
+  }
+  const rucInput = document.getElementById('prov-ruc');
+  if (!rucInput.checkValidity()) {
+    rucInput.reportValidity();
+    return;
+  }
 
   const id = document.getElementById('prov-id').value;
   const datos = {
     nombre,
-    ruc: document.getElementById('prov-ruc').value.trim(),
+    ruc: rucInput.value.trim(),
     telefono: document.getElementById('prov-telefono').value.trim(),
-    correo: document.getElementById('prov-correo').value.trim(),
+    correo: correoInput.value.trim(),
     direccion: document.getElementById('prov-direccion').value.trim(),
     estado: document.getElementById('prov-estado').value.trim(),
   };
@@ -132,7 +142,7 @@ async function eliminarProveedor(id) {
 document.getElementById('btn-nuevo-proveedor').addEventListener('click', () => abrirModalProveedor());
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', evento => {
-    if (evento.target === overlay) overlay.classList.remove('visible');
+    if (evento.target === overlay) cerrarModalProveedor(overlay.id);
   });
 });
 document.addEventListener('keydown', evento => {

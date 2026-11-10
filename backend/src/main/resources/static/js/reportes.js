@@ -13,6 +13,7 @@ let reporteActual = 'ventas';
 let paginaMovimientos = 0;
 let totalPaginasMovimientos = 0;
 let exportandoReporte = false;
+let solicitudReporte = 0;
 
 function fechaLocal(fecha) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
@@ -118,8 +119,9 @@ function dibujarBarras(svg, datos, nombre, valor, formato) {
   });
 }
 
-async function cargarVentas() {
+async function cargarVentas(solicitud) {
   const datos = await apiGet(`/api/reportes/ventas?${rangoQuery()}`);
+  if (solicitud !== solicitudReporte) return;
   actualizarKpis(document.getElementById('ventas-resumen'), [
     { etiqueta: 'Importe total', valor: moneda(datos.importeTotal) },
     { etiqueta: 'Notas de venta', valor: Number(datos.cantidadNotas || 0).toLocaleString('es-PE') },
@@ -140,9 +142,10 @@ async function cargarVentas() {
   }));
 }
 
-async function cargarProductosVendidos() {
+async function cargarProductosVendidos(solicitud) {
   const limite = document.getElementById('productos-limite').value;
   const datos = await apiGet(`/api/reportes/productos-mas-vendidos?${rangoQuery()}&limite=${encodeURIComponent(limite)}`);
+  if (solicitud !== solicitudReporte) return;
   dibujarBarras(
     document.getElementById('productos-grafico'),
     datos.productos || [],
@@ -172,7 +175,7 @@ async function cargarProductosFiltro() {
   }
 }
 
-async function cargarMovimientos() {
+async function cargarMovimientos(solicitud) {
   const params = new URLSearchParams(rangoQuery());
   const productoId = document.getElementById('movimiento-producto').value;
   const tipo = document.getElementById('movimiento-tipo').value;
@@ -181,6 +184,7 @@ async function cargarMovimientos() {
   if (productoId) params.set('productoId', productoId);
   if (tipo) params.set('tipo', tipo);
   const datos = await apiGet(`/api/reportes/movimientos?${params}`);
+  if (solicitud !== solicitudReporte) return;
   totalPaginasMovimientos = datos.totalPaginas;
   document.getElementById('movimientos-pagina-info').textContent =
     `${datos.totalElementos.toLocaleString('es-PE')} movimientos · Página ${datos.totalPaginas ? datos.pagina + 1 : 0} de ${datos.totalPaginas}`;
@@ -204,10 +208,11 @@ async function cargarMovimientos() {
   }));
 }
 
-async function cargarInventario() {
+async function cargarInventario(solicitud) {
   const estado = document.getElementById('inventario-estado').value;
   const ruta = estado ? `/api/reportes/inventario?estado=${encodeURIComponent(estado)}` : '/api/reportes/inventario';
   const datos = await apiGet(ruta);
+  if (solicitud !== solicitudReporte) return;
   const tbody = document.getElementById('inventario-tabla');
   if (!datos.productos?.length) return estadoVacio(tbody, 5, 'No hay productos para el filtro seleccionado.');
   tbody.replaceChildren(...datos.productos.map((producto) => {
@@ -224,8 +229,9 @@ async function cargarInventario() {
   }));
 }
 
-async function cargarPedidos() {
+async function cargarPedidos(solicitud) {
   const datos = await apiGet(`/api/reportes/pedidos-recepciones?${rangoQuery()}`);
+  if (solicitud !== solicitudReporte) return;
   actualizarKpis(document.getElementById('pedidos-resumen'), (datos.resumenPorEstado || []).map((estado) => ({
     etiqueta: estado.estado,
     valor: Number(estado.cantidad).toLocaleString('es-PE'),
@@ -264,14 +270,39 @@ const cargadoresReporte = {
 };
 
 async function cargarReporteActual() {
+  const solicitud = ++solicitudReporte;
+  const panel = panelesReporte[reporteActual];
+  panel.setAttribute('aria-busy', 'true');
+  panel.querySelectorAll('.reportes-kpis, svg, tbody').forEach((elemento) => elemento.replaceChildren());
+  document.getElementById('movimientos-pagina-info').textContent = '';
+  document.getElementById('movimientos-anterior').disabled = true;
+  document.getElementById('movimientos-siguiente').disabled = true;
+  let estado = panel.querySelector('[data-reporte-estado]');
+  if (!estado) {
+    estado = document.createElement('p');
+    estado.className = 'text-suave';
+    estado.dataset.reporteEstado = 'true';
+    panel.prepend(estado);
+  }
+  estado.setAttribute('role', 'status');
+  estado.textContent = 'Cargando reporte para los filtros seleccionados...';
+
   if (!desdeInput.value || !hastaInput.value || desdeInput.value > hastaInput.value) {
-    mostrarToast('Selecciona un rango de fechas válido.', 'error');
+    panel.setAttribute('aria-busy', 'false');
+    estado.setAttribute('role', 'alert');
+    estado.textContent = 'Selecciona un rango de fechas válido para consultar el reporte.';
     return;
   }
   try {
-    await cargadoresReporte[reporteActual]();
+    await cargadoresReporte[reporteActual](solicitud);
+    if (solicitud !== solicitudReporte) return;
+    panel.setAttribute('aria-busy', 'false');
+    estado.remove();
   } catch (error) {
-    mostrarToast(`No se pudo cargar el reporte: ${error.message}`, 'error');
+    if (solicitud !== solicitudReporte) return;
+    panel.setAttribute('aria-busy', 'false');
+    estado.setAttribute('role', 'alert');
+    estado.textContent = `No se pudo cargar el reporte: ${error.message}`;
   }
 }
 

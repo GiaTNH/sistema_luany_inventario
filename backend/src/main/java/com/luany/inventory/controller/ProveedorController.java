@@ -2,6 +2,7 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.model.Proveedor;
 import com.luany.inventory.service.ProveedorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,12 +22,12 @@ public class ProveedorController {
     }
 
     @PostMapping
-    public Proveedor crear(@RequestBody Proveedor proveedor) {
+    public Proveedor crear(@Valid @RequestBody Proveedor proveedor) {
         return proveedorService.crear(proveedor);
     }
 
     @PutMapping("/{id}")
-    public Proveedor actualizar(@PathVariable Long id, @RequestBody Proveedor proveedor) {
+    public Proveedor actualizar(@PathVariable Long id, @Valid @RequestBody Proveedor proveedor) {
         return proveedorService.actualizar(id, proveedor);
     }
 

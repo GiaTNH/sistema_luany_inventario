@@ -104,6 +104,68 @@ const apiDelete = (ruta) => apiFetch(ruta, { method: 'DELETE' });
 
 // ---------- TOAST ----------
 
+const modalesConFocoPrevio = new WeakMap();
+const modalesAbiertos = new Set();
+const selectorEnfocableModal =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function abrirModalAccesible(modal) {
+  if (!modal) return;
+  if (!modalesAbiertos.has(modal)) modalesConFocoPrevio.set(modal, document.activeElement);
+  modal.hidden = false;
+  modal.setAttribute('role', modal.getAttribute('role') || 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-hidden', 'false');
+  if (!modal.hasAttribute('aria-label') && !modal.hasAttribute('aria-labelledby')) {
+    const titulo = modal.querySelector('h1, h2, h3, h4');
+    if (titulo) modal.setAttribute('aria-label', titulo.textContent.trim());
+  }
+  modal.classList.add('visible');
+  modalesAbiertos.add(modal);
+  requestAnimationFrame(() => {
+    if (!modalesAbiertos.has(modal)) return;
+    const primerElemento = modal.querySelector(selectorEnfocableModal);
+    if (primerElemento) primerElemento.focus();
+    else {
+      modal.setAttribute('tabindex', '-1');
+      modal.focus();
+    }
+  });
+}
+
+function cerrarModalAccesible(modal) {
+  if (!modal) return;
+  modal.classList.remove('visible');
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  modalesAbiertos.delete(modal);
+  const focoPrevio = modalesConFocoPrevio.get(modal);
+  modalesConFocoPrevio.delete(modal);
+  if (focoPrevio?.isConnected) focoPrevio.focus();
+}
+
+document.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Tab' || modalesAbiertos.size === 0) return;
+  const modal = [...modalesAbiertos].at(-1);
+  const elementos = [...modal.querySelectorAll(selectorEnfocableModal)]
+    .filter((elemento) => !elemento.hidden && elemento.getAttribute('aria-hidden') !== 'true');
+  if (elementos.length === 0) {
+    evento.preventDefault();
+    modal.focus();
+    return;
+  }
+
+  const primero = elementos[0];
+  const ultimo = elementos[elementos.length - 1];
+  if (evento.shiftKey && (document.activeElement === primero || !modal.contains(document.activeElement))) {
+    evento.preventDefault();
+    ultimo.focus();
+  } else if (!evento.shiftKey && (document.activeElement === ultimo || !modal.contains(document.activeElement))) {
+    evento.preventDefault();
+    primero.focus();
+  }
+});
+
 /** Muestra un toast. tipo: 'exito' | 'error' | 'info' */
 function mostrarToast(mensaje, tipo = 'info', duracion = 4000) {
   let contenedor = document.getElementById('toast-container');

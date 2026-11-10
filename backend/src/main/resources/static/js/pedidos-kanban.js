@@ -188,18 +188,14 @@ async function abrirDetalleKanban(pedidoId) {
   try {
     const pedido = await apiGet(`/api/pedidos/${pedidoId}`);
     renderizarDetalle(pedido);
-    modalDetalle.hidden = false;
-    modalDetalle.setAttribute('aria-hidden', 'false');
-    requestAnimationFrame(() => modalDetalle.classList.add('visible'));
+    abrirModalAccesible(modalDetalle);
   } catch (error) {
     mostrarToast(error.message, 'error');
   }
 }
 
 function cerrarDetalleKanban() {
-  modalDetalle.classList.remove('visible');
-  modalDetalle.hidden = true;
-  modalDetalle.setAttribute('aria-hidden', 'true');
+  cerrarModalAccesible(modalDetalle);
 }
 
 document.getElementById('kanban-columnas').addEventListener('click', (evento) => {
