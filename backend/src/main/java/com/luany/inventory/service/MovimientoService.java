@@ -2,7 +2,6 @@ package com.luany.inventory.service;
 
 import com.luany.inventory.model.*;
 import com.luany.inventory.repository.MovimientoRepository;
-import com.luany.inventory.repository.ProductoRepository;
 import com.luany.inventory.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,7 @@ import java.util.List;
 public class MovimientoService {
 
     private final MovimientoRepository movimientoRepository;
-    private final ProductoRepository productoRepository;
+    private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
 
     @Transactional
@@ -25,8 +24,7 @@ public class MovimientoService {
 
     @Transactional
     public Movimiento registrar(MovimientoRequest request, String emailUsuario) {
-        Producto producto = productoRepository.findById(request.getProductoId())
-                .orElseThrow(() -> new IllegalArgumentException("El producto no existe"));
+        Producto producto = productoStockLockService.bloquear(request.getProductoId());
 
         int cantidad = request.getCantidad();
         int stockAnterior = producto.getStockActual();
@@ -41,8 +39,6 @@ public class MovimientoService {
             }
             producto.setStockActual(producto.getStockActual() - cantidad);
         }
-        productoRepository.save(producto);
-
         Movimiento movimiento = new Movimiento();
         movimiento.setProducto(producto);
         movimiento.setTipo(request.getTipo());

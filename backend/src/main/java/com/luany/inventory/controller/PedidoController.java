@@ -35,8 +35,11 @@ public class PedidoController {
     @GetMapping
     public List<PedidoResumenResponse> listar(
             @RequestParam(required = false) String buscar,
-            @RequestParam(required = false) String estado) {
-        return pedidoService.listar(buscar, estado);
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) Long pedidoId) {
+        return pedidoId == null
+                ? pedidoService.listar(buscar, estado)
+                : pedidoService.listar(buscar, estado, pedidoId);
     }
 
     @GetMapping("/{id}")

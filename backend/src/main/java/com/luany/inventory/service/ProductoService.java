@@ -17,6 +17,7 @@ public class ProductoService {
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
     private final ProveedorRepository proveedorRepository;
+    private final ProductoStockLockService productoStockLockService;
 
     public List<Producto> listar() {
         return productoRepository.findAll();
@@ -38,14 +39,19 @@ public class ProductoService {
     @Transactional
     public Producto crear(ProductoRequest request) {
         Producto producto = new Producto();
-        aplicarDatos(producto, request);
+        aplicarDatos(producto, request.getNombre(), request.getCategoriaId(), request.getProveedorId(),
+                request.getStockMinimo(), request.getStockMaximo(), request.getPrecio(),
+                request.getCodigo(), request.getDescripcion());
+        producto.setStockActual(request.getStockActual());
         return productoRepository.save(producto);
     }
 
     @Transactional
-    public Producto actualizar(Long id, ProductoRequest request) {
-        Producto producto = obtener(id);
-        aplicarDatos(producto, request);
+    public Producto actualizar(Long id, ProductoActualizacionRequest request) {
+        Producto producto = productoStockLockService.bloquear(id);
+        aplicarDatos(producto, request.getNombre(), request.getCategoriaId(), request.getProveedorId(),
+                request.getStockMinimo(), request.getStockMaximo(), request.getPrecio(),
+                request.getCodigo(), request.getDescripcion());
         return productoRepository.save(producto);
     }
 
@@ -81,40 +87,48 @@ public class ProductoService {
                 .toList();
     }
 
-    private void aplicarDatos(Producto producto, ProductoRequest r) {
-        if (r.getStockMaximo() < r.getStockMinimo()) {
+    private void aplicarDatos(
+            Producto producto,
+            String nombre,
+            Long categoriaId,
+            Long proveedorId,
+            Integer stockMinimo,
+            Integer stockMaximo,
+            Double precio,
+            String codigo,
+            String descripcion) {
+        if (stockMaximo < stockMinimo) {
             throw new IllegalArgumentException("El stock máximo no puede ser menor que el mínimo");
         }
-        Categoria categoria = categoriaRepository.findById(r.getCategoriaId())
+        Categoria categoria = categoriaRepository.findById(categoriaId)
                 .orElseThrow(() -> new IllegalArgumentException("La categoría no existe"));
-        Proveedor proveedor = proveedorRepository.findById(r.getProveedorId())
+        Proveedor proveedor = proveedorRepository.findById(proveedorId)
                 .orElseThrow(() -> new IllegalArgumentException("El proveedor no existe"));
 
-        producto.setNombre(r.getNombre().trim());
+        producto.setNombre(nombre.trim());
         producto.setCategoria(categoria);
         producto.setProveedor(proveedor);
-        producto.setStockActual(r.getStockActual());
-        producto.setStockMinimo(r.getStockMinimo());
-        producto.setStockMaximo(r.getStockMaximo());
-        producto.setPrecio(r.getPrecio());
+        producto.setStockMinimo(stockMinimo);
+        producto.setStockMaximo(stockMaximo);
+        producto.setPrecio(precio);
         // codigo y descripcion son opcionales: si el formulario no los envia,
         // se conservan los valores que ya tenia el producto.
-        if (r.getCodigo() != null) {
-            String codigo = r.getCodigo().trim();
-            if (codigo.isEmpty()) {
+        if (codigo != null) {
+            String codigoLimpio = codigo.trim();
+            if (codigoLimpio.isEmpty()) {
                 producto.setCodigo(null);
             } else {
-                productoRepository.findByCodigo(codigo)
+                productoRepository.findByCodigo(codigoLimpio)
                         .filter(otro -> !otro.getId().equals(producto.getId()))
                         .ifPresent(otro -> {
                             throw new IllegalArgumentException("Ya existe un producto con ese código");
                         });
-                producto.setCodigo(codigo);
+                producto.setCodigo(codigoLimpio);
             }
         }
-        if (r.getDescripcion() != null) {
-            String descripcion = r.getDescripcion().trim();
-            producto.setDescripcion(descripcion.isEmpty() ? null : descripcion);
+        if (descripcion != null) {
+            String descripcionLimpia = descripcion.trim();
+            producto.setDescripcion(descripcionLimpia.isEmpty() ? null : descripcionLimpia);
         }
     }
 }

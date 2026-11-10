@@ -43,6 +43,8 @@ class PedidoServiceTests {
     @Mock
     private ProductoRepository productoRepository;
     @Mock
+    private ProductoStockLockService productoStockLockService;
+    @Mock
     private UsuarioRepository usuarioRepository;
     @Mock
     private MovimientoService movimientoService;
@@ -186,7 +188,9 @@ class PedidoServiceTests {
             recepcion.setId(23L);
             return recepcion;
         });
-        when(productoRepository.findById(7L)).thenReturn(Optional.of(producto));
+        when(productoStockLockService.bloquear(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(producto));
+        when(productoStockLockService.bloquear(7L)).thenReturn(producto);
         when(movimientoRepository.save(any(Movimiento.class))).thenAnswer(invocation -> {
             Movimiento movimiento = invocation.getArgument(0);
             movimiento.setId(33L);
@@ -200,13 +204,13 @@ class PedidoServiceTests {
                 detalleRecepcionPedidoRepository,
                 proveedorRepository,
                 productoRepository,
+                productoStockLockService,
                 usuarioRepository,
-                new MovimientoService(movimientoRepository, productoRepository, usuarioRepository));
+                new MovimientoService(movimientoRepository, productoStockLockService, usuarioRepository));
 
         service.recibir(11L, recepcionRequest(2), "almacen@luany.com");
 
         assertEquals(6, producto.getStockActual());
-        verify(productoRepository).save(producto);
         ArgumentCaptor<Movimiento> movimiento = ArgumentCaptor.forClass(Movimiento.class);
         verify(movimientoRepository).save(movimiento.capture());
         assertEquals(TipoMovimiento.ENTRADA, movimiento.getValue().getTipo());
@@ -275,6 +279,28 @@ class PedidoServiceTests {
     }
 
     @Test
+    void filtraPedidoPorIdentificadorExactoYNoPorCoincidenciaParcial() {
+        Pedido pedido12 = pedido(12L);
+        Pedido pedido112 = pedido(112L);
+        when(pedidoRepository.listarConProveedorYUsuario(any(Sort.class)))
+                .thenReturn(List.of(pedido12, pedido112));
+        when(detallePedidoRepository.findByPedidoIdOrderById(12L)).thenReturn(List.of());
+
+        List<PedidoResumenResponse> resultado = pedidoService.listar(null, null, 12L);
+
+        assertEquals(List.of(12L), resultado.stream().map(PedidoResumenResponse::id).toList());
+    }
+
+    private Pedido pedido(Long id) {
+        Pedido pedido = new Pedido();
+        pedido.setId(id);
+        pedido.setProveedor(proveedor);
+        pedido.setUsuario(usuario);
+        pedido.setEstado("PENDIENTE");
+        return pedido;
+    }
+
+    @Test
     void tableroResumeCantidadesRealesYAplicaFiltrosSinCambiarEstado() {
         detalle.getPedido().setFechaPedido(LocalDateTime.of(2026, 11, 5, 10, 0));
         when(pedidoRepository.listarConProveedorYUsuario(any(Sort.class)))
@@ -310,6 +336,12 @@ class PedidoServiceTests {
     private void pedidoConDetalle(String estado) {
         detalle.getPedido().setEstado(estado);
         when(pedidoRepository.buscarPorIdBloqueando(11L)).thenReturn(Optional.of(detalle.getPedido()));
+        org.mockito.Mockito.lenient()
+                .when(productoStockLockService.bloquear(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(producto));
+        org.mockito.Mockito.lenient()
+                .when(productoStockLockService.bloquear(7L))
+                .thenReturn(producto);
     }
 
     private CrearPedidoRequest crearRequest(int cantidad) {

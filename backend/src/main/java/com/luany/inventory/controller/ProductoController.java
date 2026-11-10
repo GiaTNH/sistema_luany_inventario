@@ -1,6 +1,7 @@
 package com.luany.inventory.controller;
 
 import com.luany.inventory.model.Producto;
+import com.luany.inventory.model.ProductoActualizacionRequest;
 import com.luany.inventory.model.ProductoRequest;
 import com.luany.inventory.service.ProductoService;
 import jakarta.validation.Valid;
@@ -43,7 +44,8 @@ public class ProductoController {
     }
 
     @PutMapping("/{id}")
-    public Producto actualizar(@PathVariable Long id, @Valid @RequestBody ProductoRequest request) {
+    public Producto actualizar(
+            @PathVariable Long id, @Valid @RequestBody ProductoActualizacionRequest request) {
         return productoService.actualizar(id, request);
     }
 

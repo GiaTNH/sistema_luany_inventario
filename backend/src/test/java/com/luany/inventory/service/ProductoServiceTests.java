@@ -3,6 +3,9 @@ package com.luany.inventory.service;
 import com.luany.inventory.model.AlertaStock;
 import com.luany.inventory.model.Categoria;
 import com.luany.inventory.model.Producto;
+import com.luany.inventory.model.ProductoActualizacionRequest;
+import com.luany.inventory.model.ProductoRequest;
+import com.luany.inventory.model.Proveedor;
 import com.luany.inventory.repository.CategoriaRepository;
 import com.luany.inventory.repository.ProductoRepository;
 import com.luany.inventory.repository.ProveedorRepository;
@@ -13,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -29,6 +33,8 @@ class ProductoServiceTests {
 
     @Mock
     private ProveedorRepository proveedorRepository;
+    @Mock
+    private ProductoStockLockService productoStockLockService;
 
     @InjectMocks
     private ProductoService productoService;
@@ -45,6 +51,56 @@ class ProductoServiceTests {
         assertEquals(new AlertaStock(1L, "Blusa", "Ropa", 0, 3, "AGOTADO", 10), alertas.get(0));
         assertEquals(new AlertaStock(2L, "Pantalón", "Ropa", 2, 2, "BAJO", 8), alertas.get(1));
         verify(productoRepository).findStockBajo();
+    }
+
+    @Test
+    void crearProductoConservaElStockInicialSolicitado() {
+        Categoria categoria = new Categoria(2L, "Ropa");
+        Proveedor proveedor = new Proveedor();
+        proveedor.setId(3L);
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+        when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
+        when(productoRepository.save(org.mockito.ArgumentMatchers.any(Producto.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProductoRequest request = new ProductoRequest();
+        request.setNombre("Vestido");
+        request.setCategoriaId(2L);
+        request.setProveedorId(3L);
+        request.setStockActual(6);
+        request.setStockMinimo(1);
+        request.setStockMaximo(20);
+        request.setPrecio(12.5);
+
+        Producto creado = productoService.crear(request);
+
+        assertEquals(6, creado.getStockActual());
+    }
+
+    @Test
+    void actualizarProductoNoPermiteCambiarStockActual() {
+        Producto existente = producto(10L, "Vestido", "Ropa", 8, 1, 20);
+        Categoria categoria = new Categoria(2L, "Ropa");
+        Proveedor proveedor = new Proveedor();
+        proveedor.setId(3L);
+        when(productoStockLockService.bloquear(10L)).thenReturn(existente);
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+        when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
+        when(productoRepository.save(existente)).thenReturn(existente);
+
+        ProductoActualizacionRequest request = new ProductoActualizacionRequest();
+        request.setNombre("Vestido actualizado");
+        request.setCategoriaId(2L);
+        request.setProveedorId(3L);
+        request.setStockMinimo(1);
+        request.setStockMaximo(20);
+        request.setPrecio(12.5);
+
+        Producto actualizado = productoService.actualizar(10L, request);
+
+        assertEquals(8, actualizado.getStockActual());
+        assertEquals("Vestido actualizado", actualizado.getNombre());
+        verify(productoStockLockService).bloquear(10L);
     }
 
     private Producto producto(

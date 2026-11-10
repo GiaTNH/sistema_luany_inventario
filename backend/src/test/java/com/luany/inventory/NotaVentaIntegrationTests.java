@@ -4,6 +4,7 @@ import com.luany.inventory.model.*;
 import com.luany.inventory.repository.*;
 import com.luany.inventory.service.MovimientoService;
 import com.luany.inventory.service.NotaVentaService;
+import com.luany.inventory.service.PedidoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,8 @@ class NotaVentaIntegrationTests {
     @Autowired
     private NotaVentaService notaVentaService;
     @Autowired
+    private PedidoService pedidoService;
+    @Autowired
     private ClienteRepository clienteRepository;
     @Autowired
     private ProductoRepository productoRepository;
@@ -47,6 +50,12 @@ class NotaVentaIntegrationTests {
     private ProveedorRepository proveedorRepository;
     @Autowired
     private UsuarioRepository usuarioRepository;
+    @Autowired
+    private PedidoRepository pedidoRepository;
+    @Autowired
+    private DetallePedidoRepository detallePedidoRepository;
+    @Autowired
+    private RecepcionPedidoRepository recepcionPedidoRepository;
     @Autowired
     private NotaVentaRepository notaVentaRepository;
     @Autowired
@@ -64,6 +73,10 @@ class NotaVentaIntegrationTests {
 
     @BeforeEach
     void limpiarYPreparar() {
+        jdbcTemplate.update("DELETE FROM detalle_recepcion_pedido");
+        jdbcTemplate.update("DELETE FROM recepciones_pedido");
+        jdbcTemplate.update("DELETE FROM detalle_pedido");
+        jdbcTemplate.update("DELETE FROM pedidos");
         jdbcTemplate.update("DELETE FROM detalle_venta");
         jdbcTemplate.update("DELETE FROM notas_venta");
         jdbcTemplate.update("DELETE FROM movimientos");
@@ -110,6 +123,82 @@ class NotaVentaIntegrationTests {
     }
 
     @Test
+    void ventaYMovimientoManualConcurrentesNoPuedenDescontarElMismoStock() throws Exception {
+        CountDownLatch inicio = new CountDownLatch(1);
+        CountDownLatch listos = new CountDownLatch(2);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var venta = executor.submit(() -> venderConcurrentemente(inicio, listos));
+            var movimiento = executor.submit(() -> salidaManualConcurrente(inicio, listos));
+            assertTrue(listos.await(5, TimeUnit.SECONDS));
+            inicio.countDown();
+
+            int exitosas = (venta.get(15, TimeUnit.SECONDS) ? 1 : 0)
+                    + (movimiento.get(15, TimeUnit.SECONDS) ? 1 : 0);
+
+            assertEquals(1, exitosas);
+            assertEquals(0, productoRepository.findById(producto.getId()).orElseThrow().getStockActual());
+            assertEquals(1, movimientoRepository.count());
+            assertEquals(venta.get() ? 1 : 0, notaVentaRepository.count());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void recepcionesConcurrentesDePedidosDistintosCompartenBloqueoDeProducto() throws Exception {
+        Pedido primerPedido = crearPedidoConDetalle("PENDIENTE");
+        Pedido segundoPedido = crearPedidoConDetalle("PENDIENTE");
+        DetallePedido primerDetalle = detallePedidoRepository.findByPedidoIdOrderById(primerPedido.getId()).get(0);
+        DetallePedido segundoDetalle = detallePedidoRepository.findByPedidoIdOrderById(segundoPedido.getId()).get(0);
+        CountDownLatch inicio = new CountDownLatch(1);
+        CountDownLatch listos = new CountDownLatch(2);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var primera = executor.submit(() ->
+                    recibirConcurrentemente(primerPedido.getId(), primerDetalle.getId(), inicio, listos));
+            var segunda = executor.submit(() ->
+                    recibirConcurrentemente(segundoPedido.getId(), segundoDetalle.getId(), inicio, listos));
+            assertTrue(listos.await(5, TimeUnit.SECONDS));
+            inicio.countDown();
+
+            assertEquals("RECIBIDO", primera.get(15, TimeUnit.SECONDS));
+            assertEquals("RECIBIDO", segunda.get(15, TimeUnit.SECONDS));
+            assertEquals(3, productoRepository.findById(producto.getId()).orElseThrow().getStockActual());
+            assertEquals(2, recepcionPedidoRepository.count());
+            assertEquals(2, movimientoRepository.count());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void recepcionReviertePedidoStockYRegistrosSiFallaElMovimiento() {
+        Pedido pedido = crearPedidoConDetalle("PENDIENTE");
+        DetallePedido detalle = detallePedidoRepository.findByPedidoIdOrderById(pedido.getId()).get(0);
+        doThrow(new IllegalStateException("Fallo de movimiento"))
+                .when(movimientoService)
+                .registrar(any(MovimientoRequest.class), eq(usuario.getEmail()));
+        RegistrarRecepcionItemRequest linea = new RegistrarRecepcionItemRequest();
+        linea.setDetallePedidoId(detalle.getId());
+        linea.setCantidad(1);
+        RegistrarRecepcionRequest request = new RegistrarRecepcionRequest();
+        request.setClaveIdempotencia(java.util.UUID.randomUUID().toString());
+        request.setProductos(List.of(linea));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> pedidoService.recibir(pedido.getId(), request, usuario.getEmail()));
+
+        assertEquals(1, productoRepository.findById(producto.getId()).orElseThrow().getStockActual());
+        assertEquals("PENDIENTE", pedidoRepository.findById(pedido.getId()).orElseThrow().getEstado());
+        assertEquals(0, recepcionPedidoRepository.count());
+        assertEquals(0, movimientoRepository.count());
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM detalle_recepcion_pedido", Integer.class));
+    }
+
+    @Test
     void transaccionRevierteNotaDetalleStockYMovimientoSiFallaUnMovimiento() {
         doThrow(new IllegalStateException("Fallo de movimiento"))
                 .when(movimientoService)
@@ -123,6 +212,51 @@ class NotaVentaIntegrationTests {
         assertEquals(0, detalleVentaRepository.count());
         assertEquals(0, movimientoRepository.count());
         assertEquals(1, productoRepository.findById(producto.getId()).orElseThrow().getStockActual());
+    }
+
+    private boolean salidaManualConcurrente(CountDownLatch inicio, CountDownLatch listos) throws Exception {
+        listos.countDown();
+        inicio.await();
+        MovimientoRequest request = new MovimientoRequest();
+        request.setProductoId(producto.getId());
+        request.setTipo(TipoMovimiento.SALIDA);
+        request.setCantidad(1);
+        request.setObservacion("Salida manual de prueba");
+        try {
+            movimientoService.registrar(request, usuario.getEmail());
+            return true;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    private String recibirConcurrentemente(
+            Long pedidoId, Long detallePedidoId, CountDownLatch inicio, CountDownLatch listos) throws Exception {
+        listos.countDown();
+        inicio.await();
+        RegistrarRecepcionItemRequest linea = new RegistrarRecepcionItemRequest();
+        linea.setDetallePedidoId(detallePedidoId);
+        linea.setCantidad(1);
+        RegistrarRecepcionRequest request = new RegistrarRecepcionRequest();
+        request.setClaveIdempotencia(java.util.UUID.randomUUID().toString());
+        request.setProductos(List.of(linea));
+        return pedidoService.recibir(pedidoId, request, usuario.getEmail()).estado();
+    }
+
+    private Pedido crearPedidoConDetalle(String estado) {
+        Pedido pedido = new Pedido();
+        pedido.setProveedor(producto.getProveedor());
+        pedido.setUsuario(usuario);
+        pedido.setEstado(estado);
+        pedido = pedidoRepository.saveAndFlush(pedido);
+
+        DetallePedido detalle = new DetallePedido();
+        detalle.setPedido(pedido);
+        detalle.setProducto(producto);
+        detalle.setCantidad(1);
+        detalle.setPrecio(java.math.BigDecimal.valueOf(10));
+        detallePedidoRepository.saveAndFlush(detalle);
+        return pedido;
     }
 
     @Test

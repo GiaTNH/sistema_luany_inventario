@@ -30,19 +30,29 @@ public class PedidoService {
     private final DetalleRecepcionPedidoRepository detalleRecepcionPedidoRepository;
     private final ProveedorRepository proveedorRepository;
     private final ProductoRepository productoRepository;
+    private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
     private final MovimientoService movimientoService;
 
     @Transactional(readOnly = true)
     public List<PedidoResumenResponse> listar(String busqueda, String estado) {
+        return listar(busqueda, estado, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoResumenResponse> listar(String busqueda, String estado, Long pedidoId) {
         String termino = busqueda == null ? "" : busqueda.trim().toLowerCase(Locale.ROOT);
         String filtroEstado = estado == null || estado.isBlank()
                 ? null : estado.trim().toUpperCase(Locale.ROOT);
         if (filtroEstado != null && !Set.of("PENDIENTE", "PARCIAL", "RECIBIDO").contains(filtroEstado)) {
             throw new IllegalArgumentException("El estado debe ser PENDIENTE, PARCIAL o RECIBIDO");
         }
+        if (pedidoId != null && pedidoId < 1) {
+            throw new IllegalArgumentException("El identificador del pedido debe ser válido");
+        }
 
         return pedidoRepository.listarConProveedorYUsuario(ORDEN_PEDIDOS).stream()
+                .filter(pedido -> pedidoId == null || pedidoId.equals(pedido.getId()))
                 .filter(pedido -> filtroEstado == null || filtroEstado.equals(pedido.getEstado()))
                 .filter(pedido -> termino.isEmpty()
                         || String.valueOf(pedido.getId()).contains(termino)
@@ -170,6 +180,16 @@ public class PedidoService {
             totalPedido += detalle.getCantidad();
             totalRecibidoTrasOperacion += recibido;
         }
+
+        productoStockLockService.bloquear(request.getProductos().stream()
+                .map(item -> {
+                    DetallePedido detalle = detallePorId.get(item.getDetallePedidoId());
+                    if (detalle == null) {
+                        throw new IllegalArgumentException("Uno de los productos no pertenece a este pedido");
+                    }
+                    return detalle.getProducto().getId();
+                })
+                .toList());
 
         for (RegistrarRecepcionItemRequest item : request.getProductos()) {
             DetallePedido detalle = detallePorId.get(item.getDetallePedidoId());

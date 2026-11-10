@@ -314,6 +314,8 @@ function abrirModalProducto(id = null) {
   document.getElementById('prod-codigo').value       = '';
   document.getElementById('prod-proveedor').value    = '';
   document.getElementById('prod-stock-actual').value = '';
+  document.getElementById('prod-stock-actual').disabled = false;
+  document.getElementById('prod-stock-actual-label').textContent = 'Stock inicial *';
   document.getElementById('prod-precio').value       = '';
   document.getElementById('prod-stock-min').value    = '';
   document.getElementById('prod-stock-max').value    = '';
@@ -330,6 +332,8 @@ function abrirModalProducto(id = null) {
       document.getElementById('prod-codigo').value       = p.codigo || '';
       document.getElementById('prod-proveedor').value    = p.proveedor?.id || '';
       document.getElementById('prod-stock-actual').value = p.stockActual;
+      document.getElementById('prod-stock-actual').disabled = true;
+      document.getElementById('prod-stock-actual-label').textContent = 'Stock actual (solo lectura)';
       document.getElementById('prod-precio').value       = p.precio;
       document.getElementById('prod-stock-min').value    = p.stockMinimo;
       document.getElementById('prod-stock-max').value    = p.stockMaximo;
@@ -359,13 +363,13 @@ async function guardarProducto() {
   if (!nombre)                          { mostrarErrForm('err-prod-nombre', true);       valido = false; }
   if (!categoriaId)                     { mostrarErrForm('err-prod-categoria', true);    valido = false; }
   if (!proveedorId)                     { mostrarErrForm('err-prod-proveedor', true);    valido = false; }
-  if (isNaN(stockActual) || stockActual < 0) { mostrarErrForm('err-prod-stock-actual', true); valido = false; }
+  if (!id && (isNaN(stockActual) || stockActual < 0)) { mostrarErrForm('err-prod-stock-actual', true); valido = false; }
   if (isNaN(precio) || precio < 0)      { mostrarErrForm('err-prod-precio', true);       valido = false; }
   if (isNaN(stockMinimo) || stockMinimo < 0) { mostrarErrForm('err-prod-stock-min', true); valido = false; }
   if (isNaN(stockMaximo) || stockMaximo < stockMinimo) { mostrarErrForm('err-prod-stock-max', true); valido = false; }
   if (!valido) return;
 
-  const cuerpo = { nombre, categoriaId, proveedorId, codigo, stockActual, stockMinimo, stockMaximo, precio };
+  const cuerpo = { nombre, categoriaId, proveedorId, codigo, stockMinimo, stockMaximo, precio };
   const btn = document.getElementById('btn-guardar-producto');
   btn.disabled = true;
 
@@ -374,7 +378,7 @@ async function guardarProducto() {
       await apiPut(`/api/productos/${id}`, cuerpo);
       mostrarToast('Producto actualizado correctamente.', 'exito');
     } else {
-      await apiPost('/api/productos', cuerpo);
+      await apiPost('/api/productos', { ...cuerpo, stockActual });
       mostrarToast('Producto creado correctamente.', 'exito');
     }
     cerrarModal('modal-producto');
