@@ -19,6 +19,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -101,6 +104,33 @@ class ProductoServiceTests {
         assertEquals(8, actualizado.getStockActual());
         assertEquals("Vestido actualizado", actualizado.getNombre());
         verify(productoStockLockService).bloquear(10L);
+    }
+
+    @Test
+    void crearProductoRechazaCodigoDuplicadoAntesDeGuardar() {
+        Categoria categoria = new Categoria(2L, "Ropa");
+        Proveedor proveedor = new Proveedor();
+        proveedor.setId(3L);
+        Producto existente = producto(10L, "Otro producto", "Ropa", 0, 0, 20);
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+        when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
+        when(productoRepository.findByCodigo("LUANY-01")).thenReturn(Optional.of(existente));
+
+        ProductoRequest request = new ProductoRequest();
+        request.setNombre("Vestido");
+        request.setCategoriaId(2L);
+        request.setProveedorId(3L);
+        request.setStockActual(0);
+        request.setStockMinimo(0);
+        request.setStockMaximo(20);
+        request.setPrecio(12.5);
+        request.setCodigo(" LUANY-01 ");
+
+        IllegalArgumentException error =
+                assertThrows(IllegalArgumentException.class, () -> productoService.crear(request));
+
+        assertEquals("Ya existe un producto con ese código", error.getMessage());
+        verify(productoRepository, never()).save(any(Producto.class));
     }
 
     private Producto producto(

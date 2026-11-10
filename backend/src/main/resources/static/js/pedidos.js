@@ -124,15 +124,11 @@ async function cargarPedidos() {
 }
 
 function mostrarModal(modal) {
-  modal.hidden = false;
-  modal.setAttribute('aria-hidden', 'false');
-  requestAnimationFrame(() => modal.classList.add('visible'));
+  abrirModalAccesible(modal);
 }
 
 function ocultarModal(modal) {
-  modal.classList.remove('visible');
-  modal.hidden = true;
-  modal.setAttribute('aria-hidden', 'true');
+  cerrarModalAccesible(modal);
 }
 
 function cerrarModales() {
@@ -169,7 +165,7 @@ function abrirNuevoPedido() {
   document.getElementById('pedido-error').hidden = true;
   cuerpoLineasPedido.replaceChildren();
   const proveedorActivo = proveedores.filter((proveedor) =>
-    String(proveedor.estado || '').toUpperCase() !== 'INACTIVO');
+    String(proveedor.estado || '').trim().toUpperCase() === 'ACTIVO');
   selectProveedor.innerHTML = '<option value="">Selecciona proveedor</option>' +
     proveedorActivo.map((proveedor) =>
       `<option value="${escapar(proveedor.id)}">${escapar(proveedor.nombre)}</option>`).join('');

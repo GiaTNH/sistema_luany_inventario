@@ -91,15 +91,11 @@ async function cargarNotasVenta() {
 }
 
 function mostrarModal(modal) {
-  modal.hidden = false;
-  modal.setAttribute('aria-hidden', 'false');
-  requestAnimationFrame(() => modal.classList.add('visible'));
+  abrirModalAccesible(modal);
 }
 
 function ocultarModal(modal) {
-  modal.classList.remove('visible');
-  modal.hidden = true;
-  modal.setAttribute('aria-hidden', 'true');
+  cerrarModalAccesible(modal);
 }
 
 function cerrarModalesVenta() {

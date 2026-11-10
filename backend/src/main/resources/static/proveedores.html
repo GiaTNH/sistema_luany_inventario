@@ -102,12 +102,12 @@
           <input type="hidden" id="prov-id" />
           <div class="form-grupo"><label for="prov-nombre">Nombre *</label><input type="text" id="prov-nombre" class="form-control" maxlength="120" /><span class="form-error" id="err-prov-nombre">El nombre es obligatorio.</span></div>
           <div class="form-fila">
-            <div class="form-grupo"><label for="prov-ruc">RUC</label><input type="text" id="prov-ruc" class="form-control" maxlength="20" /></div>
+            <div class="form-grupo"><label for="prov-ruc">RUC</label><input type="text" id="prov-ruc" class="form-control" maxlength="11" pattern="[0-9]{11}" inputmode="numeric" title="El RUC debe contener exactamente 11 dígitos" /></div>
             <div class="form-grupo"><label for="prov-telefono">Teléfono</label><input type="tel" id="prov-telefono" class="form-control" maxlength="20" /></div>
           </div>
-          <div class="form-grupo"><label for="prov-correo">Correo</label><input type="text" id="prov-correo" class="form-control" maxlength="120" /></div>
+          <div class="form-grupo"><label for="prov-correo">Correo</label><input type="email" id="prov-correo" class="form-control" maxlength="120" autocomplete="email" /></div>
           <div class="form-grupo"><label for="prov-direccion">Dirección</label><input type="text" id="prov-direccion" class="form-control" maxlength="200" /></div>
-          <div class="form-grupo"><label for="prov-estado">Estado</label><input type="text" id="prov-estado" class="form-control" maxlength="20" placeholder="ACTIVO" /></div>
+          <div class="form-grupo"><label for="prov-estado">Estado</label><select id="prov-estado" class="form-control"><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></select></div>
         </form>
       </div>
       <div class="modal-footer">

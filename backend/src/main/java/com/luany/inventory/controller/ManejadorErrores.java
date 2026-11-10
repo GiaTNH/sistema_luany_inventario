@@ -2,6 +2,7 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.service.CorreoEnvioException;
 import com.luany.inventory.service.CorreoRecuperacionException;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +34,26 @@ public class ManejadorErrores {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> registroEnUso(DataIntegrityViolationException e) {
+        String restriccion = nombreRestriccion(e);
+        if ("uk_productos_codigo".equalsIgnoreCase(restriccion)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Ya existe un producto con ese código"));
+        }
+        if ("uk_proveedores_ruc".equalsIgnoreCase(restriccion)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Ya existe un proveedor con ese RUC"));
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "No se pudo completar: el registro ya existe o está en uso por otros datos"));
+    }
+
+    private String nombreRestriccion(Throwable error) {
+        for (Throwable causa = error; causa != null; causa = causa.getCause()) {
+            if (causa instanceof ConstraintViolationException violacion) {
+                return violacion.getConstraintName();
+            }
+        }
+        return null;
     }
 
     @ExceptionHandler(IllegalStateException.class)

@@ -1,5 +1,8 @@
--- Migración manual para habilitar la gestión de usuarios.
--- Ejecutar una sola vez en la base LUANY antes de desplegar esta versión.
+-- Migración manual exclusiva para bases LUANY antiguas que todavía no tienen
+-- usuarios.nombre_usuario ni uk_usuarios_nombre_usuario.
+-- NO ejecutar como script de instalación sobre database/schema_aiven.sql ni
+-- sobre una base que ya incluya esas definiciones.
+-- Para una base antigua, ejecutar una sola vez antes de desplegar esta versión.
 ALTER TABLE usuarios
   ADD COLUMN nombre_usuario VARCHAR(100) NULL AFTER email;
 

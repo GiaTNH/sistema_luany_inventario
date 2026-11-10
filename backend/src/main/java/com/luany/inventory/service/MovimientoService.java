@@ -30,7 +30,11 @@ public class MovimientoService {
         int stockAnterior = producto.getStockActual();
 
         if (request.getTipo() == TipoMovimiento.ENTRADA) {
-            producto.setStockActual(producto.getStockActual() + cantidad);
+            if (stockAnterior < 0 || cantidad > Integer.MAX_VALUE - stockAnterior) {
+                throw new IllegalArgumentException(
+                        "La entrada supera el máximo permitido para el stock");
+            }
+            producto.setStockActual(stockAnterior + cantidad);
         } else {
             if (producto.getStockActual() < cantidad) {
                 throw new IllegalArgumentException(

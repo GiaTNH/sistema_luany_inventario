@@ -35,17 +35,17 @@ function cambiarTab(nombre, cargarDatos = true) {
 // ---------- MODALES ----------
 
 function abrirModal(id) {
-  document.getElementById(id).classList.add('visible');
+  abrirModalAccesible(document.getElementById(id));
 }
 
 function cerrarModal(id) {
-  document.getElementById(id).classList.remove('visible');
+  cerrarModalAccesible(document.getElementById(id));
 }
 
 // Cierra modal al hacer clic en el overlay
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.classList.remove('visible');
+    if (e.target === overlay) cerrarModal(overlay.id);
   });
 });
 
@@ -55,6 +55,23 @@ document.addEventListener('click', evento => {
 
 document.addEventListener('keydown', evento => {
   if (evento.key === 'Escape') cerrarMenuEntradaSalida();
+});
+
+document.addEventListener('click', evento => {
+  const botonProducto = evento.target.closest('[data-product-action]');
+  if (botonProducto) {
+    const { productAction, productId, productName, movementType } = botonProducto.dataset;
+    if (productAction === 'history') verHistorial(Number(productId), productName);
+    if (productAction === 'movement') abrirModalMovimiento(Number(productId), productName, movementType);
+    if (productAction === 'delete') confirmarEliminarProducto(Number(productId), productName);
+    return;
+  }
+
+  const botonCategoria = evento.target.closest('[data-category-action]');
+  if (!botonCategoria) return;
+  const { categoryAction, categoryId, categoryName } = botonCategoria.dataset;
+  if (categoryAction === 'edit') abrirModalCategoria(Number(categoryId), categoryName);
+  if (categoryAction === 'delete') confirmarEliminarCat(Number(categoryId), categoryName);
 });
 
 // ---------- UTILIDADES FORMULARIO ----------
@@ -137,7 +154,7 @@ function renderTablaProductos(lista) {
       <td>S/ ${Number(p.precio).toFixed(2)}</td>
       <td><span class="producto-status producto-status-${estado.toLowerCase()}"><i></i>${estado}</span></td>
       <td><div class="productos-row-actions">
-        <button type="button" class="productos-action-button productos-row-history" title="Ver movimientos" aria-label="Ver movimientos de ${nombre}" onclick="verHistorial(${p.id},'${nombre}')">
+        <button type="button" class="productos-action-button productos-row-history" title="Ver movimientos" aria-label="Ver movimientos de ${nombre}" data-product-action="history" data-product-id="${p.id}" data-product-name="${nombre}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>
         </button>
         <button type="button" class="productos-action-button productos-row-edit" title="Editar" aria-label="Editar ${nombre}" onclick="abrirModalProducto(${p.id})">
@@ -148,11 +165,11 @@ function renderTablaProductos(lista) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
           </button>
           <div class="productos-entry-menu-popover" role="menu">
-            <button type="button" role="menuitem" title="Registrar entrada" aria-label="Registrar entrada para ${nombre}" onclick="abrirModalMovimiento(${p.id},'${nombre}','ENTRADA')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v4h16v-4M12 3v12m-5-5 5 5 5-5"/></svg>Registrar entrada</button>
-            <button type="button" role="menuitem" title="Registrar salida" aria-label="Registrar salida para ${nombre}" onclick="abrirModalMovimiento(${p.id},'${nombre}','SALIDA')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>Registrar salida</button>
+            <button type="button" role="menuitem" title="Registrar entrada" aria-label="Registrar entrada para ${nombre}" data-product-action="movement" data-product-id="${p.id}" data-product-name="${nombre}" data-movement-type="ENTRADA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15v4h16v-4M12 3v12m-5-5 5 5 5-5"/></svg>Registrar entrada</button>
+            <button type="button" role="menuitem" title="Registrar salida" aria-label="Registrar salida para ${nombre}" data-product-action="movement" data-product-id="${p.id}" data-product-name="${nombre}" data-movement-type="SALIDA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>Registrar salida</button>
           </div>
         </div>
-        <button type="button" class="productos-action-button productos-row-delete" title="Eliminar" aria-label="Eliminar ${nombre}" onclick="confirmarEliminarProducto(${p.id},'${nombre}')">
+        <button type="button" class="productos-action-button productos-row-delete" title="Eliminar" aria-label="Eliminar ${nombre}" data-product-action="delete" data-product-id="${p.id}" data-product-name="${nombre}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
         </button>
       </div></td>
@@ -515,10 +532,10 @@ function renderTablaCategorias() {
     <td><strong class="productos-entity-name">${escapar(c.nombre)}</strong></td>
     <td>
       <div class="productos-row-actions productos-entity-actions">
-        <button type="button" class="productos-action-button productos-row-edit" title="Editar categoría" aria-label="Editar categoría ${escapar(c.nombre)}" onclick="abrirModalCategoria(${c.id},'${escapar(c.nombre)}')">
+        <button type="button" class="productos-action-button productos-row-edit" title="Editar categoría" aria-label="Editar categoría ${escapar(c.nombre)}" data-category-action="edit" data-category-id="${c.id}" data-category-name="${escapar(c.nombre)}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"/></svg>
         </button>
-        <button type="button" class="productos-action-button productos-row-delete" title="Eliminar categoría" aria-label="Eliminar categoría ${escapar(c.nombre)}" onclick="confirmarEliminarCat(${c.id},'${escapar(c.nombre)}')">
+        <button type="button" class="productos-action-button productos-row-delete" title="Eliminar categoría" aria-label="Eliminar categoría ${escapar(c.nombre)}" data-category-action="delete" data-category-id="${c.id}" data-category-name="${escapar(c.nombre)}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
         </button>
       </div>
