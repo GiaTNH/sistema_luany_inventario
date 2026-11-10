@@ -12,6 +12,7 @@ const panelesReporte = {
 let reporteActual = 'ventas';
 let paginaMovimientos = 0;
 let totalPaginasMovimientos = 0;
+let exportandoReporte = false;
 
 function fechaLocal(fecha) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
@@ -274,6 +275,86 @@ async function cargarReporteActual() {
   }
 }
 
+function parametrosExportacion() {
+  const params = new URLSearchParams(rangoQuery());
+  if (reporteActual === 'productos') {
+    params.set('limite', document.getElementById('productos-limite').value);
+  } else if (reporteActual === 'movimientos') {
+    const productoId = document.getElementById('movimiento-producto').value;
+    const tipo = document.getElementById('movimiento-tipo').value;
+    if (productoId) params.set('productoId', productoId);
+    if (tipo) params.set('tipo', tipo);
+  } else if (reporteActual === 'inventario') {
+    const estado = document.getElementById('inventario-estado').value;
+    if (estado) params.set('estado', estado);
+  }
+  return params;
+}
+
+function nombreArchivoRespuesta(response, extension) {
+  const contentDisposition = response.headers.get('Content-Disposition') || '';
+  const codificado = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (codificado) return decodeURIComponent(codificado[1]);
+  const simple = contentDisposition.match(/filename="?([^";]+)"?/i);
+  if (simple) return simple[1];
+  const nombres = {
+    ventas: 'reporte_ventas',
+    productos: 'reporte_productos_mas_vendidos',
+    movimientos: 'reporte_movimientos',
+    inventario: 'reporte_inventario',
+    pedidos: 'reporte_pedidos_recepciones',
+  };
+  return `${nombres[reporteActual]}.${extension}`;
+}
+
+async function exportarReporte(formato) {
+  if (!desdeInput.value || !hastaInput.value || desdeInput.value > hastaInput.value) {
+    mostrarToast('Selecciona un rango de fechas válido.', 'error');
+    return;
+  }
+  const botones = [
+    document.getElementById('btn-exportar-excel'),
+    document.getElementById('btn-exportar-pdf'),
+  ];
+  if (exportandoReporte) return;
+  exportandoReporte = true;
+  botones.forEach((boton) => { boton.disabled = true; });
+  try {
+    const response = await fetch(
+      `/api/reportes/${reporteActual}/${formato}?${parametrosExportacion()}`,
+      { headers: { Accept: formato === 'excel'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'application/pdf' } },
+    );
+    if (!response.ok) {
+      let mensaje = `Error ${response.status}`;
+      try {
+        const error = await response.json();
+        mensaje = error.error || mensaje;
+      } catch (_) {
+        // El servidor puede devolver una respuesta de error sin JSON.
+      }
+      throw new Error(mensaje);
+    }
+    const archivo = await response.blob();
+    if (!archivo.size) throw new Error('El archivo generado está vacío.');
+    const url = URL.createObjectURL(archivo);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivoRespuesta(response, formato === 'excel' ? 'xlsx' : 'pdf');
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    mostrarToast('El reporte se descargó correctamente.', 'exito');
+  } catch (error) {
+    mostrarToast(`No se pudo exportar el reporte: ${error.message}`, 'error');
+  } finally {
+    exportandoReporte = false;
+    botones.forEach((boton) => { boton.disabled = false; });
+  }
+}
+
 document.querySelectorAll('.reportes-tab').forEach((boton) => {
   boton.addEventListener('click', () => {
     reporteActual = boton.dataset.reporte;
@@ -293,6 +374,16 @@ document.getElementById('btn-actualizar-reportes').addEventListener('click', () 
   paginaMovimientos = 0;
   cargarReporteActual();
 });
+desdeInput.addEventListener('change', () => {
+  paginaMovimientos = 0;
+  cargarReporteActual();
+});
+hastaInput.addEventListener('change', () => {
+  paginaMovimientos = 0;
+  cargarReporteActual();
+});
+document.getElementById('btn-exportar-excel').addEventListener('click', () => exportarReporte('excel'));
+document.getElementById('btn-exportar-pdf').addEventListener('click', () => exportarReporte('pdf'));
 document.getElementById('productos-limite').addEventListener('change', cargarReporteActual);
 document.getElementById('movimiento-producto').addEventListener('change', () => {
   paginaMovimientos = 0;

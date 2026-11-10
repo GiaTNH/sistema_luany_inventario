@@ -6061,6 +6061,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .reportes-contenido { display: grid; gap: 18px; }
 .reportes-filtros-campos { display: flex; align-items: end; gap: 14px; flex-wrap: wrap; }
 .reportes-filtros-campos .form-grupo { min-width: 180px; margin: 0; }
+.reportes-export-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.reportes-export-actions .btn:disabled { opacity: .6; cursor: wait; }
 .reportes-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 3px; }
 .reportes-tab { flex: 0 0 auto; border: 1px solid #E1E6F3; border-radius: 10px; padding: 10px 14px; background: #fff; color: #53628E; font: 600 13px 'Nunito', sans-serif; cursor: pointer; }
 .reportes-tab:hover { border-color: #9C86EA; color: #6235C5; }
@@ -6098,5 +6100,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .reportes-filtros-campos { align-items: stretch; }
   .reportes-filtros-campos .form-grupo { flex: 1 1 140px; min-width: 0; }
   .reportes-filtros-campos > .btn { width: 100%; }
+  .reportes-export-actions { width: 100%; margin-left: 0; }
+  .reportes-export-actions .btn { flex: 1 1 140px; }
   .reportes-paginacion { align-items: flex-start; flex-direction: column; }
 }
