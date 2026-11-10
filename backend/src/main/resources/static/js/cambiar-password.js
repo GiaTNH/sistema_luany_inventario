@@ -8,11 +8,6 @@
     const boton = document.getElementById('btn-cambiar-password');
     const usuario = obtenerSesion();
     const cambioObligatorio = Boolean(usuario?.debeCambiarPassword);
-    const panelExito = document.getElementById('password-success');
-    const mensajeExito = document.getElementById('password-success-message');
-    const errorCierreSesion = document.getElementById('password-logout-error');
-    const enlaceDashboard = document.getElementById('password-dashboard-link');
-    const botonCerrarSesion = document.getElementById('password-logout-button');
 
     campoPasswordActual.hidden = cambioObligatorio;
     inputActual.required = !cambioObligatorio;
@@ -45,23 +40,6 @@
     configurarOjito('password-actual', 'password-actual-toggle');
     configurarOjito('nueva-password', 'nueva-password-toggle');
     configurarOjito('confirmar-password', 'confirmar-password-toggle');
-
-    async function cerrarSesionYVolverAlLogin() {
-        errorCierreSesion.hidden = true;
-        try {
-            await apiPost('/api/auth/logout', {});
-            sessionStorage.removeItem('usuario');
-            window.location.replace(cambioObligatorio
-                ? '/index.html?passwordChanged=1'
-                : '/index.html');
-        } catch (error) {
-            errorCierreSesion.textContent =
-                error.message || 'No se pudo cerrar la sesión. Inténtalo nuevamente.';
-            errorCierreSesion.hidden = false;
-        }
-    }
-
-    botonCerrarSesion.addEventListener('click', cerrarSesionYVolverAlLogin);
 
     formulario.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -97,28 +75,15 @@
         boton.textContent = 'Guardando...';
 
         try {
-            await apiPost('/api/auth/cambiar-password', {
+            const usuarioActualizado = await apiPost('/api/auth/cambiar-password', {
                 passwordActual: cambioObligatorio ? null : passwordActual,
                 nuevaPassword,
                 confirmarPassword,
             });
-
-            if (cambioObligatorio) {
-                formulario.hidden = true;
-                panelExito.hidden = false;
-                enlaceDashboard.hidden = true;
-                botonCerrarSesion.hidden = true;
-                mensajeExito.textContent =
-                    'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con tu nueva contraseña.';
-                await cerrarSesionYVolverAlLogin();
-                if (!errorCierreSesion.hidden) {
-                    botonCerrarSesion.hidden = false;
-                    botonCerrarSesion.textContent = 'Reintentar cierre de sesión';
-                }
-            } else {
-                window.location.replace('/dashboard.html');
-            }
-
+            guardarSesion(usuarioActualizado);
+            window.location.replace(cambioObligatorio
+                ? '/dashboard.html?passwordChanged=1'
+                : '/dashboard.html');
         } catch (error) {
             mostrarError(error.message || 'No se pudo cambiar la contraseña. Inténtalo nuevamente.');
         } finally {
