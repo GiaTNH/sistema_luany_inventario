@@ -22,11 +22,25 @@ function actualizarFechaHora() {
   if (horaEl) horaEl.textContent = `${dia} · ${intlHora.format(ahora)}`;
 }
 
+function notificarCambioPassword() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.get('passwordChanged') !== '1') return;
+
+  url.searchParams.delete('passwordChanged');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  mostrarToast(
+    'Tu contraseña se actualizó correctamente. Recuerda utilizar tu nueva contraseña en tus próximos inicios de sesión.',
+    'exito',
+    7000,
+  );
+}
+
 function inicializarCabecera() {
   const usuario = obtenerSesion();
   const avatar = document.getElementById('dashboard-avatar-inicial');
   if (avatar && usuario?.nombre) avatar.textContent = usuario.nombre.trim().charAt(0).toLocaleUpperCase('es-PE');
 
+  notificarCambioPassword();
   actualizarFechaHora();
   window.setInterval(actualizarFechaHora, 60000);
 

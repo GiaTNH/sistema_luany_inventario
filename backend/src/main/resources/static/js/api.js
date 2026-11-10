@@ -15,6 +15,7 @@ function obtenerSesion() {
 
 /** Cierra la sesión del servidor y redirige al login */
 async function cerrarSesion() {
+  const usuario = obtenerSesion();
   try {
     await apiPost('/api/auth/logout', {});
   } catch (error) {
@@ -23,6 +24,9 @@ async function cerrarSesion() {
   }
 
   sessionStorage.removeItem('usuario');
+  if (usuario?.id != null) {
+    sessionStorage.removeItem(`luany-asistente-historial:${usuario.id}`);
+  }
   window.location.href = '/index.html';
 }
 
@@ -344,6 +348,14 @@ function renderizarNavegacionSidebar(rol) {
   nav.classList.remove('sidebar-nav-pending');
 }
 
+function nombreVisibleRol(rol) {
+  const etiquetas = {
+    ADMIN: 'Administrador',
+    EMPLEADO: 'Almacén',
+  };
+  return etiquetas[rol] || rol || '';
+}
+
 /** Inicializa el botón de cerrar sesión y el avatar del topbar */
 function iniciarLayout(tituloPagina) {
   const usuario = requerirSesion();
@@ -360,7 +372,7 @@ function iniciarLayout(tituloPagina) {
   const nombreEl = document.getElementById('nombre-usuario');
   if (nombreEl) nombreEl.textContent = usuario.nombre;
   const rolEl = document.getElementById('rol-usuario');
-  if (rolEl) rolEl.textContent = usuario.rol === 'ADMIN' ? 'Administrador' : 'Empleado';
+  if (rolEl) rolEl.textContent = nombreVisibleRol(usuario.rol);
   const saludoEl = document.getElementById('nombre-asistente'); if (saludoEl) saludoEl.textContent = usuario.nombre.split(/\s+/)[0];
 
   renderizarNavegacionSidebar(usuario.rol);
@@ -440,6 +452,17 @@ async function cargarPaginaProtegida(archivo, opciones = {}) {
   const usuario = await protegerPagina(opciones);
 
   if (!usuario) return;
+
+  if (!opciones.gestionarPassword) {
+    const widget = document.createElement('script');
+    widget.src = '/js/asistente-flotante.js';
+    widget.async = false;
+    widget.onerror = () => {
+      console.error('No se pudo cargar el asistente flotante desde /js/asistente-flotante.js');
+      mostrarToast('No se pudo cargar el asistente IA. Recarga la página para intentarlo nuevamente.', 'error');
+    };
+    document.body.appendChild(widget);
+  }
 
   const script = document.createElement('script');
   script.src = archivo;

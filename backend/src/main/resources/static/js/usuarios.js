@@ -82,7 +82,7 @@ if (!usuarioActual) {
       const fila = document.createElement('tr');
       fila.appendChild(celda([usuario.nombre, usuario.apellido].filter(Boolean).join(' ')));
       fila.appendChild(celda(usuario.email));
-      fila.appendChild(celda(usuario.rol === 'ADMIN' ? 'Administrador' : 'Empleado'));
+      fila.appendChild(celda(nombreVisibleRol(usuario.rol)));
       fila.appendChild(celda(etiquetaEstado(usuario)));
 
       const celdaAccion = document.createElement('td');
@@ -261,7 +261,7 @@ if (!usuarioActual) {
       errorCrear.hidden = false;
     } finally {
       botonCrear.disabled = false;
-      botonCrear.textContent = 'Crear cuenta de empleado';
+      botonCrear.textContent = 'Crear cuenta para almacén';
     }
   });
 
