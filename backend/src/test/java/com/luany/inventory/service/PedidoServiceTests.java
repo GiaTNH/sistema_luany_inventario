@@ -12,6 +12,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -270,6 +272,39 @@ class PedidoServiceTests {
     void validaEstadoAntesDeListarPedidos() {
         assertThrows(IllegalArgumentException.class, () -> pedidoService.listar(null, "CANCELADO"));
         verify(pedidoRepository, never()).listarConProveedorYUsuario(any(Sort.class));
+    }
+
+    @Test
+    void tableroResumeCantidadesRealesYAplicaFiltrosSinCambiarEstado() {
+        detalle.getPedido().setFechaPedido(LocalDateTime.of(2026, 11, 5, 10, 0));
+        when(pedidoRepository.listarConProveedorYUsuario(any(Sort.class)))
+                .thenReturn(List.of(detalle.getPedido()));
+        when(detallePedidoRepository.findByPedidoIdOrderById(11L)).thenReturn(List.of(detalle));
+        when(detallePedidoRepository.cantidadesSolicitadasPorPedido(List.of(11L)))
+                .thenReturn(java.util.Collections.singletonList(new Object[]{11L, 5L}));
+        when(detalleRecepcionPedidoRepository.cantidadesRecibidasPorPedido(List.of(11L)))
+                .thenReturn(java.util.Collections.singletonList(new Object[]{11L, 2L}));
+
+        var tablero = pedidoService.listarTablero(
+                "proveedor", "PENDIENTE", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30));
+
+        assertEquals(1, tablero.size());
+        assertEquals(5L, tablero.get(0).cantidadTotalSolicitada());
+        assertEquals(2L, tablero.get(0).cantidadRecibida());
+        assertEquals(3L, tablero.get(0).cantidadPendiente());
+        assertEquals("PENDIENTE", tablero.get(0).estado());
+        assertThrows(IllegalArgumentException.class, () -> pedidoService.listarTablero(
+                null, null, LocalDate.of(2026, 11, 30), LocalDate.of(2026, 11, 1)));
+    }
+
+    @Test
+    void tableroVacioNoEjecutaConsultasDeAgregacion() {
+        when(pedidoRepository.listarConProveedorYUsuario(any(Sort.class))).thenReturn(List.of());
+
+        assertEquals(List.of(), pedidoService.listarTablero(null, null, null, null));
+
+        verify(detallePedidoRepository, never()).cantidadesSolicitadasPorPedido(any());
+        verify(detalleRecepcionPedidoRepository, never()).cantidadesRecibidasPorPedido(any());
     }
 
     private void pedidoConDetalle(String estado) {

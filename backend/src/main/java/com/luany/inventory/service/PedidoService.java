@@ -13,7 +13,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +49,50 @@ public class PedidoService {
                         || pedido.getProveedor().getNombre().toLowerCase(Locale.ROOT).contains(termino))
                 .map(this::resumen)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoKanbanResponse> listarTablero(
+            String busqueda, String estado, LocalDate desde, LocalDate hasta) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha desde no puede ser posterior a hasta");
+        }
+
+        List<PedidoResumenResponse> resumenes = listar(busqueda, estado).stream()
+                .filter(pedido -> desde == null || !pedido.fechaPedido().toLocalDate().isBefore(desde))
+                .filter(pedido -> hasta == null || !pedido.fechaPedido().toLocalDate().isAfter(hasta))
+                .toList();
+        if (resumenes.isEmpty()) return List.of();
+
+        List<Long> ids = resumenes.stream().map(PedidoResumenResponse::id).toList();
+        Map<Long, Long> solicitadas = cantidadesPorPedido(
+                detallePedidoRepository.cantidadesSolicitadasPorPedido(ids));
+        Map<Long, Long> recibidas = cantidadesPorPedido(
+                detalleRecepcionPedidoRepository.cantidadesRecibidasPorPedido(ids));
+
+        return resumenes.stream()
+                .map(pedido -> {
+                    long cantidadSolicitada = solicitadas.getOrDefault(pedido.id(), 0L);
+                    long cantidadRecibida = recibidas.getOrDefault(pedido.id(), 0L);
+                    return new PedidoKanbanResponse(
+                            pedido.id(),
+                            pedido.fechaPedido(),
+                            pedido.fechaEstimadaEntrega(),
+                            pedido.estado(),
+                            pedido.proveedorId(),
+                            pedido.proveedorNombre(),
+                            pedido.totalProductos(),
+                            cantidadSolicitada,
+                            cantidadRecibida,
+                            Math.max(cantidadSolicitada - cantidadRecibida, 0));
+                })
+                .toList();
+    }
+
+    private Map<Long, Long> cantidadesPorPedido(List<Object[]> filas) {
+        return filas.stream().collect(Collectors.toMap(
+                fila -> ((Number) fila[0]).longValue(),
+                fila -> ((Number) fila[1]).longValue()));
     }
 
     @Transactional(readOnly = true)

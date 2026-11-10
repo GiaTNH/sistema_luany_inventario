@@ -14,4 +14,10 @@ public interface DetalleRecepcionPedidoRepository extends JpaRepository<DetalleR
     Long totalRecibido(@Param("detallePedidoId") Long detallePedidoId);
 
     List<DetalleRecepcionPedido> findByRecepcionIdOrderById(Long recepcionId);
+
+    @Query("SELECT d.detallePedido.pedido.id, COALESCE(SUM(d.cantidad), 0) "
+            + "FROM DetalleRecepcionPedido d "
+            + "WHERE d.detallePedido.pedido.id IN :pedidoIds "
+            + "GROUP BY d.detallePedido.pedido.id")
+    List<Object[]> cantidadesRecibidasPorPedido(@Param("pedidoIds") List<Long> pedidoIds);
 }
