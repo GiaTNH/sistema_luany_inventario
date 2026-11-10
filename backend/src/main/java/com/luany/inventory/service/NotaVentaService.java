@@ -12,7 +12,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,7 +28,7 @@ public class NotaVentaService {
     private final NotaVentaRepository notaVentaRepository;
     private final DetalleVentaRepository detalleVentaRepository;
     private final ClienteRepository clienteRepository;
-    private final VentaProductoLockRepository ventaProductoLockRepository;
+    private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
     private final MovimientoService movimientoService;
 
@@ -59,12 +58,12 @@ public class NotaVentaService {
 
         List<Long> idsOrdenados = request.getProductos().stream()
                 .map(CrearDetalleVentaRequest::getProductoId)
-                .sorted(Comparator.naturalOrder())
+                .distinct()
+                .sorted()
                 .toList();
         Map<Long, Producto> productosBloqueados = new HashMap<>();
-        for (Long productoId : idsOrdenados) {
-            Producto producto = ventaProductoLockRepository.buscarPorIdBloqueando(productoId)
-                    .orElseThrow(() -> new IllegalArgumentException("Uno de los productos no existe"));
+        for (Producto producto : productoStockLockService.bloquear(idsOrdenados)) {
+            Long productoId = producto.getId();
             productosBloqueados.put(productoId, producto);
         }
 

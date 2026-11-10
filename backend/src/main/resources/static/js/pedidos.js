@@ -5,6 +5,7 @@ const mensajePedidos = document.getElementById('pedidos-mensaje');
 const filtroBuscar = document.getElementById('buscar-pedido');
 const filtroEstado = document.getElementById('filtro-pedido-estado');
 filtroBuscar.value = new URLSearchParams(window.location.search).get('buscar') || '';
+const pedidoIdExacto = new URLSearchParams(window.location.search).get('pedidoId');
 const modalPedido = document.getElementById('modal-pedido');
 const modalDetallePedido = document.getElementById('modal-detalle-pedido');
 const modalRecepcion = document.getElementById('modal-recepcion');
@@ -103,6 +104,7 @@ async function cargarPedidos() {
   const numeroSolicitud = ++solicitudListado;
   mensajePedidos.textContent = 'Cargando pedidos...';
   const parametros = new URLSearchParams();
+  if (pedidoIdExacto) parametros.set('pedidoId', pedidoIdExacto);
   if (filtroBuscar.value.trim()) parametros.set('buscar', filtroBuscar.value.trim());
   if (filtroEstado.value) parametros.set('estado', filtroEstado.value);
   const query = parametros.toString();

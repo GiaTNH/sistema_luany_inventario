@@ -49,6 +49,17 @@ class PedidoControllerSecurityTests {
     }
 
     @Test
+    void filtroPedidoIdSeEnvíaComoIdentificadorExacto() throws Exception {
+        when(pedidoService.listar(null, null, 12L)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/pedidos?pedidoId=12")
+                        .with(user("almacen").roles("EMPLEADO")))
+                .andExpect(status().isOk());
+
+        verify(pedidoService).listar(null, null, 12L);
+    }
+
+    @Test
     void administradorPuedeCrearPedidoConCsrf() throws Exception {
         when(pedidoService.crear(any(), eq("admin@luany.com"))).thenReturn(respuesta());
 

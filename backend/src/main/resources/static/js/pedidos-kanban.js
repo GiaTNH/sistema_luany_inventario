@@ -80,7 +80,7 @@ function crearTarjetaPedido(pedido) {
   if (pedido.estado !== 'RECIBIDO') {
     const gestionar = document.createElement('a');
     gestionar.className = 'btn btn-primario';
-    gestionar.href = `/pedidos.html?buscar=${encodeURIComponent(pedido.id)}`;
+    gestionar.href = `/pedidos.html?pedidoId=${encodeURIComponent(pedido.id)}`;
     gestionar.textContent = 'Gestionar recepción';
     acciones.appendChild(gestionar);
   }
@@ -181,7 +181,7 @@ function renderizarDetalle(pedido) {
     });
   }
   document.getElementById('kanban-gestionar-pedido').href =
-    `/pedidos.html?buscar=${encodeURIComponent(pedido.id)}`;
+    `/pedidos.html?pedidoId=${encodeURIComponent(pedido.id)}`;
 }
 
 async function abrirDetalleKanban(pedidoId) {

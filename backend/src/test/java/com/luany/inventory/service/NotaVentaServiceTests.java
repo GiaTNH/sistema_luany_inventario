@@ -38,7 +38,7 @@ class NotaVentaServiceTests {
     @Mock
     private ClienteRepository clienteRepository;
     @Mock
-    private VentaProductoLockRepository ventaProductoLockRepository;
+    private ProductoStockLockService productoStockLockService;
     @Mock
     private UsuarioRepository usuarioRepository;
     @Mock
@@ -74,7 +74,6 @@ class NotaVentaServiceTests {
     @Test
     void creaNotaCalculaImportesDesdePrecioPersistidoYRegistraVenta() {
         prepararReferencias();
-        when(ventaProductoLockRepository.buscarPorIdBloqueando(3L)).thenReturn(Optional.of(producto));
         when(notaVentaRepository.saveAndFlush(any(NotaVenta.class))).thenAnswer(invocation -> {
             NotaVenta nota = invocation.getArgument(0);
             nota.setId(15L);
@@ -110,7 +109,6 @@ class NotaVentaServiceTests {
     void rechazaStockInsuficienteAntesDeCrearNotaOMovimiento() {
         prepararReferencias();
         producto.setStockActual(1);
-        when(ventaProductoLockRepository.buscarPorIdBloqueando(3L)).thenReturn(Optional.of(producto));
 
         assertThrows(IllegalArgumentException.class,
                 () -> notaVentaService.crear(request(2), usuario.getEmail()));
@@ -126,13 +124,12 @@ class NotaVentaServiceTests {
         assertThrows(IllegalArgumentException.class,
                 () -> notaVentaService.crear(request(1), usuario.getEmail()));
 
-        verifyNoInteractions(ventaProductoLockRepository, notaVentaRepository, movimientoService);
+        verifyNoInteractions(productoStockLockService, notaVentaRepository, movimientoService);
     }
 
     @Test
     void numeroDeNotaEnConflictoProvocaErrorSeguroYNoGeneraMovimientos() {
         prepararReferencias();
-        when(ventaProductoLockRepository.buscarPorIdBloqueando(3L)).thenReturn(Optional.of(producto));
         when(notaVentaRepository.saveAndFlush(any(NotaVenta.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
@@ -147,7 +144,6 @@ class NotaVentaServiceTests {
     @Test
     void movimientoUsaTipoVentaYCantidadValidada() {
         prepararReferencias();
-        when(ventaProductoLockRepository.buscarPorIdBloqueando(3L)).thenReturn(Optional.of(producto));
         when(notaVentaRepository.saveAndFlush(any(NotaVenta.class))).thenAnswer(invocation -> {
             NotaVenta nota = invocation.getArgument(0);
             nota.setId(15L);
@@ -169,7 +165,6 @@ class NotaVentaServiceTests {
     @Test
     void fallaMovimientoPropagaExcepcionYNoConfirmaLaOperacion() {
         prepararReferencias();
-        when(ventaProductoLockRepository.buscarPorIdBloqueando(3L)).thenReturn(Optional.of(producto));
         when(notaVentaRepository.saveAndFlush(any(NotaVenta.class))).thenAnswer(invocation -> {
             NotaVenta nota = invocation.getArgument(0);
             nota.setId(15L);
@@ -189,6 +184,8 @@ class NotaVentaServiceTests {
     private void prepararReferencias() {
         when(clienteRepository.findById(5L)).thenReturn(Optional.of(cliente));
         when(usuarioRepository.buscarPorEmail(usuario.getEmail())).thenReturn(Optional.of(usuario));
+        when(productoStockLockService.bloquear(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenReturn(List.of(producto));
     }
 
     private CrearNotaVentaRequest request(int cantidad) {
