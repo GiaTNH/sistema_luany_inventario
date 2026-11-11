@@ -195,6 +195,7 @@ test('el cambio obligatorio de contraseña no carga el widget', async () => {
 
 test('todas las pantallas internas están protegidas; login y contraseña quedan excluidos', () => {
   const pantallasInternas = [
+    'alertas.html',
     'asistente.html',
     'clientes.html',
     'dashboard.html',

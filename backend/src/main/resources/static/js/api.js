@@ -280,7 +280,7 @@ const ICONOS_SIDEBAR = {
 const ENLACES_SIDEBAR = [
   { label: 'Dashboard', href: '/dashboard.html', pagina: 'dashboard.html', icono: 'dashboard' },
   { label: 'Productos', href: '/productos.html', pagina: 'productos.html', icono: 'productos' },
-  { label: 'Alertas', href: '/dashboard.html#dashboard-alertas', pagina: 'dashboard.html', seccion: 'alertas', icono: 'alertas' },
+  { label: 'Alertas', href: '/alertas.html', pagina: 'alertas.html', icono: 'alertas' },
   { label: 'Proveedores', href: '/proveedores.html', pagina: 'proveedores.html', icono: 'proveedores' },
   { label: 'Clientes', href: '/clientes.html', pagina: 'clientes.html', icono: 'clientes' },
   { label: 'Notas de venta', href: '/notas-venta.html', pagina: 'notas-venta.html', icono: 'ventas' },
