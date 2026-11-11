@@ -2918,16 +2918,20 @@ td:first-child { font-weight: 600; color: var(--texto); }
 
 .dashboard-page .dashboard-alert-count {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: -5px;
+  right: -5px;
   display: grid;
-  min-width: 9px;
-  height: 9px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   place-items: center;
-  border-radius: 50%;
+  border: 2px solid #fff;
+  border-radius: 999px;
   background: #F43F5E;
   color: #fff;
-  font-size: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .dashboard-page .dashboard-alert-count[hidden] { display: none; }

@@ -51,12 +51,6 @@ function inicializarCabecera() {
     }
   });
 
-  const alertasLink = document.getElementById('dashboard-alerts-link');
-  alertasLink?.addEventListener('click', (evento) => {
-    evento.preventDefault();
-    document.getElementById('dashboard-alertas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-
   document.getElementById('dashboard-period')?.addEventListener('change', (evento) => {
     renderGrafico(movimientosDashboard, evento.target.value);
   });
@@ -240,7 +234,7 @@ async function cargarDashboard() {
     mostrarToast('No se pudieron cargar los datos del catálogo.', 'error');
   }
 
-  if (alertasResult.status === 'fulfilled') {
+  if (alertasResult.status === 'fulfilled' && Array.isArray(alertasResult.value)) {
     const alertas = alertasResult.value;
     const alertCount = document.getElementById('dashboard-alert-count');
     const alertLink = document.getElementById('dashboard-alerts-link');
@@ -248,12 +242,24 @@ async function cargarDashboard() {
       alertCount.textContent = alertas.length;
       alertCount.hidden = alertas.length === 0;
     }
-    if (alertLink) alertLink.setAttribute('aria-label', `${alertas.length} alertas de stock. Ver alertas recientes`);
+    if (alertLink) {
+      alertLink.setAttribute(
+        'aria-label',
+        alertas.length === 0
+          ? 'Sin alertas de stock. Ver alertas'
+          : `${alertas.length} alertas de stock. Ver alertas`,
+      );
+    }
     renderAlertas(alertas);
   } else {
     renderAlertas(null);
     const alertCount = document.getElementById('dashboard-alert-count');
-    if (alertCount) alertCount.hidden = true;
+    if (alertCount) {
+      alertCount.textContent = '';
+      alertCount.hidden = true;
+    }
+    const alertLink = document.getElementById('dashboard-alerts-link');
+    if (alertLink) alertLink.setAttribute('aria-label', 'No se pudieron cargar las alertas de stock');
   }
 
   if (movimientosResult.status === 'fulfilled') {
