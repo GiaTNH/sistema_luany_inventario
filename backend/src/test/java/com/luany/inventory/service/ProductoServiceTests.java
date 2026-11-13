@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -131,6 +133,21 @@ class ProductoServiceTests {
 
         assertEquals("Ya existe un producto con ese código", error.getMessage());
         verify(productoRepository, never()).save(any(Producto.class));
+    }
+
+    @Test
+    void eliminarProductoReferenciadoMuestraErrorLegible() {
+        Producto producto = producto(10L, "Vestido", "Ropa", 8, 1, 20);
+        when(productoRepository.findById(10L)).thenReturn(Optional.of(producto));
+        doThrow(new DataIntegrityViolationException("detalle técnico"))
+                .when(productoRepository).flush();
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class, () -> productoService.eliminar(10L));
+
+        assertEquals(
+                "No se puede eliminar el producto porque está asociado a movimientos, pedidos, ventas u otros registros.",
+                error.getMessage());
     }
 
     private Producto producto(

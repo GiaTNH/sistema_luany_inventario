@@ -7,12 +7,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -102,6 +104,22 @@ class ProveedorServiceTests {
 
         assertEquals("Ya existe un proveedor con ese RUC", error.getMessage());
         verify(proveedorRepository, never()).save(any());
+    }
+
+    @Test
+    void eliminarProveedorReferenciadoMuestraErrorLegible() {
+        Proveedor proveedor = proveedor(null, "ACTIVO");
+        proveedor.setId(5L);
+        when(proveedorRepository.findById(5L)).thenReturn(Optional.of(proveedor));
+        doThrow(new DataIntegrityViolationException("detalle técnico"))
+                .when(proveedorRepository).flush();
+
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class, () -> proveedorService.eliminar(5L));
+
+        assertEquals(
+                "No se puede eliminar el proveedor porque está asociado a productos, pedidos u otros registros.",
+                error.getMessage());
     }
 
     private Proveedor proveedor(String correo, String estado) {

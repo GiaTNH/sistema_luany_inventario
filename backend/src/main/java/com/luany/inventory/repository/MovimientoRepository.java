@@ -2,6 +2,8 @@ package com.luany.inventory.repository;
 
 import com.luany.inventory.model.Movimiento;
 import com.luany.inventory.model.TipoMovimiento;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,8 +13,26 @@ import java.util.List;
 
 public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
 
-    @Query("SELECT m FROM Movimiento m WHERE m.producto.id = :productoId ORDER BY m.fecha DESC")
+    @Query("SELECT m FROM Movimiento m WHERE m.producto.id = :productoId "
+            + "ORDER BY m.fecha DESC, m.id DESC")
     List<Movimiento> findPorProducto(@Param("productoId") Long productoId);
+
+    @Query(value = "SELECT m FROM Movimiento m "
+            + "WHERE (:productoId IS NULL OR m.producto.id = :productoId) "
+            + "AND (:tipo IS NULL OR m.tipo = :tipo) "
+            + "AND (:desde IS NULL OR m.fecha >= :desde) "
+            + "AND (:hasta IS NULL OR m.fecha < :hasta)",
+            countQuery = "SELECT COUNT(m) FROM Movimiento m "
+                    + "WHERE (:productoId IS NULL OR m.producto.id = :productoId) "
+                    + "AND (:tipo IS NULL OR m.tipo = :tipo) "
+                    + "AND (:desde IS NULL OR m.fecha >= :desde) "
+                    + "AND (:hasta IS NULL OR m.fecha < :hasta)")
+    Page<Movimiento> buscarPaginado(
+            @Param("productoId") Long productoId,
+            @Param("tipo") TipoMovimiento tipo,
+            @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta,
+            Pageable pageable);
 
     @Query("SELECT m.producto.id, SUM(m.cantidad) FROM Movimiento m "
             + "WHERE m.tipo = :tipo AND m.fecha >= :desde GROUP BY m.producto.id")

@@ -5,6 +5,7 @@ import com.luany.inventory.repository.CategoriaRepository;
 import com.luany.inventory.repository.ProductoRepository;
 import com.luany.inventory.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +59,13 @@ public class ProductoService {
     @Transactional
     public void eliminar(Long id) {
         Producto producto = obtener(id);
-        productoRepository.delete(producto);
+        try {
+            productoRepository.delete(producto);
+            productoRepository.flush();
+        } catch (DataIntegrityViolationException error) {
+            throw new IllegalArgumentException(
+                    "No se puede eliminar el producto porque está asociado a movimientos, pedidos, ventas u otros registros.");
+        }
     }
 
     public String estadoStock(Producto p) {

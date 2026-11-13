@@ -26,32 +26,53 @@ function cerrarModalProveedor(id) {
   cerrarModalAccesible(document.getElementById(id));
 }
 
-function renderizarProveedores() {
+function renderizarProveedores(lista = todosProveedores) {
   const tbody = document.getElementById('tabla-proveedores-body');
   const mensaje = document.getElementById('proveedores-mensaje');
-  if (!todosProveedores.length) {
-    mensaje.textContent = 'No hay proveedores registrados.';
-    tbody.innerHTML = '<tr><td colspan="6"><div class="estado-vacio"><p>Sin proveedores registrados.</p></div></td></tr>';
+  if (!lista.length) {
+    const hayProveedores = todosProveedores.length > 0;
+    mensaje.textContent = hayProveedores
+      ? 'No hay proveedores que coincidan con los filtros.'
+      : 'No hay proveedores registrados.';
+    tbody.innerHTML = `<tr><td colspan="6"><div class="estado-vacio"><p>${hayProveedores
+      ? 'No se encontraron proveedores con estos filtros.'
+      : 'Sin proveedores registrados.'}</p></div></td></tr>`;
     return;
   }
 
-  mensaje.textContent = `${todosProveedores.length} proveedor${todosProveedores.length === 1 ? '' : 'es'}`;
-  tbody.innerHTML = todosProveedores.map(proveedor => {
+  mensaje.textContent = `${lista.length} de ${todosProveedores.length} proveedor${todosProveedores.length === 1 ? '' : 'es'}`;
+  tbody.innerHTML = lista.map(proveedor => {
     const nombre = escapar(proveedor.nombre || '');
     const estado = escapar(proveedor.estado || '—');
     const claseEstado = String(proveedor.estado || '').toUpperCase() === 'ACTIVO' ? 'badge-normal' : 'badge-bajo';
     return `<tr class="productos-card-row">
-      <td><strong class="productos-entity-name">${nombre}</strong></td>
-      <td>${escapar(proveedor.ruc || '—')}</td>
-      <td><span class="productos-entity-phone">${escapar(proveedor.telefono || '—')}</span></td>
-      <td>${escapar(proveedor.correo || '—')}</td>
-      <td>${escapar(proveedor.direccion || '—')}</td>
-      <td><div class="productos-provider-status-cell"><span class="badge ${claseEstado}">${estado}</span><div class="productos-row-actions productos-entity-actions">
+      <td data-label="Nombre"><strong class="productos-entity-name">${nombre}</strong></td>
+      <td data-label="RUC">${escapar(proveedor.ruc || '—')}</td>
+      <td data-label="Teléfono"><span class="productos-entity-phone">${escapar(proveedor.telefono || '—')}</span></td>
+      <td data-label="Correo">${escapar(proveedor.correo || '—')}</td>
+      <td data-label="Dirección">${escapar(proveedor.direccion || '—')}</td>
+      <td data-label="Estado"><div class="productos-provider-status-cell"><span class="badge ${claseEstado}">${estado}</span><div class="productos-row-actions productos-entity-actions">
         <button type="button" class="productos-action-button productos-row-edit" title="Editar proveedor" aria-label="Editar proveedor ${nombre}" onclick="abrirModalProveedor(${proveedor.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"/></svg></button>
         <button type="button" class="productos-action-button productos-row-delete" title="Eliminar proveedor" aria-label="Eliminar proveedor ${nombre}" onclick="confirmarEliminarProveedor(${proveedor.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button>
       </div></div></td>
     </tr>`;
   }).join('');
+}
+
+function aplicarFiltrosProveedores() {
+  const busqueda = document.getElementById('filtro-proveedor-busqueda').value
+    .trim()
+    .toLocaleLowerCase('es-PE');
+  const estado = document.getElementById('filtro-proveedor-estado').value;
+  const filtrados = todosProveedores.filter(proveedor => {
+    const coincideBusqueda = !busqueda
+      || (proveedor.nombre || '').toLocaleLowerCase('es-PE').includes(busqueda)
+      || (proveedor.ruc || '').includes(busqueda);
+    const coincideEstado = !estado
+      || String(proveedor.estado || '').toUpperCase() === estado;
+    return coincideBusqueda && coincideEstado;
+  });
+  renderizarProveedores(filtrados);
 }
 
 async function cargarProveedores() {
@@ -61,7 +82,7 @@ async function cargarProveedores() {
   tbody.innerHTML = '<tr><td colspan="6"><span class="spinner spinner-dark"></span> Cargando proveedores...</td></tr>';
   try {
     todosProveedores = await apiGet('/api/proveedores');
-    renderizarProveedores();
+    aplicarFiltrosProveedores();
   } catch (error) {
     mensaje.textContent = 'No se pudieron cargar los proveedores.';
     tbody.innerHTML = `<tr><td colspan="6">${escapar(error.message || 'Ocurrió un error al consultar proveedores.')}</td></tr>`;
@@ -121,7 +142,11 @@ function confirmarEliminarProveedor(id) {
     `¿Eliminar el proveedor "${proveedor.nombre}"? Esta acción no se puede deshacer.`;
   const boton = document.getElementById('btn-confirmar-proveedor');
   boton.onclick = () => eliminarProveedor(id);
-  document.getElementById('modal-confirmar-proveedor').classList.add('visible');
+  const modal = document.getElementById('modal-confirmar-proveedor');
+  abrirModalAccesible(modal);
+  requestAnimationFrame(() => {
+    if (!boton.disabled && modal.classList.contains('visible')) boton.focus();
+  });
 }
 
 async function eliminarProveedor(id) {
@@ -140,6 +165,8 @@ async function eliminarProveedor(id) {
 }
 
 document.getElementById('btn-nuevo-proveedor').addEventListener('click', () => abrirModalProveedor());
+document.getElementById('filtro-proveedor-busqueda').addEventListener('input', aplicarFiltrosProveedores);
+document.getElementById('filtro-proveedor-estado').addEventListener('change', aplicarFiltrosProveedores);
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', evento => {
     if (evento.target === overlay) cerrarModalProveedor(overlay.id);

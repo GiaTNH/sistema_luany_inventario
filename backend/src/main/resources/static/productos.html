@@ -99,7 +99,7 @@
             <div class="toolbar-filtros">
               <div class="buscador-wrapper productos-local-search">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-                <input type="text" id="buscador" class="form-control" placeholder="Buscar por nombre..." />
+                <input type="search" id="buscador" class="form-control" placeholder="Buscar por nombre o código..." aria-label="Buscar productos por nombre o código" />
               </div>
               <label class="productos-select-wrap" aria-label="Filtrar por categoría">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
@@ -114,6 +114,9 @@
                   <option value="NORMAL">Normal</option>
                   <option value="EXCESO">Exceso</option>
                 </select>
+              </label>
+              <label class="productos-select-wrap productos-provider-select" aria-label="Filtrar por proveedor">
+                <select id="filtro-proveedor" class="select-filtro"><option value="">Todos los proveedores</option></select>
               </label>
             </div>
             <div class="toolbar-acciones productos-toolbar-actions">

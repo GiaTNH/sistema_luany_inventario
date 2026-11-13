@@ -74,6 +74,20 @@
             <button type="button" class="btn btn-primario" id="btn-nuevo-proveedor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo proveedor</button>
           </div>
           <div class="panel-body">
+            <div class="proveedores-filtros" aria-label="Filtros de proveedores">
+              <label class="form-grupo" for="filtro-proveedor-busqueda">
+                <span>Buscar por nombre o RUC</span>
+                <input class="form-control" id="filtro-proveedor-busqueda" type="search" placeholder="Nombre o RUC" />
+              </label>
+              <label class="form-grupo" for="filtro-proveedor-estado">
+                <span>Estado</span>
+                <select class="form-control" id="filtro-proveedor-estado">
+                  <option value="">Todos los estados</option>
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
+                </select>
+              </label>
+            </div>
             <p class="text-suave" id="proveedores-mensaje" role="status" aria-live="polite">Cargando proveedores...</p>
             <div class="tabla-wrapper">
               <table class="productos-list-table productos-entity-table productos-provider-table">
@@ -117,9 +131,9 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="modal-confirmar-proveedor">
+  <div class="modal-overlay" id="modal-confirmar-proveedor" role="alertdialog" aria-labelledby="titulo-confirmar-proveedor" aria-describedby="confirmar-mensaje-proveedor">
     <div class="modal" style="max-width:400px;">
-      <div class="modal-header"><h3>¿Eliminar proveedor?</h3><button class="btn-cerrar-modal" type="button" onclick="cerrarModalProveedor('modal-confirmar-proveedor')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></button></div>
+      <div class="modal-header"><h3 id="titulo-confirmar-proveedor">¿Eliminar proveedor?</h3><button class="btn-cerrar-modal" type="button" onclick="cerrarModalProveedor('modal-confirmar-proveedor')" aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
       <div class="modal-body"><p id="confirmar-mensaje-proveedor">¿Eliminar este proveedor?</p></div>
       <div class="modal-footer"><button type="button" class="btn btn-peligro" id="btn-confirmar-proveedor">Sí, eliminar</button><button type="button" class="btn btn-secundario" onclick="cerrarModalProveedor('modal-confirmar-proveedor')">Cancelar</button></div>
     </div>
