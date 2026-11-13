@@ -78,43 +78,60 @@ test('el usuario del navbar abre Perfil por clic y teclado para ambos roles', ()
   }
 });
 
-test('el logo oficial existe y se integra en las vistas de acceso, nota y navbar', () => {
+test('el logo oficial conserva su proporción en acceso y notas, y el navbar usa la bolsa', () => {
   const logo = path.join(staticDirectory, 'img/logo_luany.png');
   assert.ok(fs.existsSync(logo), 'debe estar disponible el recurso oficial');
-  assert.match(readStatic('index.html'), /src="\/img\/logo_luany\.png"/);
-  assert.match(readStatic('cambiar-password.html'), /src="\/img\/logo_luany\.png"/);
   const api = readStatic('js/api.js');
-  assert.match(api, /logo\.src = '\/img\/logo_luany\.png'/);
-  assert.match(readStatic('js/notas-venta.js'), /src="\/img\/logo_luany\.png"/);
+  const index = readStatic('index.html');
+  const cambiarPassword = readStatic('cambiar-password.html');
+  const estilos = readStatic('css/styles.css');
+  const nota = readStatic('js/notas-venta.js');
+  const etiquetas = [
+    ['inicio de sesión, recuperación y registro', index],
+    ['cambio de contraseña', cambiarPassword],
+  ];
+  for (const [pantalla, contenido] of etiquetas) {
+    assert.match(contenido, /src="\/img\/logo_luany\.png"/, pantalla);
+    assert.match(contenido, /class="login-brand-bag" src="\/img\/logo-bolsa\.png"/, pantalla);
+  }
+  assert.match(estilos, /\.login-art-logo-oficial[^}]*width:\s*280px[^}]*height:\s*auto[^}]*object-fit:\s*contain/);
+  assert.match(estilos, /\.login-mobile-brand \.login-brand-wordmark[^}]*height:\s*auto[^}]*object-fit:\s*contain/);
+  assert.match(nota, /src="\/img\/logo_luany\.png"/);
+  assert.match(nota, /class="nota-venta-bolsa" src="\/img\/logo-bolsa\.png"/);
+  assert.match(readStatic('js/asistente-flotante.js'), /class="ai-floating-brand-bag" src="\/img\/logo-bolsa\.png"/);
+  assert.match(estilos, /\.nota-venta-logo[^}]*object-fit:\s*contain/);
+  assert.doesNotMatch(api, /logo\.src = '\/img\/logo_luany\.png'/);
+  assert.match(api, /nombre\.textContent = 'LUANY'/);
+  assert.match(api, /eslogan\.textContent = 'juega\. viste\. crece\.'/);
+  assert.match(readStatic('dashboard.html'), /<img src="\/img\/logo-bolsa\.png"/);
+  assert.match(readStatic('dashboard.html'), /<span class="sidebar-brand-name">Luany<\/span>/);
 
-  const elementosOriginales = [{ id: 'bag' }, { id: 'brand' }];
-  const eventos = new Map();
-  const logoElemento = {
-    addEventListener(tipo, listener) { eventos.set(tipo, listener); },
-  };
-  const clases = new Set();
-  const contenedorMarca = {
-    children: elementosOriginales,
-    replaceChildren(...elementos) { this.children = elementos; },
-    closest() {
-      return { classList: { add: (clase) => clases.add(clase), remove: (clase) => clases.delete(clase) } };
-    },
-  };
+  const paginasConSidebar = fs.readdirSync(staticDirectory)
+    .filter((archivo) => archivo.endsWith('.html') && archivo !== 'index.html' && archivo !== 'cambiar-password.html')
+    .map((archivo) => [archivo, readStatic(archivo)])
+    .filter(([, contenido]) => contenido.includes('class="sidebar-brand"'));
+  assert.ok(paginasConSidebar.length > 0);
+  for (const [pagina, contenido] of paginasConSidebar) {
+    assert.match(contenido, /class="sidebar-brand-bag"[\s\S]*?src="\/img\/logo-bolsa\.png"[\s\S]*?class="sidebar-brand-copy"[\s\S]*?class="sidebar-brand-name"/, pagina);
+  }
+
+  const nombre = { textContent: '' };
+  const tagline = { textContent: '' };
+  const location = { hidden: false };
   const contexto = vm.createContext({
     document: {
-      querySelectorAll: (selector) => selector === '.sidebar-brand' ? [contenedorMarca] : [],
-      createElement: (tag) => tag === 'img' ? logoElemento : null,
+      querySelectorAll(selector) {
+        return selector === '.sidebar-brand-name' ? [nombre]
+          : selector === '.sidebar-brand-tagline' ? [tagline]
+          : selector === '.sidebar-location' ? [location] : [];
+      },
     },
   });
-  vm.runInContext(extraerFuncion(api, 'aplicarLogoOficial'), contexto);
-  vm.runInContext('aplicarLogoOficial()', contexto);
-  assert.equal(logoElemento.src, '/img/logo_luany.png');
-  assert.equal(logoElemento.alt, 'LUANY - Juega, Viste, Crece');
-  assert.equal(contenedorMarca.children[0], logoElemento);
-  assert.ok(clases.has('sidebar-logo-oficial'));
-  eventos.get('error')();
-  assert.deepEqual(contenedorMarca.children, elementosOriginales);
-  assert.ok(!clases.has('sidebar-logo-oficial'));
+  vm.runInContext(extraerFuncion(api, 'configurarMarcaSidebar'), contexto);
+  vm.runInContext('configurarMarcaSidebar()', contexto);
+  assert.equal(nombre.textContent, 'LUANY');
+  assert.equal(tagline.textContent, 'juega. viste. crece.');
+  assert.equal(location.hidden, true);
 });
 
 test('las fechas y exportaciones utilizan formatos y rutas admitidos', () => {

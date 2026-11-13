@@ -52,20 +52,29 @@ class ReportesExportServiceTests {
         assertTrue(archivo.contenido().length > 100);
         try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(archivo.contenido()))) {
             var sheet = workbook.getSheetAt(0);
-            assertEquals("LUANY", sheet.getRow(0).getCell(0).getStringCellValue());
-            assertEquals("Juega · Viste · Crece", sheet.getRow(0).getCell(1).getStringCellValue());
+            assertEquals("LUANY", sheet.getRow(0).getCell(1).getStringCellValue());
+            assertEquals("Juega · Viste · Crece", sheet.getRow(0).getCell(2).getStringCellValue());
             assertEquals("Ventas por período", sheet.getRow(1).getCell(0).getStringCellValue());
             assertEquals("Desde 2026-11-01 hasta 2026-11-02", sheet.getRow(3).getCell(1).getStringCellValue());
             assertEquals("TOTAL", sheet.getRow(9).getCell(0).getStringCellValue());
             assertEquals(32.5, sheet.getRow(9).getCell(2).getNumericCellValue());
             assertTrue(sheet.getRow(7).getCell(2).getCellStyle().getDataFormatString().contains("0.00"));
             assertTrue(sheet.getRow(6).getCell(0).getCellStyle().getWrapText());
-            assertEquals(1,
+            assertEquals(2,
                     ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().size());
             try (InputStream logo = new ClassPathResource("static/img/logo_luany.png").getInputStream()) {
+                byte[] logoEsperado = logo.readAllBytes();
                 assertTrue(java.util.Arrays.equals(
-                        logo.readAllBytes(),
-                        ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().get(0).getData()));
+                        logoEsperado,
+                        ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().stream()
+                                .filter(picture -> java.util.Arrays.equals(logoEsperado, picture.getData()))
+                                .findFirst().orElseThrow().getData()));
+            }
+            try (InputStream bolsa = new ClassPathResource("static/img/logo-bolsa.png").getInputStream()) {
+                byte[] bolsaEsperada = bolsa.readAllBytes();
+                assertTrue(((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().stream()
+                        .anyMatch(picture -> java.util.Arrays.equals(
+                                bolsaEsperada, picture.getData())));
             }
         }
         verify(reportesService).ventas(desde, hasta);
@@ -99,7 +108,7 @@ class ReportesExportServiceTests {
                 BufferedImage logoOriginal = ImageIO.read(logo);
                 assertNotNull(logoOriginal);
                 assertTrue(logoOriginal.getWidth() > 0 && logoOriginal.getHeight() > 0);
-                assertTrue(recursos.getKeys().size() >= 1);
+                assertTrue(recursos.getKeys().size() >= 2);
             }
         }
         verify(reportesService).ventas(desde, hasta);

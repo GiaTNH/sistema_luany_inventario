@@ -33,7 +33,7 @@
       <header class="ai-floating-header">
         <span class="ai-floating-avatar" aria-hidden="true">✦</span>
         <span class="ai-floating-heading">
-          <strong id="luany-asistente-titulo">Asistente LUANY</strong>
+          <strong id="luany-asistente-titulo"><img class="ai-floating-brand-bag" src="/img/logo-bolsa.png" alt="" />Asistente LUANY</strong>
           <small>Consultas de inventario</small>
         </span>
         <button class="ai-floating-minimize" type="button"
