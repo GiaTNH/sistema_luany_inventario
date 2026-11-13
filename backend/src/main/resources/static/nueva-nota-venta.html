@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LUANY — Nueva nota de venta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/animaciones.css" />
+</head>
+<body class="ventas-page ventas-nueva-page">
+  <button class="btn-menu-movil" id="btn-menu-movil" aria-label="Menú">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="sidebar-brand"><span class="sidebar-brand-bag" aria-hidden="true"><img src="/img/logo-bolsa.png" alt="" onerror="this.hidden=true"/><svg class="sidebar-bag-fallback" viewBox="0 0 64 64" aria-hidden="true"><path d="M19 23h26l5 32H14l5-32Z" fill="#8B5CF6" stroke="#fff" stroke-width="2"/><path d="M23 24v-7a9 9 0 0 1 18 0v7" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M32 44s-8-5.3-8-10.2a4.8 4.8 0 0 1 8-3.5 4.8 4.8 0 0 1 8 3.5C40 38.7 32 44 32 44Z" fill="#fff"/></svg></span><span class="sidebar-brand-copy"><span class="sidebar-brand-name">Luany</span><svg class="sidebar-brand-heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21S2 15 2 8.5A5.5 5.5 0 0 1 12 5a5.5 5.5 0 0 1 10 3.5C22 15 12 21 12 21Z"/></svg><span class="sidebar-brand-tagline">Panel de Inventario</span></span></div></div>
+      <div class="sidebar-location" aria-hidden="true"><span>Juega · Viste · Crece</span></div>
+      <nav class="sidebar-nav sidebar-nav-pending" aria-label="Navegación principal"></nav>
+      <div class="sidebar-mascot" aria-hidden="true"></div>
+      <div class="sidebar-footer">
+        <div class="sidebar-usuario" aria-label="Perfil" title="Perfil"><div class="sidebar-avatar" id="avatar-inicial">U</div><div class="sidebar-usuario-info"><span class="sidebar-profile-label">Perfil</span><span class="sidebar-usuario-nombre" id="nombre-usuario"></span><span class="sidebar-usuario-rol" id="rol-usuario"></span></div></div>
+        <a class="sidebar-password-link" href="/cambiar-password.html" aria-label="Cambiar contraseña" title="Cambiar contraseña"><span>Cambiar contraseña</span></a>
+        <button class="btn-cerrar-sesion" aria-label="Cerrar sesión"><span>Cerrar sesión</span></button>
+      </div>
+    </aside>
+    <main class="contenido-principal">
+      <header class="topbar"><div class="topbar-titulo"><h2 id="titulo-pagina">Nueva nota de venta</h2><p>Registra una venta y sus productos</p></div></header>
+      <section class="pagina ventas-contenido ventas-formulario-pagina">
+        <div class="panel">
+          <div class="panel-header ventas-panel-header">
+            <div><h3>Registrar nota de venta</h3><p class="text-suave">Los precios finales y el stock se validan en el servidor.</p></div>
+            <a class="btn btn-secundario" href="/notas-venta.html">Volver a notas</a>
+          </div>
+          <form id="form-nueva-venta" novalidate>
+            <div class="panel-body">
+              <div class="form-grupo">
+                <label for="venta-cliente">Cliente</label>
+                <select id="venta-cliente" class="form-control"></select>
+                <small class="text-suave">Puedes seleccionar Cliente general sin proporcionar datos personales.</small>
+              </div>
+              <div class="ventas-lineas-header"><h4>Productos</h4><button type="button" class="btn btn-secundario" id="btn-agregar-producto-venta">Agregar producto</button></div>
+              <div class="tabla-wrapper">
+                <table class="ventas-tabla">
+                  <thead><tr><th>Producto</th><th>Stock</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th><th></th></tr></thead>
+                  <tbody id="venta-lineas-body"></tbody>
+                </table>
+              </div>
+              <div class="ventas-total"><span>Total</span><strong id="venta-total">S/ 0.00</strong></div>
+              <p class="ventas-aviso">La venta descuenta el stock una sola vez cuando el servidor confirma la nota.</p>
+              <p class="ventas-error" id="venta-error" role="alert" hidden></p>
+            </div>
+            <div class="modal-footer ventas-formulario-acciones">
+              <a class="btn btn-secundario" href="/notas-venta.html">Cancelar</a>
+              <button type="submit" class="btn btn-primario" id="btn-registrar-venta">Registrar venta</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/api.js"></script>
+  <script>cargarPaginaProtegida('/js/notas-venta.js');</script>
+  <script src="/js/animaciones.js"></script>
+</body>
+</html>

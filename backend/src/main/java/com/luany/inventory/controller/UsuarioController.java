@@ -5,11 +5,14 @@ import com.luany.inventory.model.ActualizarUsuarioRequest;
 import com.luany.inventory.model.CambiarRolRequest;
 import com.luany.inventory.model.UsuarioGestionResponse;
 import com.luany.inventory.model.UsuarioCreadoResponse;
+import com.luany.inventory.model.ResultadoNotificacion;
 import com.luany.inventory.service.AuthService;
 import com.luany.inventory.service.UsuarioGestionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,17 +39,28 @@ public class UsuarioController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioCreadoResponse crearEmpleado(@Valid @RequestBody CrearEmpleadoRequest request) {
-        return authService.crearEmpleado(request);
+    public ResponseEntity<UsuarioCreadoResponse> crearEmpleado(
+            @Valid @RequestBody CrearEmpleadoRequest request) {
+        ResultadoNotificacion<UsuarioCreadoResponse> resultado = authService.crearEmpleado(request);
+        ResponseEntity.BodyBuilder respuesta = ResponseEntity.status(HttpStatus.CREATED);
+        if (resultado.notificacionRequerida() && !resultado.notificacionAceptada()) {
+            respuesta.header("X-Notification-Status", "not-sent");
+        }
+        return respuesta.body(resultado.resultado());
     }
 
     @PutMapping("/{id}")
-    public UsuarioGestionResponse actualizar(
+    public ResponseEntity<UsuarioGestionResponse> actualizar(
             @PathVariable Long id,
             @Valid @RequestBody ActualizarUsuarioRequest request,
             Authentication authentication) {
-        return usuarioGestionService.actualizar(id, request, authentication.getName());
+        ResultadoNotificacion<UsuarioGestionResponse> resultado =
+                usuarioGestionService.actualizar(id, request, authentication.getName());
+        ResponseEntity.BodyBuilder respuesta = ResponseEntity.ok();
+        if (resultado.notificacionRequerida() && !resultado.notificacionAceptada()) {
+            respuesta.header("X-Notification-Status", "not-sent");
+        }
+        return respuesta.body(resultado.resultado());
     }
 
     @PutMapping("/{id}/rol")

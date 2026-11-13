@@ -2953,6 +2953,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .dashboard-page .dashboard-date-chip time { color: #25386F; font-size: 9px; font-weight: 700; white-space: nowrap; }
 .dashboard-page .dashboard-date-chip small { margin-top: 2px; color: #7081B6; font-size: 9px; font-weight: 500; }
 .dashboard-page .dashboard-user-chip { display: flex; align-items: center; gap: 6px; }
+.dashboard-page .dashboard-user-chip-link { color: inherit; text-decoration: none; }
 
 .dashboard-page .dashboard-user-avatar {
   display: grid;
@@ -2966,6 +2967,20 @@ td:first-child { font-weight: 600; color: var(--texto); }
   font-size: 16px;
   font-weight: 700;
 }
+
+.perfil-page .perfil-contenido { max-width: 760px; }
+.perfil-page .perfil-panel { overflow: hidden; }
+.perfil-page .perfil-panel .panel-header p { margin: 6px 0 0; }
+.perfil-page #form-perfil { display: grid; gap: 18px; max-width: 520px; }
+.perfil-page #perfil-rol,
+.perfil-page #perfil-email { background: #f8f6fc; }
+.perfil-page .perfil-mensaje { margin: 0; font-size: 13px; }
+.perfil-page .perfil-error { color: #b42318; }
+.perfil-page .perfil-exito { color: #16803c; }
+.ventas-nueva-page .ventas-formulario-pagina { max-width: 1120px; }
+.ventas-nueva-page .ventas-formulario-pagina > .panel > form > .panel-body { display: grid; gap: 20px; }
+.ventas-nueva-page .ventas-formulario-acciones { display: flex; justify-content: flex-end; gap: 12px; }
+.ventas-nueva-page #venta-cliente { max-width: 480px; }
 
 .dashboard-page .dashboard-user-chevron { width: 15px; height: 15px; color: #435A9D; }
 

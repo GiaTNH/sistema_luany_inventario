@@ -13,20 +13,25 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
-import java.util.Base64;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String MAYUSCULAS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    private static final String MINUSCULAS = "abcdefghijkmnopqrstuvwxyz";
+    private static final String DIGITOS = "23456789";
+    private static final String CARACTERES_PASSWORD = MAYUSCULAS + MINUSCULAS + DIGITOS;
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final CorreoService correoService;
     private final JdbcTemplate jdbcTemplate;
+    private final NotificacionTrasCommit notificacionTrasCommit;
 
     @Transactional(readOnly = true)
     public boolean registroInicialDisponible() {
@@ -72,8 +77,12 @@ public class AuthService {
     }
 
     @Transactional
-    public UsuarioCreadoResponse crearEmpleado(CrearEmpleadoRequest request) {
+    public ResultadoNotificacion<UsuarioCreadoResponse> crearEmpleado(CrearEmpleadoRequest request) {
         String email = request.getEmail().trim().toLowerCase();
+        String rol = request.getRol() == null ? "EMPLEADO" : request.getRol().trim();
+        if (!Set.of("ADMIN", "EMPLEADO").contains(rol)) {
+            throw new IllegalArgumentException("El rol debe ser ADMIN o EMPLEADO");
+        }
 
         if (usuarioRepository.buscarPorEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un usuario con ese correo");
@@ -88,13 +97,17 @@ public class AuthService {
         usuario.setEmail(email);
         usuario.setNombreUsuario(generarNombreUsuario(usuario.getNombre()));
         usuario.setPassword(passwordEncoder.encode(passwordTemporal));
-        usuario.setRol("EMPLEADO");
+        usuario.setRol(rol);
         usuario.setDebeCambiarPassword(true);
         usuarioRepository.saveAndFlush(usuario);
-        correoService.enviarBienvenida(
-                email, usuario.getNombre(), usuario.getNombreUsuario(), passwordTemporal);
-
-        return new UsuarioCreadoResponse(aRespuesta(usuario), usuario.getNombreUsuario());
+        ResultadoNotificacion<UsuarioCreadoResponse> resultado = new ResultadoNotificacion<>(
+                new UsuarioCreadoResponse(aRespuesta(usuario), usuario.getNombreUsuario()), true);
+        notificacionTrasCommit.registrar(
+                "bienvenida",
+                () -> correoService.enviarBienvenida(
+                        email, usuario.getNombre(), usuario.getNombreUsuario(), passwordTemporal),
+                resultado::marcarNotificacionAceptada);
+        return resultado;
     }
 
     public UsuarioResponse iniciarSesion(LoginRequest request) {
@@ -118,6 +131,14 @@ public class AuthService {
         Usuario usuario = usuarioRepository.buscarPorEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "La sesión ya no es válida"));
         return aRespuesta(usuario);
+    }
+
+    @Transactional
+    public UsuarioResponse actualizarPerfil(String email, ActualizarPerfilRequest request) {
+        Usuario usuario = usuarioRepository.buscarPorEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+        usuario.setNombre(request.getNombre().trim());
+        return aRespuesta(usuarioRepository.save(usuario));
     }
     @Transactional
     public UsuarioResponse cambiarPassword(String email, CambioPasswordRequest request) {
@@ -164,9 +185,20 @@ public class AuthService {
     }
 
     private String generarPasswordTemporal() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        char[] password = new char[16];
+        password[0] = MAYUSCULAS.charAt(SECURE_RANDOM.nextInt(MAYUSCULAS.length()));
+        password[1] = MINUSCULAS.charAt(SECURE_RANDOM.nextInt(MINUSCULAS.length()));
+        password[2] = DIGITOS.charAt(SECURE_RANDOM.nextInt(DIGITOS.length()));
+        for (int indice = 3; indice < password.length; indice++) {
+            password[indice] = CARACTERES_PASSWORD.charAt(SECURE_RANDOM.nextInt(CARACTERES_PASSWORD.length()));
+        }
+        for (int indice = password.length - 1; indice > 0; indice--) {
+            int otroIndice = SECURE_RANDOM.nextInt(indice + 1);
+            char temporal = password[indice];
+            password[indice] = password[otroIndice];
+            password[otroIndice] = temporal;
+        }
+        return new String(password);
     }
 
     private String generarNombreUsuario(String nombre) {

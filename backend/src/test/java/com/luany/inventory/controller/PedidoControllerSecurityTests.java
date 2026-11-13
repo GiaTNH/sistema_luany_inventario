@@ -170,6 +170,7 @@ class PedidoControllerSecurityTests {
 
     private PedidoDetalleResponse respuesta() {
         return new PedidoDetalleResponse(
-                5L, null, null, "PENDIENTE", 4L, "Proveedor", "Almacén", List.of(), List.of());
+                5L, null, null, "PENDIENTE", 4L, "Proveedor", "Almacén",
+                java.math.BigDecimal.ZERO, List.of(), List.of());
     }
 }

@@ -2,6 +2,7 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.service.CorreoEnvioException;
 import com.luany.inventory.service.CorreoRecuperacionException;
+import com.luany.inventory.service.CorreoNotificacionException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -64,12 +65,18 @@ public class ManejadorErrores {
     @ExceptionHandler(CorreoEnvioException.class)
     public ResponseEntity<Map<String, String>> correoNoEnviado(CorreoEnvioException e) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Map.of("error", "No se pudo enviar el correo de bienvenida. No se creó la cuenta."));
+                .body(Map.of("error", "No se pudo enviar la notificación de bienvenida."));
     }
 
     @ExceptionHandler(CorreoRecuperacionException.class)
     public ResponseEntity<Map<String, String>> correoRecuperacionNoEnviado(CorreoRecuperacionException e) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of("error", "No se pudo procesar la solicitud. Intenta nuevamente más tarde."));
+    }
+
+    @ExceptionHandler(CorreoNotificacionException.class)
+    public ResponseEntity<Map<String, String>> notificacionCorreoNoEnviada(CorreoNotificacionException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", e.getMessage()));
     }
 }

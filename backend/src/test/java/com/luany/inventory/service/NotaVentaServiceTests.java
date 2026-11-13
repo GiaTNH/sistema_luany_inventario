@@ -95,8 +95,7 @@ class NotaVentaServiceTests {
 
         verify(notaVentaRepository).saveAndFlush(notaCaptor.capture());
         NotaVenta nota = notaCaptor.getValue();
-        assertEquals(30, nota.getNumeroNota().length());
-        assertTrue(nota.getNumeroNota().startsWith("NV-"));
+        assertEquals("Nota-015", nota.getNumeroNota());
         assertEquals(new BigDecimal("24.70"), nota.getTotal());
         assertEquals(new BigDecimal("12.35"), detalleGuardado.get().getPrecioUnitario());
         assertEquals(new BigDecimal("24.70"), detalleGuardado.get().getSubtotal());

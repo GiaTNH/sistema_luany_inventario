@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -276,6 +277,7 @@ public class PedidoService {
         List<PedidoDetalleResponse.Item> productos = detallesPedido.stream()
                 .map(detalle -> {
                     int recibido = detalleRecepcionPedidoRepository.totalRecibido(detalle.getId()).intValue();
+                    BigDecimal subtotal = detalle.getPrecio().multiply(BigDecimal.valueOf(detalle.getCantidad()));
                     return new PedidoDetalleResponse.Item(
                             detalle.getId(),
                             detalle.getProducto().getId(),
@@ -283,9 +285,13 @@ public class PedidoService {
                             detalle.getCantidad(),
                             recibido,
                             detalle.getCantidad() - recibido,
-                            detalle.getPrecio());
+                            detalle.getPrecio(),
+                            subtotal);
                 })
                 .toList();
+        BigDecimal total = productos.stream()
+                .map(PedidoDetalleResponse.Item::subtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         List<PedidoDetalleResponse.Recepcion> recepciones =
                 recepcionPedidoRepository.findByPedidoIdOrderByFechaDescIdDesc(pedido.getId()).stream()
                         .map(recepcion -> new PedidoDetalleResponse.Recepcion(
@@ -310,6 +316,7 @@ public class PedidoService {
                 pedido.getProveedor().getId(),
                 pedido.getProveedor().getNombre(),
                 pedido.getUsuario().getNombre(),
+                total,
                 productos,
                 recepciones);
     }

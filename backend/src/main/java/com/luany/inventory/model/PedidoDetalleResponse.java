@@ -13,6 +13,7 @@ public record PedidoDetalleResponse(
         Long proveedorId,
         String proveedorNombre,
         String usuarioNombre,
+        BigDecimal total,
         List<Item> productos,
         List<Recepcion> recepciones) {
 
@@ -23,7 +24,8 @@ public record PedidoDetalleResponse(
             int cantidadPedida,
             int cantidadRecibida,
             int cantidadPendiente,
-            BigDecimal precio) {
+            BigDecimal precio,
+            BigDecimal subtotal) {
     }
 
     public record Recepcion(

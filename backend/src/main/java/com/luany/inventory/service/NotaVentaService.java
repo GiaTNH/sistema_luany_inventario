@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class NotaVentaService {
     private final NotaVentaRepository notaVentaRepository;
     private final DetalleVentaRepository detalleVentaRepository;
     private final ClienteRepository clienteRepository;
+    private final ClienteService clienteService;
     private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
     private final MovimientoService movimientoService;
@@ -50,8 +52,10 @@ public class NotaVentaService {
 
     @Transactional
     public NotaVentaDetalleResponse crear(CrearNotaVentaRequest request, String emailUsuario) {
-        Cliente cliente = clienteRepository.findById(request.getClienteId())
-                .orElseThrow(() -> new IllegalArgumentException("El cliente no existe"));
+        Cliente cliente = request.getClienteId() == null
+                ? clienteService.obtenerOCrearGeneral()
+                : clienteRepository.findById(request.getClienteId())
+                        .orElseThrow(() -> new IllegalArgumentException("El cliente no existe"));
         Usuario usuario = usuarioRepository.buscarPorEmail(emailUsuario)
                 .orElseThrow(() -> new IllegalStateException("No se encontró el usuario de la sesión"));
         validarLineas(request.getProductos());
@@ -105,6 +109,7 @@ public class NotaVentaService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "No se pudo asignar un número único a la nota. Intenta nuevamente");
         }
+        nota.setNumeroNota("Nota-" + String.format(Locale.ROOT, "%03d", nota.getId()));
 
         for (DetalleVenta detalle : detalles) {
             detalle.setNotaVenta(nota);
@@ -145,7 +150,7 @@ public class NotaVentaService {
     }
 
     private String generarNumeroNota() {
-        return "NV-" + UUID.randomUUID().toString().replace("-", "").substring(0, 27).toUpperCase();
+        return "NV-" + UUID.randomUUID().toString().replace("-", "").substring(0, 27).toUpperCase(Locale.ROOT);
     }
 
     private NotaVentaResumenResponse resumen(NotaVenta nota) {

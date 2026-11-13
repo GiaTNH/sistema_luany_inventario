@@ -89,6 +89,11 @@ async function apiFetch(ruta, opciones = {}) {
     throw new Error(datos.error || `Error ${respuesta.status}`);
   }
 
+  if (respuesta.headers?.get('X-Notification-Status') === 'not-sent'
+      && datos && typeof datos === 'object') {
+    Object.defineProperty(datos, 'notificacionFallida', { value: true });
+  }
+
   return datos;
 }
 
@@ -250,14 +255,8 @@ function normalizarFecha(fecha) {
 /** Marca el enlace activo en la barra lateral según la URL actual */
 function marcarNavActivo() {
   const ruta = window.location.pathname.split('/').pop() || 'index.html';
-  const seccion = window.location.hash.slice(1);
   document.querySelectorAll('.nav-item').forEach(el => {
-    const esAlerta = el.dataset.seccion === 'alertas';
-    const activo = esAlerta
-      ? ruta === 'dashboard.html' && seccion === 'dashboard-alertas'
-      : el.dataset.pagina === ruta
-        && !(ruta === 'dashboard.html' && seccion === 'dashboard-alertas');
-    el.classList.toggle('activo', activo);
+    el.classList.toggle('activo', el.dataset.pagina === ruta);
   });
 }
 

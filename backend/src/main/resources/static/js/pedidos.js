@@ -176,7 +176,7 @@ function abrirNuevoPedido() {
 function renderizarDetalle(pedido) {
   document.getElementById('titulo-detalle-pedido').textContent = `Detalle del pedido #${pedido.id}`;
   document.getElementById('pedido-detalle-resumen').textContent =
-    `Proveedor: ${pedido.proveedorNombre} · Creado por: ${pedido.usuarioNombre} · Estado: ${pedido.estado}`;
+    `Proveedor: ${pedido.proveedorNombre} · Creado: ${horaLocal(pedido.fechaPedido)} · Entrega estimada: ${fechaCorta(pedido.fechaEstimadaEntrega)} · Creado por: ${pedido.usuarioNombre} · Estado: ${pedido.estado}`;
   const tbody = document.getElementById('pedido-detalle-lineas');
   tbody.replaceChildren();
   pedido.productos.forEach((producto) => {
@@ -187,9 +187,12 @@ function renderizarDetalle(pedido) {
       celda(producto.cantidadRecibida),
       celda(producto.cantidadPendiente),
       celda(`S/ ${Number(producto.precio).toFixed(2)}`),
+      celda(`S/ ${Number(producto.subtotal).toFixed(2)}`),
     );
     tbody.appendChild(fila);
   });
+  document.getElementById('pedido-detalle-total').textContent =
+    `S/ ${Number(pedido.total).toFixed(2)}`;
 
   const historial = document.getElementById('pedido-historial-recepciones');
   historial.replaceChildren();

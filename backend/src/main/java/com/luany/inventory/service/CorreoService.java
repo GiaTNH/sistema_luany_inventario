@@ -55,7 +55,7 @@ public class CorreoService {
         String contenidoTexto = """
                 Hola %s:
 
-                Tu cuenta de empleado de LUANY ya está lista.
+                Tu cuenta de LUANY ya está lista.
 
                 Nombre de usuario: %s
                 Correo electrónico: %s
@@ -87,7 +87,7 @@ public class CorreoService {
                           <tr>
                             <td style="padding:34px 32px 12px; text-align:center;">
                               <h1 style="margin:0 0 16px; color:#210D49; font-size:27px; line-height:34px;">¡Bienvenido a LUANY!</h1>
-                              <p style="margin:0; color:#625574; font-size:16px; line-height:25px;">Hola <strong style="color:#241442;">%s</strong>, tu cuenta de empleado ya está lista.</p>
+                              <p style="margin:0; color:#625574; font-size:16px; line-height:25px;">Hola <strong style="color:#241442;">%s</strong>, tu cuenta ya está lista.</p>
                             </td>
                           </tr>
                           <tr>
@@ -155,6 +155,47 @@ public class CorreoService {
             enviar(solicitud);
         } catch (RestClientException exception) {
             throw new CorreoEnvioException();
+        }
+    }
+
+    public void enviarNotificacionCambioCorreo(String destinatario, String nombre) {
+        if (!configuracionCompleta()) {
+            LOGGER.error("No se pudo enviar la notificación de cambio de correo: falta configuración de Brevo.");
+            throw new CorreoNotificacionException();
+        }
+
+        String contenidoTexto = """
+                Hola %s:
+
+                El correo electrónico asociado a tu cuenta de LUANY fue actualizado.
+                El nuevo correo es: %s
+
+                Si no reconoces este cambio, contacta con el administrador del sistema.
+                Este es un mensaje automático de LUANY.
+                """.formatted(nombre, destinatario);
+        String contenidoHtml = """
+                <!DOCTYPE html>
+                <html lang="es"><head><meta charset="UTF-8"><title>Correo actualizado</title></head>
+                <body style="font-family:Arial,Helvetica,sans-serif;color:#241442;">
+                  <h1>LUANY</h1>
+                  <p>Hola <strong>%s</strong>:</p>
+                  <p>El correo asociado a tu cuenta fue actualizado. El nuevo correo es <strong>%s</strong>.</p>
+                  <p>Si no reconoces este cambio, contacta con el administrador del sistema.</p>
+                  <small>Este es un mensaje automático de LUANY.</small>
+                </body></html>
+                """.formatted(escaparHtml(nombre), escaparHtml(destinatario));
+        Map<String, Object> solicitud = Map.of(
+                "sender", remitente(),
+                "to", List.of(Map.of("email", destinatario)),
+                "subject", "Actualización del correo de tu cuenta LUANY",
+                "textContent", contenidoTexto,
+                "htmlContent", contenidoHtml);
+
+        try {
+            enviar(solicitud);
+        } catch (RestClientException exception) {
+            LOGGER.error("Falló el envío de la notificación de cambio de correo mediante Brevo.");
+            throw new CorreoNotificacionException();
         }
     }
 

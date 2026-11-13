@@ -66,10 +66,10 @@
         <div class="panel">
           <div class="panel-header ventas-panel-header">
             <h3>Notas de venta</h3>
-            <button type="button" class="btn btn-primario" id="btn-nueva-venta">
+            <a class="btn btn-primario" id="btn-nueva-venta" href="/nueva-nota-venta.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
               Nueva venta
-            </button>
+            </a>
           </div>
           <div class="ventas-filtros">
             <div class="form-grupo">
@@ -91,37 +91,6 @@
     </main>
   </div>
 
-  <div class="modal-overlay ventas-modal" id="modal-nueva-venta" role="dialog" aria-modal="true" aria-labelledby="modal-nueva-venta-titulo" aria-hidden="true" hidden>
-    <div class="modal ventas-modal-ancho">
-      <div class="modal-header">
-        <h3 id="modal-nueva-venta-titulo">Registrar nota de venta</h3>
-        <button type="button" class="btn-cerrar-modal" data-cerrar-venta aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
-      </div>
-      <form id="form-nueva-venta" novalidate>
-        <div class="modal-body">
-          <div class="form-grupo">
-            <label for="venta-cliente">Cliente *</label>
-            <select id="venta-cliente" class="form-control" required><option value="">Selecciona un cliente</option></select>
-          </div>
-          <div class="ventas-lineas-header"><h4>Productos</h4><button type="button" class="btn btn-secundario" id="btn-agregar-producto-venta">Agregar producto</button></div>
-          <div class="tabla-wrapper">
-            <table class="ventas-tabla ventas-tabla-form">
-              <thead><tr><th>Producto</th><th>Disponible</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th><th></th></tr></thead>
-              <tbody id="venta-lineas-body"></tbody>
-            </table>
-          </div>
-          <div class="ventas-total"><span>Total</span><strong id="venta-total">S/ 0.00</strong></div>
-          <p class="ventas-aviso">Los precios se obtienen del catálogo y el stock se valida nuevamente al registrar la venta.</p>
-          <p class="ventas-error" id="venta-error" role="alert" hidden></p>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primario" id="btn-registrar-venta">Registrar venta</button>
-          <button type="button" class="btn btn-secundario" data-cerrar-venta>Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div class="modal-overlay ventas-modal" id="modal-detalle-venta" role="dialog" aria-modal="true" aria-labelledby="modal-detalle-venta-titulo" aria-hidden="true" hidden>
     <div class="modal ventas-modal-ancho">
       <div class="modal-header">
@@ -135,7 +104,7 @@
         </div>
         <div class="ventas-total"><span>Total</span><strong id="venta-detalle-total">S/ 0.00</strong></div>
       </div>
-      <div class="modal-footer"><button type="button" class="btn btn-secundario" data-cerrar-venta>Cerrar</button></div>
+      <div class="modal-footer"><button type="button" class="btn btn-secundario" id="btn-imprimir-nota">Imprimir / Guardar PDF</button><button type="button" class="btn btn-secundario" data-cerrar-venta>Cerrar</button></div>
     </div>
   </div>
 
