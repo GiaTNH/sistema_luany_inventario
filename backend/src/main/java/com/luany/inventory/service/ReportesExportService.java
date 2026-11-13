@@ -76,11 +76,15 @@ public class ReportesExportService {
             seccionStyle.setFont(seccionFont);
 
             CellStyle encabezadoStyle = workbook.createCellStyle();
-            encabezadoStyle.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+            encabezadoStyle.setFillForegroundColor(IndexedColors.VIOLET.getIndex());
             encabezadoStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             org.apache.poi.ss.usermodel.Font encabezadoFont = workbook.createFont();
             encabezadoFont.setBold(true);
+            encabezadoFont.setColor(IndexedColors.WHITE.getIndex());
             encabezadoStyle.setFont(encabezadoFont);
+            encabezadoStyle.setAlignment(HorizontalAlignment.CENTER);
+            encabezadoStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+            encabezadoStyle.setWrapText(true);
             encabezadoStyle.setBorderBottom(BorderStyle.THIN);
             encabezadoStyle.setBorderTop(BorderStyle.THIN);
             encabezadoStyle.setBorderLeft(BorderStyle.THIN);
@@ -92,6 +96,7 @@ public class ReportesExportService {
             filaStyle.setBorderLeft(BorderStyle.THIN);
             filaStyle.setBorderRight(BorderStyle.THIN);
             filaStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+            filaStyle.setWrapText(true);
 
             CellStyle monedaStyle = workbook.createCellStyle();
             monedaStyle.cloneStyleFrom(filaStyle);
@@ -126,6 +131,9 @@ public class ReportesExportService {
             Row brand = sheet.createRow(rowIndex++);
             brand.createCell(0).setCellValue("LUANY");
             brand.getCell(0).setCellStyle(tituloStyle);
+            brand.createCell(1).setCellValue("Juega · Viste · Crece");
+            brand.getCell(1).setCellStyle(seccionStyle);
+            brand.setHeightInPoints(30);
             agregarLogoExcel(workbook, sheet);
             Row title = sheet.createRow(rowIndex++);
             title.createCell(0).setCellValue(exportacion.titulo());
@@ -139,6 +147,7 @@ public class ReportesExportService {
                 tituloSeccion.getCell(0).setCellStyle(seccionStyle);
 
                 Row encabezado = sheet.createRow(rowIndex++);
+                encabezado.setHeightInPoints(30);
                 for (int columna = 0; columna < seccion.encabezados().size(); columna++) {
                     Cell celda = encabezado.createCell(columna);
                     celda.setCellValue(seccion.encabezados().get(columna));
@@ -150,6 +159,7 @@ public class ReportesExportService {
                 }
                 if (!seccion.totales().isEmpty()) {
                     Row totales = sheet.createRow(rowIndex++);
+                    totales.setHeightInPoints(25);
                     for (int columna = 0; columna < seccion.totales().size(); columna++) {
                         Cell celda = totales.createCell(columna);
                         Object valor = seccion.totales().get(columna);
@@ -164,7 +174,7 @@ public class ReportesExportService {
                     .mapToInt(seccion -> seccion.encabezados().size()).max().orElse(1);
             for (int columna = 0; columna < columnas; columna++) {
                 sheet.autoSizeColumn(columna);
-                sheet.setColumnWidth(columna, Math.min(sheet.getColumnWidth(columna) + 600, 15000));
+                sheet.setColumnWidth(columna, Math.min(Math.max(sheet.getColumnWidth(columna) + 1000, 3200), 22000));
             }
             sheet.createFreezePane(0, 4);
             sheet.getPrintSetup().setLandscape(true);
@@ -197,6 +207,8 @@ public class ReportesExportService {
                     FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, java.awt.Color.WHITE);
             com.lowagie.text.Font cuerpo =
                     FontFactory.getFont(FontFactory.HELVETICA, 8, java.awt.Color.BLACK);
+            com.lowagie.text.Font encabezadoMarca =
+                    FontFactory.getFont(FontFactory.HELVETICA, 8, new java.awt.Color(117, 107, 145));
             com.lowagie.text.Font metadata =
                     FontFactory.getFont(FontFactory.HELVETICA, 9, java.awt.Color.DARK_GRAY);
 
@@ -208,7 +220,10 @@ public class ReportesExportService {
                 marca.setWidthPercentage(100);
                 PdfPCell celdaLogo = new PdfPCell(imagen, true);
                 celdaLogo.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
-                PdfPCell celdaMarca = new PdfPCell(new Phrase("LUANY", titulo));
+                Paragraph textoMarca = new Paragraph();
+                textoMarca.add(new Chunk("LUANY\n", titulo));
+                textoMarca.add(new Chunk("Juega · Viste · Crece", encabezadoMarca));
+                PdfPCell celdaMarca = new PdfPCell(textoMarca);
                 celdaMarca.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
                 celdaMarca.setVerticalAlignment(com.lowagie.text.Element.ALIGN_MIDDLE);
                 marca.addCell(celdaLogo);
@@ -217,9 +232,17 @@ public class ReportesExportService {
             } else {
                 document.add(new Paragraph("LUANY", titulo));
             }
-            document.add(new Paragraph(exportacion.titulo(), titulo));
-            document.add(new Paragraph("Generado: " + exportacion.generadoEn().format(FECHA_HORA), metadata));
-            document.add(new Paragraph("Filtros: " + exportacion.filtros(), metadata));
+            Paragraph tituloReporte = new Paragraph(exportacion.titulo(), titulo);
+            tituloReporte.setSpacingBefore(8);
+            tituloReporte.setSpacingAfter(5);
+            document.add(tituloReporte);
+            Paragraph generado = new Paragraph(
+                    "Fecha de generación: " + exportacion.generadoEn().format(FECHA_HORA), metadata);
+            generado.setSpacingAfter(3);
+            document.add(generado);
+            Paragraph filtros = new Paragraph("Filtros: " + exportacion.filtros(), metadata);
+            filtros.setSpacingAfter(7);
+            document.add(filtros);
             document.add(Chunk.NEWLINE);
 
             for (Seccion seccion : exportacion.secciones()) {
@@ -228,10 +251,15 @@ public class ReportesExportService {
                 PdfPTable table = new PdfPTable(seccion.encabezados().size());
                 table.setWidthPercentage(100);
                 table.setHeaderRows(1);
+                table.setWidths(anchosPdf(seccion.encabezados()));
+                table.setSpacingBefore(6);
+                table.setSpacingAfter(12);
+                table.setSplitRows(true);
                 for (String columna : seccion.encabezados()) {
                     PdfPCell cell = new PdfPCell(new Phrase(columna, encabezado));
                     cell.setBackgroundColor(new java.awt.Color(104, 75, 181));
-                    cell.setPadding(5);
+                    cell.setPadding(7);
+                    cell.setBorderColor(new java.awt.Color(220, 214, 233));
                     table.addCell(cell);
                 }
                 for (int indiceFila = 0; indiceFila < seccion.filas().size(); indiceFila++) {
@@ -240,7 +268,8 @@ public class ReportesExportService {
                         Object valor = fila.get(columna);
                         PdfPCell cell = new PdfPCell(new Phrase(
                                 textoCelda(valor, seccion.encabezados(), columna), cuerpo));
-                        cell.setPadding(4);
+                        cell.setPadding(6);
+                        cell.setBorderColor(new java.awt.Color(220, 214, 233));
                         if (indiceFila % 2 == 1) {
                             cell.setBackgroundColor(new java.awt.Color(248, 246, 252));
                         }
@@ -256,7 +285,8 @@ public class ReportesExportService {
                         PdfPCell cell = new PdfPCell(new Phrase(
                                 textoCelda(valor, seccion.encabezados(), columna), encabezado));
                         cell.setBackgroundColor(new java.awt.Color(104, 75, 181));
-                        cell.setPadding(5);
+                        cell.setPadding(6);
+                        cell.setBorderColor(new java.awt.Color(220, 214, 233));
                         if (valor instanceof Number) {
                             cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_RIGHT);
                         }
@@ -458,6 +488,17 @@ public class ReportesExportService {
         return columna < encabezados.size()
                 && encabezados.get(columna).toLowerCase(Locale.ROOT)
                         .matches(".*(importe|precio|subtotal|total).*");
+    }
+
+    private float[] anchosPdf(List<String> encabezados) {
+        float[] anchos = new float[encabezados.size()];
+        for (int indice = 0; indice < encabezados.size(); indice++) {
+            String encabezado = encabezados.get(indice).toLowerCase(Locale.ROOT);
+            anchos[indice] = encabezado.contains("producto") || encabezado.contains("observación")
+                    ? 2.8f
+                    : encabezado.contains("fecha") || encabezado.contains("proveedor") ? 1.6f : 1f;
+        }
+        return anchos;
     }
 
     private String textoCelda(Object valor, List<String> encabezados, int columna) {

@@ -99,22 +99,90 @@ function crearTarjetaPedido(pedido) {
   return tarjeta;
 }
 
-function renderizarTablero(pedidos, actualizado = true) {
+function productosBajoStockUnicos(alertas) {
+  const productos = new Map();
+  alertas.forEach((alerta) => {
+    if (!Number.isSafeInteger(Number(alerta.productoId)) || Number(alerta.productoId) < 1) return;
+    const clave = String(alerta.productoId);
+    if (!productos.has(clave)) productos.set(clave, alerta);
+  });
+  return [...productos.values()];
+}
+
+function pedidosRelacionadosProducto(alerta, pedidosActivos) {
+  return pedidosActivos.filter((pedido) =>
+    (pedido.estado === 'PENDIENTE' || pedido.estado === 'PARCIAL')
+      && Array.isArray(pedido.productoIds)
+      && pedido.productoIds.some((productoId) => String(productoId) === String(alerta.productoId)));
+}
+
+function crearTarjetaProductoBajoStock(alerta, pedidosActivos) {
+  const tarjeta = document.createElement('article');
+  tarjeta.className = 'kanban-tarjeta kanban-tarjeta-producto';
+  const nombre = document.createElement('h4');
+  nombre.textContent = alerta.nombre || 'Producto sin nombre';
+  const categoria = document.createElement('p');
+  categoria.className = 'kanban-proveedor';
+  categoria.textContent = alerta.categoria || 'Categoría no disponible';
+  const datos = document.createElement('div');
+  datos.className = 'kanban-datos';
+  datos.append(
+    crearDatoTarjeta('Stock actual', `${alerta.stockActual ?? '—'} uds.`),
+    crearDatoTarjeta('Stock mínimo', `${alerta.stockMinimo ?? '—'} uds.`),
+    crearDatoTarjeta('Reposición sugerida', `${alerta.cantidadSugerida ?? '—'} uds.`),
+  );
+  const relacionados = pedidosRelacionadosProducto(alerta, pedidosActivos);
+  const acciones = document.createElement('div');
+  acciones.className = 'kanban-acciones';
+  if (relacionados.length) {
+    relacionados.forEach((pedido) => {
+      const vinculo = document.createElement('a');
+      vinculo.className = 'btn btn-secundario';
+      vinculo.href = `/pedidos.html?pedidoId=${encodeURIComponent(pedido.id)}`;
+      vinculo.textContent = `Pedido #${pedido.id} · ${pedido.estado === 'PARCIAL' ? 'Parcial' : 'Pendiente'}`;
+      acciones.appendChild(vinculo);
+    });
+  } else {
+    const reponer = document.createElement('a');
+    reponer.className = 'btn btn-primario';
+    reponer.href = `/alertas.html#alerta-producto-${encodeURIComponent(alerta.productoId)}`;
+    reponer.textContent = 'Reponer';
+    acciones.appendChild(reponer);
+  }
+  tarjeta.append(nombre, categoria, datos, acciones);
+  return tarjeta;
+}
+
+function renderizarTablero(pedidos, alertas = [], pedidosActivos = [], actualizado = true) {
   estadosKanban.forEach((estado) => {
     const columna = document.getElementById(estado.columna);
     const pedidosEstado = pedidos.filter((pedido) => pedido.estado === estado.clave);
-    document.getElementById(estado.conteo).textContent = String(pedidosEstado.length);
     columna.replaceChildren();
-    if (!pedidosEstado.length) {
+    const productosBajoStock = estado.clave === 'PARCIAL' ? productosBajoStockUnicos(alertas) : [];
+    const termino = filtroBuscarKanban.value.trim().toLocaleLowerCase('es-PE');
+    const alertasVisibles = estado.clave === 'PARCIAL'
+      ? productosBajoStock.filter((alerta) => !termino
+        || String(alerta.nombre || '').toLocaleLowerCase('es-PE').includes(termino)
+        || String(alerta.categoria || '').toLocaleLowerCase('es-PE').includes(termino)
+        || pedidosActivos.some((pedido) => String(pedido.id).includes(termino)
+          && pedido.productoIds?.some((productoId) => String(productoId) === String(alerta.productoId))))
+      : [];
+    document.getElementById(estado.conteo).textContent =
+      String(pedidosEstado.length + alertasVisibles.length);
+    if (!pedidosEstado.length && !alertasVisibles.length) {
       const vacio = document.createElement('p');
       vacio.className = 'kanban-vacio';
       vacio.textContent = estado.vacio;
       columna.appendChild(vacio);
       return;
     }
+    if (estado.clave === 'PARCIAL') {
+      alertasVisibles.forEach((alerta) =>
+        columna.appendChild(crearTarjetaProductoBajoStock(alerta, pedidosActivos)));
+    }
     pedidosEstado.forEach((pedido) => columna.appendChild(crearTarjetaPedido(pedido)));
   });
-  const productosEnSeguimiento = contarProductosSeguimiento(pedidos);
+  const productosEnSeguimiento = contarProductosSeguimiento(pedidosActivos, alertas);
   document.getElementById('kanban-productos-seguimiento').textContent =
     `${productosEnSeguimiento} producto${productosEnSeguimiento === 1 ? '' : 's'} en seguimiento`;
   if (actualizado) {
@@ -131,10 +199,18 @@ function renderizarTablero(pedidos, actualizado = true) {
   }
 }
 
-function contarProductosSeguimiento(pedidos) {
-  return pedidos
-    .filter((pedido) => pedido.estado === 'PENDIENTE' || pedido.estado === 'PARCIAL')
-    .reduce((total, pedido) => total + Number(pedido.totalProductos || 0), 0);
+function contarProductosSeguimiento(pedidos, alertas = []) {
+  const productoIds = new Set();
+  pedidos.forEach((pedido) => {
+    if (pedido.estado !== 'PENDIENTE' && pedido.estado !== 'PARCIAL') return;
+    (pedido.productoIds || []).forEach((productoId) => productoIds.add(String(productoId)));
+  });
+  alertas.forEach((alerta) => {
+    if (Number.isSafeInteger(Number(alerta.productoId)) && Number(alerta.productoId) > 0) {
+      productoIds.add(String(alerta.productoId));
+    }
+  });
+  return productoIds.size;
 }
 
 async function cargarTablero() {
@@ -149,13 +225,22 @@ async function cargarTablero() {
 
   try {
     const query = parametros.toString();
-    const pedidos = await apiGet(`/api/pedidos/tablero${query ? `?${query}` : ''}`);
+    const [pedidos, pedidosTodos, alertas] = await Promise.all([
+      apiGet(`/api/pedidos/tablero${query ? `?${query}` : ''}`),
+      apiGet('/api/pedidos/tablero'),
+      apiGet('/api/alertas/stock'),
+    ]);
     if (numeroSolicitud !== solicitudKanban) return;
-    renderizarTablero(pedidos);
+    if (!Array.isArray(pedidos) || !Array.isArray(pedidosTodos) || !Array.isArray(alertas)) {
+      throw new Error('La respuesta del tablero no tiene el formato esperado.');
+    }
+    const pedidosActivos = pedidosTodos.filter((pedido) =>
+      pedido.estado === 'PENDIENTE' || pedido.estado === 'PARCIAL');
+    renderizarTablero(pedidos, alertas, pedidosActivos);
     mensaje.textContent = `${pedidos.length} pedido${pedidos.length === 1 ? '' : 's'} en el tablero`;
   } catch (error) {
     if (numeroSolicitud !== solicitudKanban) return;
-    renderizarTablero([], false);
+    renderizarTablero([], [], [], false);
     document.getElementById('kanban-productos-seguimiento').textContent = 'No disponible';
     mensaje.textContent = 'No se pudieron cargar los pedidos.';
     mostrarToast(error.message, 'error');

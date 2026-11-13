@@ -48,11 +48,13 @@ class ReportesExportServiceTests {
         try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(archivo.contenido()))) {
             var sheet = workbook.getSheetAt(0);
             assertEquals("LUANY", sheet.getRow(0).getCell(0).getStringCellValue());
+            assertEquals("Juega · Viste · Crece", sheet.getRow(0).getCell(1).getStringCellValue());
             assertEquals("Ventas por período", sheet.getRow(1).getCell(0).getStringCellValue());
             assertEquals("Desde 2026-11-01 hasta 2026-11-02", sheet.getRow(3).getCell(1).getStringCellValue());
             assertEquals("TOTAL", sheet.getRow(9).getCell(0).getStringCellValue());
             assertEquals(32.5, sheet.getRow(9).getCell(2).getNumericCellValue());
             assertTrue(sheet.getRow(7).getCell(2).getCellStyle().getDataFormatString().contains("0.00"));
+            assertTrue(sheet.getRow(6).getCell(0).getCellStyle().getWrapText());
             assertEquals(1,
                     ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().size());
         }
@@ -75,6 +77,7 @@ class ReportesExportServiceTests {
         try (PdfReader reader = new PdfReader(archivo.contenido())) {
             String texto = new PdfTextExtractor(reader).getTextFromPage(1);
             assertTrue(texto.contains("LUANY"));
+            assertTrue(texto.contains("Juega · Viste · Crece"));
             assertTrue(texto.contains("Ventas por período"));
             assertTrue(texto.contains("2026-10-05"));
             assertTrue(texto.contains("TOTAL"));
@@ -141,7 +144,9 @@ class ReportesExportServiceTests {
     @Test
     void inventarioYPedidosUsanLosDtosYFiltrosExistentes() throws Exception {
         when(reportesService.inventario("BAJO")).thenReturn(new Inventario(List.of(
-                new ProductoInventario(3L, "Body", 2, 4, 20, "BAJO"))));
+                new ProductoInventario(3L,
+                        "Body algodón orgánico de manga larga color lavanda talla recién nacido",
+                        2, 4, 20, "BAJO"))));
         when(reportesService.pedidosRecepciones(
                 LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 9)))
                 .thenReturn(new PedidosRecepciones(
@@ -158,7 +163,7 @@ class ReportesExportServiceTests {
         try (PdfReader reader = new PdfReader(inventario.contenido())) {
             String texto = new PdfTextExtractor(reader).getTextFromPage(1);
             assertTrue(texto.contains("Estado: BAJO"));
-            assertTrue(texto.contains("Body"));
+            assertTrue(texto.contains("Body algodón orgánico"));
         }
         try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(pedidos.contenido()))) {
             var sheet = workbook.getSheetAt(0);

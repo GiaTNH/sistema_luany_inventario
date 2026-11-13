@@ -126,6 +126,32 @@ class PedidoServiceTests {
     }
 
     @Test
+    void tableroIncluyeLosIdsDeProductosParaRelacionarAlertasConPedidosActivos() {
+        Pedido pedido = detalle.getPedido();
+        pedido.setFechaPedido(LocalDateTime.of(2026, 11, 4, 10, 0));
+        pedido.setEstado("PARCIAL");
+        when(pedidoRepository.listarConProveedorYUsuario(any(Sort.class))).thenReturn(List.of(pedido));
+        when(detallePedidoRepository.findByPedidoIdOrderById(11L)).thenReturn(List.of(detalle));
+        when(detallePedidoRepository.cantidadesSolicitadasPorPedido(List.of(11L)))
+                .thenReturn(List.<Object[]>of(new Object[]{11L, 5L}));
+        when(detalleRecepcionPedidoRepository.cantidadesRecibidasPorPedido(List.of(11L)))
+                .thenReturn(List.<Object[]>of(new Object[]{11L, 2L}));
+        when(detallePedidoRepository.productosPorPedido(List.of(11L)))
+                .thenReturn(List.<Object[]>of(new Object[]{11L, 7L}));
+
+        List<PedidoKanbanResponse> resultado = pedidoService.listarTablero(null, null, null, null);
+
+        assertEquals(1, resultado.size());
+        assertEquals("PARCIAL", resultado.get(0).estado());
+        assertEquals(5, resultado.get(0).cantidadTotalSolicitada());
+        assertEquals(2, resultado.get(0).cantidadRecibida());
+        assertEquals(3, resultado.get(0).cantidadPendiente());
+        assertEquals(List.of(7L), resultado.get(0).productoIds());
+        assertEquals(4, producto.getStockActual());
+        verifyNoInteractions(movimientoService);
+    }
+
+    @Test
     void crearPedidoRechazaProveedorInactivoSinCrearPedido() {
         proveedor.setEstado("INACTIVO");
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));

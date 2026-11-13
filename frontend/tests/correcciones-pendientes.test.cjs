@@ -8,7 +8,10 @@ const staticDirectory = path.resolve(__dirname, '../../backend/src/main/resource
 const readStatic = (file) => fs.readFileSync(path.join(staticDirectory, file), 'utf8');
 
 function extraerFuncion(source, name) {
-  const inicio = source.indexOf(`function ${name}(`);
+  const inicioRegular = source.indexOf(`function ${name}(`);
+  const inicioAsync = source.indexOf(`async function ${name}(`);
+  const inicio = inicioAsync >= 0 && (inicioRegular < 0 || inicioAsync < inicioRegular)
+    ? inicioAsync : inicioRegular;
   assert.notEqual(inicio, -1, `debe existir la función ${name}`);
   const apertura = source.indexOf('{', inicio);
   let profundidad = 0;
@@ -283,7 +286,7 @@ test('el filtro de rotación aplica días, seis meses y un año al conjunto de v
   assert.deepEqual(JSON.parse(JSON.stringify(filtrados.map((movimiento) => movimiento.id))), [1]);
 });
 
-test('la reposición desde Alertas usa cantidades sugeridas y agrupa por proveedor sin crear pedidos', () => {
+test('la reposición de Alertas prepara una línea validada y crea un pedido solo al confirmar', async () => {
   const alertas = readStatic('js/alertas.js');
   const pedidosHtml = readStatic('pedidos.html');
   const pedidos = readStatic('js/pedidos.js');
@@ -363,16 +366,56 @@ test('la reposición desde Alertas usa cantidades sugeridas y agrupa por proveed
   assert.equal(ayuda.hidden, false);
 
   assert.match(readStatic('alertas.html'), /id="btn-reponer-alertas" hidden disabled/);
+  assert.match(readStatic('alertas.html'), /id="modal-reponer-producto"/);
+  assert.match(readStatic('alertas.html'), /data-cerrar-reposicion>Cancelar/);
+  assert.match(alertas, /boton\.dataset\.productoId/);
   assert.match(alertas, /usuarioAlertas\?\.rol === 'ADMIN'/);
   assert.match(alertas, /window\.location\.href = '\/pedidos\.html\?reponer=1'/);
-  assert.doesNotMatch(alertas, /apiPost\(/);
+  assert.match(alertas, /apiPost\('\/api\/pedidos', datos\)/);
   assert.match(pedidosHtml, /id="form-pedido"/);
   assert.match(pedidos, /apiPost\('\/api\/pedidos', datos\)/);
   assert.match(pedidos, /if \(guardandoPedido\) return/);
   assert.match(pedidos, /el stock solo cambiará al registrar la recepción/);
+
+  const posts = [];
+  let confirmar;
+  const apiContexto = vm.createContext({
+    guardandoReposicion: false,
+    botonConfirmarReposicion: { disabled: false },
+    apiPost: (ruta, datos) => {
+      posts.push({ ruta, datos });
+      return new Promise((resolve) => { confirmar = resolve; });
+    },
+  });
+  vm.runInContext(extraerFuncion(alertas, 'datosPedidoReposicion'), apiContexto);
+  vm.runInContext(extraerFuncion(alertas, 'crearPedidoDesdeAlerta'), apiContexto);
+  apiContexto.producto = { id: 7, proveedor: { id: 3 } };
+  const datos = vm.runInContext(
+    "datosPedidoReposicion(producto, 12, 18.5, '2026-11-20')",
+    apiContexto,
+  );
+  apiContexto.datos = datos;
+  assert.deepEqual(JSON.parse(JSON.stringify(datos)), {
+    proveedorId: 3,
+    fechaEstimadaEntrega: '2026-11-20',
+    productos: [{ productoId: 7, cantidad: 12, precio: 18.5 }],
+  });
+  assert.equal(posts.length, 0);
+  assert.throws(() => vm.runInContext(
+    "datosPedidoReposicion(producto, 0, 18.5, null)",
+    apiContexto,
+  ));
+  const primeraCreacion = vm.runInContext('crearPedidoDesdeAlerta(datos)', apiContexto);
+  const dobleClic = vm.runInContext('crearPedidoDesdeAlerta(datos)', apiContexto);
+  assert.equal(await dobleClic, false);
+  assert.equal(posts.length, 1);
+  assert.equal(apiContexto.botonConfirmarReposicion.disabled, true);
+  confirmar({ id: 21 });
+  assert.equal(await primeraCreacion, true);
+  assert.equal(apiContexto.botonConfirmarReposicion.disabled, false);
 });
 
-test('la nota imprimible usa la numeración real, logo local y datos existentes del cliente', () => {
+test('el detalle y la nota recién registrada usan la misma vista imprimible dentro de la página', () => {
   const script = readStatic('js/notas-venta.js');
   const contexto = vm.createContext({
     productosVenta: [{ id: 4, nombre: 'Body algodón', codigo: 'BD-04' }],
@@ -399,6 +442,8 @@ test('la nota imprimible usa la numeración real, logo local y datos existentes 
   const documento = vm.runInContext('generarNotaImprimible(nota)', contexto);
   assert.match(documento, /Nota de Venta Nº 009/);
   assert.match(documento, /src="\/img\/logo-bolsa\.png"/);
+  assert.match(documento, /<span>Luany<\/span>/);
+  assert.match(documento, /Luany - tienda para bebés/);
   assert.match(documento, /DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO/);
   assert.match(documento, /¡Gracias por tu compra!/);
   assert.match(documento, /Acompañamos cada etapa de tu bebé/);
@@ -406,22 +451,27 @@ test('la nota imprimible usa la numeración real, logo local y datos existentes 
   assert.match(documento, /S\/ 37\.00/);
   assert.doesNotMatch(documento, /RUC|Dirección|teléfono/i);
   assert.doesNotMatch(script, /window\.location\.replace\('\/notas-venta\.html'\)/);
-  const ventana = {
-    document: {
-      open() { this.abierto = true; },
-      write(html) { this.html = html; },
-      close() { this.cerrado = true; },
+  assert.doesNotMatch(script, /window\.open|document\.write/);
+  const titulo = { textContent: '' };
+  const contenido = { innerHTML: '' };
+  const modal = { hidden: true };
+  const documentMock = {
+    getElementById(id) {
+      return id === 'modal-detalle-venta-titulo' ? titulo
+        : id === 'venta-documento-imprimible' ? contenido : null;
     },
-    opener: {},
   };
-  contexto.nota = contexto.nota;
-  contexto.ventana = ventana;
+  contexto.document = documentMock;
+  contexto.modalDetalleVenta = modal;
+  contexto.mostrarModal = (elemento) => { elemento.hidden = false; };
   vm.runInContext(extraerFuncion(script, 'abrirNotaImprimible'), contexto);
-  vm.runInContext('abrirNotaImprimible(nota, ventana)', contexto);
-  assert.equal(ventana.opener, null);
-  assert.equal(ventana.document.abierto, true);
-  assert.equal(ventana.document.cerrado, true);
-  assert.match(ventana.document.html, /Nota de Venta Nº 009/);
+  vm.runInContext('abrirNotaImprimible(nota)', contexto);
+  assert.equal(titulo.textContent, 'Nota Nota-009');
+  assert.equal(modal.hidden, false);
+  assert.match(contenido.innerHTML, /Nota de Venta Nº 009/);
+  assert.match(readStatic('notas-venta.html'), /id="venta-documento-imprimible"/);
+  assert.match(readStatic('nueva-nota-venta.html'), /id="venta-documento-imprimible"/);
+  assert.match(readStatic('css/styles.css'), /@media print/);
 });
 
 test('el Kanban conserva estados reales y agrupa el seguimiento de pedidos pendientes o parciales', () => {
@@ -429,18 +479,42 @@ test('el Kanban conserva estados reales y agrupa el seguimiento de pedidos pendi
   const html = readStatic('pedidos-kanban.html');
   const contexto = vm.createContext({});
   vm.runInContext(extraerFuncion(script, 'contarProductosSeguimiento'), contexto);
-  const cantidad = vm.runInContext(`contarProductosSeguimiento(${JSON.stringify([
-    { estado: 'PENDIENTE', totalProductos: 2 },
-    { estado: 'PARCIAL', totalProductos: 3 },
-    { estado: 'RECIBIDO', totalProductos: 8 },
-  ])})`, contexto);
+  vm.runInContext(extraerFuncion(script, 'productosBajoStockUnicos'), contexto);
+  vm.runInContext(extraerFuncion(script, 'pedidosRelacionadosProducto'), contexto);
+  const pedidosActivos = [
+    { estado: 'PENDIENTE', productoIds: [1, 2] },
+    { estado: 'PARCIAL', productoIds: [2, 3, 4] },
+    { estado: 'RECIBIDO', productoIds: [8] },
+  ];
+  const alertas = [{ productoId: 5 }, { productoId: 1 }];
+  const cantidad = vm.runInContext(
+    `contarProductosSeguimiento(${JSON.stringify(pedidosActivos)}, ${JSON.stringify(alertas)})`,
+    contexto,
+  );
   assert.equal(cantidad, 5);
+  const unicos = vm.runInContext(`productosBajoStockUnicos([
+    { productoId: 5, nombre: 'Body' },
+    { productoId: 5, nombre: 'Body duplicado' },
+    { productoId: 0, nombre: 'Inválido' },
+  ])`, contexto);
+  assert.equal(unicos.length, 1);
+  assert.equal(unicos[0].nombre, 'Body');
+  contexto.alerta = { productoId: 5 };
+  const relacionados = vm.runInContext(`pedidosRelacionadosProducto(alerta, [
+    { id: 2, estado: 'PARCIAL', productoIds: [5, 6] },
+    { id: 3, estado: 'PENDIENTE', productoIds: [7] },
+    { id: 4, estado: 'RECIBIDO', productoIds: [5] },
+  ])`, contexto);
+  assert.deepEqual(JSON.parse(JSON.stringify(relacionados.map((pedido) => pedido.id))), [2]);
   assert.match(html, /id="kanban-titulo-abastecer">Por abastecer/);
   assert.match(html, /id="kanban-titulo-pedido">Pedido/);
   assert.match(html, /id="kanban-titulo-recibido">Recibido/);
   assert.match(script, /clave: 'PARCIAL', columna: 'kanban-por-abastecer'/);
   assert.match(script, /clave: 'PENDIENTE', columna: 'kanban-pedido'/);
   assert.match(script, /clave: 'RECIBIDO', columna: 'kanban-recibido'/);
+  assert.match(script, /apiGet\('\/api\/alertas\/stock'\)/);
+  assert.match(script, /alerta-producto-\$\{encodeURIComponent\(alerta\.productoId\)\}/);
+  assert.match(script, /productoIds/);
   assert.match(html, /id="kanban-ultima-actualizacion"/);
   assert.match(html, /id="kanban-detalle-total"/);
 });

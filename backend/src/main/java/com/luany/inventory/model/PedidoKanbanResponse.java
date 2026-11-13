@@ -2,6 +2,7 @@ package com.luany.inventory.model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record PedidoKanbanResponse(
         Long id,
@@ -13,5 +14,6 @@ public record PedidoKanbanResponse(
         int totalProductos,
         long cantidadTotalSolicitada,
         long cantidadRecibida,
-        long cantidadPendiente) {
+        long cantidadPendiente,
+        List<Long> productoIds) {
 }

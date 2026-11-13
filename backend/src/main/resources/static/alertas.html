@@ -78,16 +78,46 @@
         <div class="tabla-wrapper alertas-table-wrapper">
           <table class="alertas-table">
             <thead>
-              <tr><th>Producto</th><th>Categoría</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th><th>Reposición sugerida</th></tr>
+              <tr><th>Producto</th><th>Categoría</th><th>Stock actual</th><th>Stock mínimo</th><th>Estado</th><th>Reposición sugerida</th><th>Acción</th></tr>
             </thead>
             <tbody id="alertas-tabla">
-              <tr><td colspan="6" class="alertas-message"><span class="spinner spinner-dark"></span> Cargando alertas...</td></tr>
+              <tr><td colspan="7" class="alertas-message"><span class="spinner spinner-dark"></span> Cargando alertas...</td></tr>
             </tbody>
           </table>
         </div>
       </section>
     </div>
   </main>
+</div>
+
+<div class="modal-overlay alertas-modal" id="modal-reponer-producto" role="dialog" aria-modal="true" aria-labelledby="modal-reponer-titulo" aria-hidden="true" hidden>
+  <div class="modal alertas-modal-ancho">
+    <div class="modal-header">
+      <h3 id="modal-reponer-titulo">Registrar pedido de reposición</h3>
+      <button type="button" class="btn-cerrar-modal" data-cerrar-reposicion aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="m18 6-12 12M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="form-reponer-producto" novalidate>
+      <div class="modal-body">
+        <div class="form-fila">
+          <div class="form-grupo"><label for="reposicion-proveedor">Proveedor</label><input id="reposicion-proveedor" class="form-control" readonly /></div>
+          <div class="form-grupo"><label for="reposicion-fecha-estimada">Fecha estimada de entrega</label><input id="reposicion-fecha-estimada" class="form-control" type="date" /></div>
+        </div>
+        <div class="form-grupo"><label for="reposicion-producto">Producto</label><input id="reposicion-producto" class="form-control" readonly /></div>
+        <div class="form-fila">
+          <div class="form-grupo"><label for="reposicion-cantidad">Cantidad *</label><input id="reposicion-cantidad" class="form-control" type="number" min="1" step="1" required /></div>
+          <div class="form-grupo"><label for="reposicion-precio">Precio unitario *</label><input id="reposicion-precio" class="form-control" type="number" min="0" step="0.01" required /></div>
+        </div>
+        <p class="pedidos-error" id="reposicion-error" role="alert" hidden></p>
+        <p class="text-suave">El pedido no modifica el stock. El inventario se actualizará al registrar la recepción.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primario" id="btn-confirmar-reposicion">Registrar pedido</button>
+        <button type="button" class="btn btn-secundario" data-cerrar-reposicion>Cancelar</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <div id="toast-container"></div>

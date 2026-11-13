@@ -14,4 +14,8 @@ public interface DetallePedidoRepository extends JpaRepository<DetallePedido, Lo
     @Query("SELECT d.pedido.id, COALESCE(SUM(d.cantidad), 0) "
             + "FROM DetallePedido d WHERE d.pedido.id IN :pedidoIds GROUP BY d.pedido.id")
     List<Object[]> cantidadesSolicitadasPorPedido(@Param("pedidoIds") List<Long> pedidoIds);
+
+    @Query("SELECT d.pedido.id, d.producto.id "
+            + "FROM DetallePedido d WHERE d.pedido.id IN :pedidoIds")
+    List<Object[]> productosPorPedido(@Param("pedidoIds") List<Long> pedidoIds);
 }

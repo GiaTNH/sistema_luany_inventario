@@ -127,7 +127,7 @@ class PedidoControllerSecurityTests {
         var hasta = java.time.LocalDate.of(2026, 11, 30);
         var pedido = new PedidoKanbanResponse(
                 5L, java.time.LocalDateTime.of(2026, 11, 4, 10, 0), hasta,
-                "PARCIAL", 4L, "Proveedor", 2, 8, 3, 5);
+                "PARCIAL", 4L, "Proveedor", 2, 8, 3, 5, List.of(12L, 15L));
         when(pedidoService.listarTablero("Proveedor", "PARCIAL", desde, hasta))
                 .thenReturn(List.of(pedido));
 
@@ -138,7 +138,8 @@ class PedidoControllerSecurityTests {
                 .andExpect(jsonPath("$[0].estado").value("PARCIAL"))
                 .andExpect(jsonPath("$[0].cantidadTotalSolicitada").value(8))
                 .andExpect(jsonPath("$[0].cantidadRecibida").value(3))
-                .andExpect(jsonPath("$[0].cantidadPendiente").value(5));
+                .andExpect(jsonPath("$[0].cantidadPendiente").value(5))
+                .andExpect(jsonPath("$[0].productoIds[0]").value(12));
 
         mockMvc.perform(get("/api/pedidos/tablero?buscar=Proveedor&estado=PARCIAL"
                         + "&desde=2026-11-01&hasta=2026-11-30")

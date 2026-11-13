@@ -201,63 +201,38 @@ function generarNotaImprimible(nota) {
   `).join('');
   const numero = String(nota.numeroNota || '').match(/\d+/g)?.join('') || nota.numeroNota;
   const numeroVisible = numero ? numero.padStart(3, '0') : '—';
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Nota de Venta Nº ${escapar(numeroVisible)}</title>
-    <style>
-      *{box-sizing:border-box}body{margin:28px auto;padding:24px;max-width:900px;color:#281C4A;font:14px Arial,sans-serif}
-      header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:2px solid #6D3BD1}
-      .logo{width:76px;height:76px;object-fit:contain}.marca{text-align:right;color:#5630A8}.marca h1{margin:0;font-size:22px}.marca p{margin:5px 0 0;color:#756B91}
-      h2{margin:24px 0 18px;color:#32216E;font-size:21px}.datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px}
-      .datos p{margin:4px 0}table{width:100%;margin-top:24px;border-collapse:collapse}th,td{padding:10px;border:1px solid #D8D1E5;text-align:left}
-      th{background:#F3EFFA;color:#5630A8}.total{margin:18px 0;color:#32216E;font-size:19px;font-weight:bold;text-align:right}
-      .legal{margin-top:28px;color:#8A2C50;font-size:11px;font-weight:bold;text-align:center}.gracias{margin-top:22px;color:#5630A8;font-size:17px;font-weight:bold;text-align:center}
-      .eslogan{color:#756B91;text-align:center}.imprimir{display:block;margin:22px auto 0;padding:10px 18px;border:0;border-radius:8px;background:#684BB5;color:white;font-weight:bold;cursor:pointer}
-      @media print{body{margin:0;padding:0}.imprimir{display:none}header,tr{break-inside:avoid}th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-      @media(max-width:560px){body{padding:14px}.datos{grid-template-columns:1fr}header{gap:10px}.logo{width:58px;height:58px}}
-    </style></head><body>
-    <header><img class="logo" src="/img/logo-bolsa.png" alt="Logo LUANY"><div class="marca"><h1>Luany - tienda para bebés</h1><p>Juega · Viste · Crece</p></div></header>
+  return `<article class="nota-venta-imprimible">
+    <header class="nota-venta-encabezado">
+      <div class="nota-venta-marca">
+        <img class="nota-venta-logo" src="/img/logo-bolsa.png" alt="" />
+        <span>Luany</span>
+      </div>
+      <div class="nota-venta-tienda"><strong>Luany - tienda para bebés</strong><span>Juega · Viste · Crece</span></div>
+    </header>
     <h2>Nota de Venta Nº ${escapar(numeroVisible)}</h2>
-    <section class="datos">
+    <section class="nota-venta-datos">
       <p><strong>Fecha y hora de emisión:</strong> ${escapar(normalizarFecha(nota.fechaEmision))}</p>
       <p><strong>Cliente:</strong> ${escapar(nota.clienteNombre || 'Cliente general')}</p>
       <p><strong>Documento:</strong> ${escapar(documentoClienteVisible(nota.clienteDocumento))}</p>
       <p><strong>Registrado por:</strong> ${escapar(nota.usuarioNombre || '—')}</p>
     </section>
     <table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Importe</th></tr></thead><tbody>${filas}</tbody></table>
-    <p class="total">Total de la venta: ${escapar(formatoMoneda(nota.total))}</p>
-    <p class="legal">DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO</p>
-    <p class="gracias">¡Gracias por tu compra!</p><p class="eslogan">Acompañamos cada etapa de tu bebé</p>
-    <button class="imprimir" type="button" onclick="window.print()">Imprimir / Guardar PDF</button>
-    <script>window.onload=()=>window.print();</script></body></html>`;
+    <p class="nota-venta-total">Total de la venta: ${escapar(formatoMoneda(nota.total))}</p>
+    <p class="nota-venta-legal">DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO</p>
+    <p class="nota-venta-gracias">¡Gracias por tu compra!</p>
+    <p class="nota-venta-eslogan">Acompañamos cada etapa de tu bebé</p>
+  </article>`;
 }
 
-function abrirNotaImprimible(nota, ventana) {
-  const destino = ventana || window;
-  if (ventana) ventana.opener = null;
-  destino.document.open();
-  destino.document.write(generarNotaImprimible(nota));
-  destino.document.close();
+function abrirNotaImprimible(nota) {
+  notaActualDetalle = nota;
+  document.getElementById('modal-detalle-venta-titulo').textContent = `Nota ${nota.numeroNota}`;
+  document.getElementById('venta-documento-imprimible').innerHTML = generarNotaImprimible(nota);
+  mostrarModal(modalDetalleVenta);
 }
 
 function renderizarDetalleVenta(nota) {
-  notaActualDetalle = nota;
-  document.getElementById('modal-detalle-venta-titulo').textContent = `Nota ${nota.numeroNota}`;
-  document.getElementById('venta-detalle-resumen').textContent =
-    `Fecha: ${normalizarFecha(nota.fechaEmision)} · Cliente: ${nota.clienteNombre} (${documentoClienteVisible(nota.clienteDocumento)}) · Registrado por: ${nota.usuarioNombre}`;
-  const tbody = document.getElementById('venta-detalle-lineas');
-  tbody.replaceChildren();
-  nota.productos.forEach((producto) => {
-    const fila = document.createElement('tr');
-    fila.append(
-      celda(producto.productoNombre),
-      celda(producto.cantidad),
-      celda(formatoMoneda(producto.precioUnitario)),
-      celda(formatoMoneda(producto.subtotal)),
-    );
-    tbody.appendChild(fila);
-  });
-  document.getElementById('venta-detalle-total').textContent = formatoMoneda(nota.total);
-  mostrarModal(modalDetalleVenta);
+  abrirNotaImprimible(nota);
 }
 
 document.getElementById('btn-agregar-producto-venta')?.addEventListener('click', agregarLineaVenta);
@@ -272,6 +247,7 @@ document.querySelectorAll('.ventas-modal').forEach((modal) => {
 document.addEventListener('keydown', (evento) => {
   if (evento.key === 'Escape') cerrarModalesVenta();
 });
+window.addEventListener('afterprint', () => document.body.classList.remove('printing-venta'));
 
 cuerpoLineasVenta?.addEventListener('click', quitarLineaVenta);
 
@@ -364,26 +340,15 @@ if (formNuevaVenta) {
     }
 
     botonRegistrarVenta.disabled = true;
-    const ventanaImpresion = window.open('', '_blank');
     try {
-      let nota;
-      try {
-        nota = await apiPost('/api/notas-venta', {
-          clienteId: selectClienteVenta.value ? Number(selectClienteVenta.value) : null,
-          productos,
-        });
-      } catch (exception) {
-        ventanaImpresion?.close();
-        error.textContent = exception.message;
-        error.hidden = false;
-        return;
-      }
-
+      const nota = await apiPost('/api/notas-venta', {
+        clienteId: selectClienteVenta.value ? Number(selectClienteVenta.value) : null,
+        productos,
+      });
       mostrarToast(`Venta registrada correctamente: ${nota.numeroNota}.`, 'exito');
       try {
-        abrirNotaImprimible(nota, ventanaImpresion);
+        abrirNotaImprimible(nota);
       } catch (exception) {
-        ventanaImpresion?.close();
         mostrarToast(
           `La venta ${nota.numeroNota} se guardó, pero no se pudo abrir la vista imprimible: ${exception.message}`,
           'error',
@@ -397,10 +362,6 @@ if (formNuevaVenta) {
 
 document.getElementById('btn-imprimir-nota')?.addEventListener('click', () => {
   if (!notaActualDetalle) return;
-  const ventana = window.open('', '_blank');
-  if (!ventana) {
-    mostrarToast('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para continuar.', 'error');
-    return;
-  }
-  abrirNotaImprimible(notaActualDetalle, ventana);
+  document.body.classList.add('printing-venta');
+  window.print();
 });

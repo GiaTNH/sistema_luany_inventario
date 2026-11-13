@@ -3,9 +3,17 @@ iniciarLayout('Alertas');
 const tablaAlertas = document.getElementById('alertas-tabla');
 const totalAlertas = document.getElementById('alertas-total');
 const botonReponerAlertas = document.getElementById('btn-reponer-alertas');
-const columnasAlerta = 6;
+const columnasAlerta = 7;
 const usuarioAlertas = obtenerSesion();
 const esAdministradorAlertas = usuarioAlertas?.rol === 'ADMIN';
+const modalReposicion = document.getElementById('modal-reponer-producto');
+const formReposicion = document.getElementById('form-reponer-producto');
+const botonConfirmarReposicion = document.getElementById('btn-confirmar-reposicion');
+const errorReposicion = document.getElementById('reposicion-error');
+let productosCatalogoReposicion = [];
+let proveedoresCatalogoReposicion = [];
+let productoReposicionActual = null;
+let guardandoReposicion = false;
 
 if (botonReponerAlertas && esAdministradorAlertas) {
   botonReponerAlertas.hidden = false;
@@ -46,6 +54,78 @@ function productosParaReposicion(alertas) {
       productoId: Number(alerta.productoId),
       cantidad: Number(alerta.cantidadSugerida),
     }));
+}
+
+function datosPedidoReposicion(producto, cantidad, precio, fechaEstimadaEntrega) {
+  const cantidadNumerica = Number(cantidad);
+  const precioNumerico = Number(precio);
+  const productoId = Number(producto?.id);
+  const proveedorId = Number(producto?.proveedor?.id);
+  if (!producto || !Number.isSafeInteger(cantidadNumerica) || cantidadNumerica < 1
+      || !Number.isFinite(precioNumerico) || precioNumerico < 0
+      || !Number.isSafeInteger(productoId) || productoId < 1
+      || !Number.isSafeInteger(proveedorId) || proveedorId < 1) {
+    throw new Error('Verifica el producto, proveedor, cantidad y precio del pedido.');
+  }
+  return {
+    proveedorId,
+    fechaEstimadaEntrega: fechaEstimadaEntrega || null,
+    productos: [{
+      productoId,
+      cantidad: cantidadNumerica,
+      precio: precioNumerico,
+    }],
+  };
+}
+
+async function crearPedidoDesdeAlerta(datos) {
+  if (guardandoReposicion) return false;
+  guardandoReposicion = true;
+  botonConfirmarReposicion.disabled = true;
+  try {
+    await apiPost('/api/pedidos', datos);
+    return true;
+  } finally {
+    guardandoReposicion = false;
+    botonConfirmarReposicion.disabled = false;
+  }
+}
+
+async function abrirModalReposicion(productoId, cantidadSugerida) {
+  if (!esAdministradorAlertas) return;
+  const cantidad = Number(cantidadSugerida);
+  if (!Number.isSafeInteger(cantidad) || cantidad < 1) {
+    mostrarToast('Este producto no tiene una cantidad de reposición válida.', 'error');
+    return;
+  }
+  try {
+    if (!productosCatalogoReposicion.length || !proveedoresCatalogoReposicion.length) {
+      [productosCatalogoReposicion, proveedoresCatalogoReposicion] = await Promise.all([
+        apiGet('/api/productos'),
+        apiGet('/api/proveedores'),
+      ]);
+      if (!Array.isArray(productosCatalogoReposicion) || !Array.isArray(proveedoresCatalogoReposicion)) {
+        throw new Error('Los catálogos de productos y proveedores no tienen el formato esperado.');
+      }
+    }
+    const producto = productosCatalogoReposicion.find((item) => String(item.id) === String(productoId));
+    const proveedor = producto && proveedoresCatalogoReposicion.find((item) =>
+      String(item.id) === String(producto.proveedor?.id));
+    if (!producto || !proveedor || String(proveedor.estado || '').trim().toUpperCase() !== 'ACTIVO') {
+      throw new Error('El producto no tiene un proveedor activo disponible para registrar el pedido.');
+    }
+    document.getElementById('reposicion-proveedor').value = proveedor.nombre;
+    document.getElementById('reposicion-producto').value = producto.nombre;
+    document.getElementById('reposicion-cantidad').value = String(cantidad);
+    document.getElementById('reposicion-precio').value = Number(producto.precio).toFixed(2);
+    document.getElementById('reposicion-fecha-estimada').value = '';
+    errorReposicion.hidden = true;
+    errorReposicion.textContent = '';
+    productoReposicionActual = producto;
+    abrirModalAccesible(modalReposicion);
+  } catch (error) {
+    mostrarToast(`No se pudo preparar el pedido: ${error.message}`, 'error');
+  }
 }
 
 function renderizarAlertas(alertas) {
@@ -97,7 +177,22 @@ function renderizarAlertas(alertas) {
       cantidadSugerida === null ? '—' : `${cantidadSugerida} uds.`,
       'alertas-replenishment',
     );
-    fila.append(nombre, categoria, stock, minimo, estadoCelda, sugerida);
+    const accion = document.createElement('td');
+    accion.className = 'alertas-replenishment-action';
+    if (esAdministradorAlertas) {
+      const boton = document.createElement('button');
+      boton.type = 'button';
+      boton.className = 'btn btn-secundario alertas-reponer-producto';
+      boton.dataset.productoId = alerta.productoId;
+      boton.dataset.cantidadSugerida = cantidadSugerida ?? '';
+      boton.textContent = 'Reponer';
+      boton.disabled = !Number.isSafeInteger(cantidadSugerida) || cantidadSugerida < 1
+        || !Number.isSafeInteger(Number(alerta.productoId)) || Number(alerta.productoId) < 1;
+      accion.appendChild(boton);
+    } else {
+      accion.textContent = '—';
+    }
+    fila.append(nombre, categoria, stock, minimo, estadoCelda, sugerida, accion);
     tablaAlertas.appendChild(fila);
   });
 }
@@ -109,6 +204,14 @@ async function cargarAlertas() {
       throw new Error('La respuesta del servidor no tiene el formato esperado.');
     }
     renderizarAlertas(alertas);
+    const productoEnlace = window.location.hash.match(/^#alerta-producto-(\d+)$/);
+    if (productoEnlace && esAdministradorAlertas) {
+      const url = new URL(window.location.href);
+      url.hash = '';
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
+      const alerta = alertas.find((item) => String(item.productoId) === productoEnlace[1]);
+      if (alerta) await abrirModalReposicion(alerta.productoId, alerta.cantidadSugerida);
+    }
   } catch (error) {
     if (botonReponerAlertas) botonReponerAlertas.disabled = true;
     totalAlertas.textContent = 'No disponible';
@@ -138,6 +241,44 @@ botonReponerAlertas?.addEventListener('click', async () => {
     botonReponerAlertas.disabled = false;
     mostrarToast(`No se pudo preparar la reposición: ${error.message}`, 'error');
   }
+});
+
+tablaAlertas.addEventListener('click', (evento) => {
+  const boton = evento.target.closest('.alertas-reponer-producto');
+  if (boton) abrirModalReposicion(boton.dataset.productoId, boton.dataset.cantidadSugerida);
+});
+
+formReposicion.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  errorReposicion.hidden = true;
+  if (!formReposicion.reportValidity()) return;
+  let datos;
+  try {
+    datos = datosPedidoReposicion(
+      productoReposicionActual,
+      document.getElementById('reposicion-cantidad').value,
+      document.getElementById('reposicion-precio').value,
+      document.getElementById('reposicion-fecha-estimada').value,
+    );
+    const creado = await crearPedidoDesdeAlerta(datos);
+    if (!creado) return;
+    cerrarModalAccesible(modalReposicion);
+    mostrarToast('Pedido registrado. El stock se actualizará al confirmar la recepción.', 'exito');
+    await cargarAlertas();
+  } catch (error) {
+    errorReposicion.textContent = error.message;
+    errorReposicion.hidden = false;
+  }
+});
+
+document.querySelectorAll('[data-cerrar-reposicion]').forEach((boton) => {
+  boton.addEventListener('click', () => cerrarModalAccesible(modalReposicion));
+});
+modalReposicion.addEventListener('click', (evento) => {
+  if (evento.target === modalReposicion) cerrarModalAccesible(modalReposicion);
+});
+document.addEventListener('keydown', (evento) => {
+  if (evento.key === 'Escape' && !modalReposicion.hidden) cerrarModalAccesible(modalReposicion);
 });
 
 cargarAlertas();

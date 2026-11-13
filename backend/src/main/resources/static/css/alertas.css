@@ -80,7 +80,7 @@
 .alertas-page .alertas-total.is-error { background: #FFE6EB; color: #B4233B; }
 
 .alertas-page .alertas-table-wrapper { padding: 8px 15px 15px; }
-.alertas-page .alertas-table { min-width: 700px; border-collapse: separate; border-spacing: 0 6px; }
+.alertas-page .alertas-table { min-width: 820px; border-collapse: separate; border-spacing: 0 6px; }
 .alertas-page .alertas-table th { height: 43px; padding: 9px 12px; border: 0; background: #F4F1FB; color: #8160CC; font-size: 9px; letter-spacing: .55px; }
 .alertas-page .alertas-table th:first-child { padding-left: 17px; border-radius: 12px 0 0 12px; }
 .alertas-page .alertas-table th:last-child { padding-right: 17px; border-radius: 0 12px 12px 0; }
@@ -108,9 +108,16 @@
 .alertas-page .alertas-status.is-bajo { background: #FFF2D6; color: #B76B00; }
 .alertas-page .alertas-status.is-agotado { background: #FFE6EB; color: #E11D48; }
 .alertas-page .alertas-replenishment { color: #5633D5; font-weight: 700; white-space: nowrap; }
+.alertas-page .alertas-replenishment-action { white-space: nowrap; }
+.alertas-page .alertas-replenishment-action .btn { padding: 8px 11px; font-size: 11px; }
 .alertas-page .alertas-message { height: 120px; color: #827B9F !important; text-align: center; }
 .alertas-page .alertas-message.is-error { color: #B4233B !important; }
 .alertas-page .alertas-message .spinner { display: inline-block; margin-right: 7px; vertical-align: middle; }
+.alertas-modal[hidden] { display: none; }
+.alertas-modal .modal { width: min(680px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; }
+.alertas-modal .modal-footer { margin: 18px -26px -24px; }
+.alertas-modal .form-grupo { margin-bottom: 14px; }
+.alertas-modal .modal-body > .text-suave { margin: 6px 0 0; font-size: 12px; }
 
 @media (max-width: 768px) {
   .alertas-page .alertas-header { min-height: 72px; padding: 10px 16px 10px 62px; }
@@ -121,6 +128,10 @@
   .alertas-page .alertas-panel-actions { flex-wrap: wrap; justify-content: flex-end; }
   .alertas-page .alertas-panel-header p { max-width: 440px; }
   .alertas-page .alertas-table-wrapper { padding: 4px 8px 10px; }
+  .alertas-modal .modal { max-height: calc(100vh - 32px); }
+  .alertas-modal .modal-header,
+  .alertas-modal .modal-body { padding: 20px; }
+  .alertas-modal .modal-footer { margin: 18px -20px -20px; padding: 16px 20px; }
 }
 
 @media (max-width: 480px) {
