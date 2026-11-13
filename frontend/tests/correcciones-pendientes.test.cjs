@@ -40,6 +40,83 @@ test('el Dashboard dirige Alertas y Perfil a pantallas protegidas', () => {
   assert.match(dashboard, /<option value="1y">Último año<\/option>/);
 });
 
+test('el usuario del navbar abre Perfil por clic y teclado para ambos roles', () => {
+  const api = readStatic('js/api.js');
+  const habilitar = extraerFuncion(api, 'habilitarAccesoPerfil');
+  for (const rol of ['ADMIN', 'EMPLEADO']) {
+    const listeners = new Map();
+    const usuario = {
+      attributes: {},
+      setAttribute(nombre, valor) { this.attributes[nombre] = valor; },
+      addEventListener(tipo, listener) { listeners.set(tipo, listener); },
+    };
+    const contexto = vm.createContext({
+      document: { querySelectorAll: (selector) => selector === '.sidebar-usuario' ? [usuario] : [] },
+      window: { location: { href: '' } },
+    });
+    vm.runInContext(habilitar, contexto);
+    vm.runInContext('habilitarAccesoPerfil()', contexto);
+
+    assert.equal(usuario.attributes.role, 'link', rol);
+    assert.equal(usuario.tabIndex, 0, rol);
+    const evento = (tipo, extra = {}) => ({
+      type: tipo,
+      key: extra.key,
+      target: { closest: () => extra.interactivo ? {} : null },
+      preventDefault() { this.prevenido = true; },
+    });
+    listeners.get('click')(evento('click'));
+    assert.equal(contexto.window.location.href, '/perfil.html', rol);
+    contexto.window.location.href = '';
+    const enter = evento('keydown', { key: 'Enter' });
+    listeners.get('keydown')(enter);
+    assert.equal(contexto.window.location.href, '/perfil.html', rol);
+    assert.equal(enter.prevenido, true);
+    contexto.window.location.href = '';
+    listeners.get('click')(evento('click', { interactivo: true }));
+    assert.equal(contexto.window.location.href, '', 'no debe interceptar botones o enlaces internos');
+  }
+});
+
+test('el logo oficial existe y se integra en las vistas de acceso, nota y navbar', () => {
+  const logo = path.join(staticDirectory, 'img/logo_luany.png');
+  assert.ok(fs.existsSync(logo), 'debe estar disponible el recurso oficial');
+  assert.match(readStatic('index.html'), /src="\/img\/logo_luany\.png"/);
+  assert.match(readStatic('cambiar-password.html'), /src="\/img\/logo_luany\.png"/);
+  const api = readStatic('js/api.js');
+  assert.match(api, /logo\.src = '\/img\/logo_luany\.png'/);
+  assert.match(readStatic('js/notas-venta.js'), /src="\/img\/logo_luany\.png"/);
+
+  const elementosOriginales = [{ id: 'bag' }, { id: 'brand' }];
+  const eventos = new Map();
+  const logoElemento = {
+    addEventListener(tipo, listener) { eventos.set(tipo, listener); },
+  };
+  const clases = new Set();
+  const contenedorMarca = {
+    children: elementosOriginales,
+    replaceChildren(...elementos) { this.children = elementos; },
+    closest() {
+      return { classList: { add: (clase) => clases.add(clase), remove: (clase) => clases.delete(clase) } };
+    },
+  };
+  const contexto = vm.createContext({
+    document: {
+      querySelectorAll: (selector) => selector === '.sidebar-brand' ? [contenedorMarca] : [],
+      createElement: (tag) => tag === 'img' ? logoElemento : null,
+    },
+  });
+  vm.runInContext(extraerFuncion(api, 'aplicarLogoOficial'), contexto);
+  vm.runInContext('aplicarLogoOficial()', contexto);
+  assert.equal(logoElemento.src, '/img/logo_luany.png');
+  assert.equal(logoElemento.alt, 'LUANY - Juega, Viste, Crece');
+  assert.equal(contenedorMarca.children[0], logoElemento);
+  assert.ok(clases.has('sidebar-logo-oficial'));
+  eventos.get('error')();
+  assert.deepEqual(contenedorMarca.children, elementosOriginales);
+  assert.ok(!clases.has('sidebar-logo-oficial'));
+});
+
 test('las fechas y exportaciones utilizan formatos y rutas admitidos', () => {
   const kanban = readStatic('js/pedidos-kanban.js');
   const reportes = readStatic('js/reportes.js');
@@ -441,8 +518,8 @@ test('el detalle y la nota recién registrada usan la misma vista imprimible den
   };
   const documento = vm.runInContext('generarNotaImprimible(nota)', contexto);
   assert.match(documento, /Nota de Venta Nº 009/);
-  assert.match(documento, /src="\/img\/logo-bolsa\.png"/);
-  assert.match(documento, /<span>Luany<\/span>/);
+  assert.match(documento, /src="\/img\/logo_luany\.png"/);
+  assert.match(documento, /alt="LUANY - Juega, Viste, Crece"/);
   assert.match(documento, /Luany - tienda para bebés/);
   assert.match(documento, /DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO/);
   assert.match(documento, /¡Gracias por tu compra!/);

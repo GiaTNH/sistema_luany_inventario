@@ -355,6 +355,42 @@ function nombreVisibleRol(rol) {
   return etiquetas[rol] || rol || '';
 }
 
+function habilitarAccesoPerfil() {
+  document.querySelectorAll('.sidebar-usuario').forEach(elemento => {
+    elemento.setAttribute('role', 'link');
+    elemento.tabIndex = 0;
+    elemento.setAttribute('aria-label', 'Abrir perfil');
+
+    const navegarAlPerfil = evento => {
+      if (evento.target.closest('a, button')) return;
+      if (evento.type === 'keydown' && evento.key !== 'Enter' && evento.key !== ' ') return;
+      evento.preventDefault();
+      window.location.href = '/perfil.html';
+    };
+
+    elemento.addEventListener('click', navegarAlPerfil);
+    elemento.addEventListener('keydown', navegarAlPerfil);
+  });
+}
+
+function aplicarLogoOficial() {
+  document.querySelectorAll('.sidebar-brand').forEach(marca => {
+    const elementosOriginales = Array.from(marca.children);
+    const logo = document.createElement('img');
+    logo.className = 'sidebar-brand-logo-oficial';
+    logo.src = '/img/logo_luany.png';
+    logo.alt = 'LUANY - Juega, Viste, Crece';
+
+    logo.addEventListener('error', () => {
+      marca.replaceChildren(...elementosOriginales);
+      marca.closest('.sidebar-logo')?.classList.remove('sidebar-logo-oficial');
+    }, { once: true });
+
+    marca.replaceChildren(logo);
+    marca.closest('.sidebar-logo')?.classList.add('sidebar-logo-oficial');
+  });
+}
+
 /** Inicializa el botón de cerrar sesión y el avatar del topbar */
 function iniciarLayout(tituloPagina) {
   const usuario = requerirSesion();
@@ -375,6 +411,8 @@ function iniciarLayout(tituloPagina) {
   const saludoEl = document.getElementById('nombre-asistente'); if (saludoEl) saludoEl.textContent = usuario.nombre.split(/\s+/)[0];
 
   renderizarNavegacionSidebar(usuario.rol);
+  aplicarLogoOficial();
+  habilitarAccesoPerfil();
 
   // Botón cerrar sesión
   document.querySelectorAll('.btn-cerrar-sesion').forEach(btn => {

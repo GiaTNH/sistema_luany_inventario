@@ -204,8 +204,7 @@ function generarNotaImprimible(nota) {
   return `<article class="nota-venta-imprimible">
     <header class="nota-venta-encabezado">
       <div class="nota-venta-marca">
-        <img class="nota-venta-logo" src="/img/logo-bolsa.png" alt="" />
-        <span>Luany</span>
+        <img class="nota-venta-logo" src="/img/logo_luany.png" alt="LUANY - Juega, Viste, Crece" />
       </div>
       <div class="nota-venta-tienda"><strong>Luany - tienda para bebés</strong><span>Juega · Viste · Crece</span></div>
     </header>

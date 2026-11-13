@@ -215,7 +215,7 @@ public class ReportesExportService {
             byte[] logo = cargarLogo();
             if (logo != null) {
                 Image imagen = Image.getInstance(logo);
-                imagen.scaleToFit(48, 48);
+                imagen.scaleToFit(160, 68);
                 PdfPTable marca = new PdfPTable(new float[]{1, 8});
                 marca.setWidthPercentage(100);
                 PdfPCell celdaLogo = new PdfPCell(imagen, true);
@@ -517,11 +517,11 @@ public class ReportesExportService {
         ancla.setRow1(0);
         ancla.setCol2(4);
         ancla.setRow2(2);
-        sheet.createDrawingPatriarch().createPicture(ancla, indiceImagen).resize(0.75);
+        sheet.createDrawingPatriarch().createPicture(ancla, indiceImagen).resize(0.2);
     }
 
     private byte[] cargarLogo() throws IOException {
-        ClassPathResource recurso = new ClassPathResource("static/img/logo-bolsa.png");
+        ClassPathResource recurso = new ClassPathResource("static/img/logo_luany.png");
         if (!recurso.exists()) return null;
         try (InputStream entrada = recurso.getInputStream()) {
             return entrada.readAllBytes();
