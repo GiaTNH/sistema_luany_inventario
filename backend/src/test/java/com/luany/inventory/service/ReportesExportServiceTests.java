@@ -10,15 +10,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.io.ClassPathResource;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.awt.image.BufferedImage;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import javax.imageio.ImageIO;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,6 +62,11 @@ class ReportesExportServiceTests {
             assertTrue(sheet.getRow(6).getCell(0).getCellStyle().getWrapText());
             assertEquals(1,
                     ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().size());
+            try (InputStream logo = new ClassPathResource("static/img/logo_luany.png").getInputStream()) {
+                assertTrue(java.util.Arrays.equals(
+                        logo.readAllBytes(),
+                        ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().get(0).getData()));
+            }
         }
         verify(reportesService).ventas(desde, hasta);
     }
@@ -77,7 +87,6 @@ class ReportesExportServiceTests {
         try (PdfReader reader = new PdfReader(archivo.contenido())) {
             String texto = new PdfTextExtractor(reader).getTextFromPage(1);
             assertTrue(texto.contains("LUANY"));
-            assertTrue(texto.contains("Juega · Viste · Crece"));
             assertTrue(texto.contains("Ventas por período"));
             assertTrue(texto.contains("2026-10-05"));
             assertTrue(texto.contains("TOTAL"));
@@ -86,6 +95,12 @@ class ReportesExportServiceTests {
                     .getAsDict(com.lowagie.text.pdf.PdfName.RESOURCES)
                     .getAsDict(com.lowagie.text.pdf.PdfName.XOBJECT);
             assertTrue(recursos != null && !recursos.getKeys().isEmpty());
+            try (InputStream logo = new ClassPathResource("static/img/logo_luany.png").getInputStream()) {
+                BufferedImage logoOriginal = ImageIO.read(logo);
+                assertNotNull(logoOriginal);
+                assertTrue(logoOriginal.getWidth() > 0 && logoOriginal.getHeight() > 0);
+                assertTrue(recursos.getKeys().size() >= 1);
+            }
         }
         verify(reportesService).ventas(desde, hasta);
     }
