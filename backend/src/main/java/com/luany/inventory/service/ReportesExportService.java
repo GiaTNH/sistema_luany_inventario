@@ -129,12 +129,13 @@ public class ReportesExportService {
 
             int rowIndex = 0;
             Row brand = sheet.createRow(rowIndex++);
-            brand.createCell(0).setCellValue("LUANY");
-            brand.getCell(0).setCellStyle(tituloStyle);
-            brand.createCell(1).setCellValue("Juega · Viste · Crece");
-            brand.getCell(1).setCellStyle(seccionStyle);
+            brand.createCell(1).setCellValue("LUANY");
+            brand.getCell(1).setCellStyle(tituloStyle);
+            brand.createCell(2).setCellValue("Juega · Viste · Crece");
+            brand.getCell(2).setCellStyle(seccionStyle);
             brand.setHeightInPoints(30);
             agregarLogoExcel(workbook, sheet);
+            agregarBolsaExcel(workbook, sheet);
             Row title = sheet.createRow(rowIndex++);
             title.createCell(0).setCellValue(exportacion.titulo());
             title.getCell(0).setCellStyle(tituloStyle);
@@ -216,10 +217,21 @@ public class ReportesExportService {
             if (logo != null) {
                 Image imagen = Image.getInstance(logo);
                 imagen.scaleToFit(160, 68);
-                PdfPTable marca = new PdfPTable(new float[]{1, 8});
+                byte[] bolsa = cargarBolsa();
+                Image iconoBolsa = bolsa == null ? null : Image.getInstance(bolsa);
+                if (iconoBolsa != null) iconoBolsa.scaleToFit(26, 30);
+                PdfPTable marca = new PdfPTable(iconoBolsa == null
+                        ? new float[]{1, 8} : new float[]{1, 2, 8});
                 marca.setWidthPercentage(100);
+                if (iconoBolsa != null) {
+                    PdfPCell celdaBolsa = new PdfPCell(iconoBolsa, true);
+                    celdaBolsa.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
+                    celdaBolsa.setVerticalAlignment(com.lowagie.text.Element.ALIGN_MIDDLE);
+                    marca.addCell(celdaBolsa);
+                }
                 PdfPCell celdaLogo = new PdfPCell(imagen, true);
                 celdaLogo.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
+                celdaLogo.setVerticalAlignment(com.lowagie.text.Element.ALIGN_MIDDLE);
                 Paragraph textoMarca = new Paragraph();
                 textoMarca.add(new Chunk("LUANY\n", titulo));
                 textoMarca.add(new Chunk("Juega · Viste · Crece", encabezadoMarca));
@@ -511,17 +523,37 @@ public class ReportesExportService {
     private void agregarLogoExcel(XSSFWorkbook workbook, Sheet sheet) throws IOException {
         byte[] logo = cargarLogo();
         if (logo == null) return;
-        int indiceImagen = workbook.addPicture(logo, XSSFWorkbook.PICTURE_TYPE_PNG);
+        agregarImagenExcel(workbook, sheet, logo, 3, 0, 4, 2, 0.2);
+    }
+
+    private void agregarBolsaExcel(XSSFWorkbook workbook, Sheet sheet) throws IOException {
+        byte[] bolsa = cargarBolsa();
+        if (bolsa == null) return;
+        agregarImagenExcel(workbook, sheet, bolsa, 0, 0, 1, 2, 0.65);
+    }
+
+    private void agregarImagenExcel(
+            XSSFWorkbook workbook, Sheet sheet, byte[] imagen, int columnaInicial,
+            int filaInicial, int columnaFinal, int filaFinal, double escala) {
+        int indiceImagen = workbook.addPicture(imagen, XSSFWorkbook.PICTURE_TYPE_PNG);
         var ancla = workbook.getCreationHelper().createClientAnchor();
-        ancla.setCol1(3);
-        ancla.setRow1(0);
-        ancla.setCol2(4);
-        ancla.setRow2(2);
-        sheet.createDrawingPatriarch().createPicture(ancla, indiceImagen).resize(0.2);
+        ancla.setCol1(columnaInicial);
+        ancla.setRow1(filaInicial);
+        ancla.setCol2(columnaFinal);
+        ancla.setRow2(filaFinal);
+        sheet.createDrawingPatriarch().createPicture(ancla, indiceImagen).resize(escala);
     }
 
     private byte[] cargarLogo() throws IOException {
         ClassPathResource recurso = new ClassPathResource("static/img/logo_luany.png");
+        if (!recurso.exists()) return null;
+        try (InputStream entrada = recurso.getInputStream()) {
+            return entrada.readAllBytes();
+        }
+    }
+
+    private byte[] cargarBolsa() throws IOException {
+        ClassPathResource recurso = new ClassPathResource("static/img/logo-bolsa.png");
         if (!recurso.exists()) return null;
         try (InputStream entrada = recurso.getInputStream()) {
             return entrada.readAllBytes();

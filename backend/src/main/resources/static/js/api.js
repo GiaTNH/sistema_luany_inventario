@@ -373,21 +373,15 @@ function habilitarAccesoPerfil() {
   });
 }
 
-function aplicarLogoOficial() {
-  document.querySelectorAll('.sidebar-brand').forEach(marca => {
-    const elementosOriginales = Array.from(marca.children);
-    const logo = document.createElement('img');
-    logo.className = 'sidebar-brand-logo-oficial';
-    logo.src = '/img/logo_luany.png';
-    logo.alt = 'LUANY - Juega, Viste, Crece';
-
-    logo.addEventListener('error', () => {
-      marca.replaceChildren(...elementosOriginales);
-      marca.closest('.sidebar-logo')?.classList.remove('sidebar-logo-oficial');
-    }, { once: true });
-
-    marca.replaceChildren(logo);
-    marca.closest('.sidebar-logo')?.classList.add('sidebar-logo-oficial');
+function configurarMarcaSidebar() {
+  document.querySelectorAll('.sidebar-brand-name').forEach(nombre => {
+    nombre.textContent = 'LUANY';
+  });
+  document.querySelectorAll('.sidebar-brand-tagline').forEach(eslogan => {
+    eslogan.textContent = 'juega. viste. crece.';
+  });
+  document.querySelectorAll('.sidebar-location').forEach(elemento => {
+    elemento.hidden = true;
   });
 }
 
@@ -411,7 +405,7 @@ function iniciarLayout(tituloPagina) {
   const saludoEl = document.getElementById('nombre-asistente'); if (saludoEl) saludoEl.textContent = usuario.nombre.split(/\s+/)[0];
 
   renderizarNavegacionSidebar(usuario.rol);
-  aplicarLogoOficial();
+  configurarMarcaSidebar();
   habilitarAccesoPerfil();
 
   // Botón cerrar sesión
