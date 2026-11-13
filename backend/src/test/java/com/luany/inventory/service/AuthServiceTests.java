@@ -5,10 +5,10 @@ import com.luany.inventory.model.CrearEmpleadoRequest;
 import com.luany.inventory.model.CambioPasswordRequest;
 import com.luany.inventory.model.LoginRequest;
 import com.luany.inventory.model.Usuario;
-import com.luany.inventory.model.UsuarioCreadoResponse;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Optional;
 
@@ -44,7 +46,16 @@ class AuthServiceTests {
     @BeforeEach
     void setUp() {
         passwordEncoder = new BCryptPasswordEncoder();
-        authService = new AuthService(usuarioRepository, passwordEncoder, correoService, jdbcTemplate);
+        TransactionSynchronizationManager.initSynchronization();
+        authService = new AuthService(
+                usuarioRepository, passwordEncoder, correoService, jdbcTemplate, new NotificacionTrasCommit());
+    }
+
+    @AfterEach
+    void limpiarSincronizacion() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test
@@ -60,7 +71,10 @@ class AuthServiceTests {
         request.setNombre("  Ana López  ");
         request.setEmail(" Empleado@Luany.com ");
 
-        UsuarioCreadoResponse respuesta = authService.crearEmpleado(request);
+        var resultado = authService.crearEmpleado(request);
+        assertFalse(resultado.notificacionAceptada());
+        verifyNoInteractions(correoService);
+        ejecutarDespuesDelCommit();
 
         ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
         verify(usuarioRepository).saveAndFlush(captor.capture());
@@ -74,20 +88,38 @@ class AuthServiceTests {
         assertEquals("Ana López", guardado.getNombre());
         assertEquals("empleado@luany.com", guardado.getEmail());
         assertEquals("ana.lopez", guardado.getNombreUsuario());
-        assertEquals(guardado.getNombreUsuario(), respuesta.nombreUsuario());
+        assertEquals(guardado.getNombreUsuario(), resultado.resultado().nombreUsuario());
         assertEquals(guardado.getNombreUsuario(), usernameCaptor.getValue());
         assertEquals("EMPLEADO", guardado.getRol());
+        assertEquals(16, passwordCaptor.getValue().length());
         assertTrue(guardado.isDebeCambiarPassword());
         assertNotEquals(passwordCaptor.getValue(), guardado.getPassword());
         assertTrue(passwordEncoder.matches(passwordCaptor.getValue(), guardado.getPassword()));
-        assertEquals(10L, respuesta.usuario().id());
-        assertEquals("EMPLEADO", respuesta.usuario().rol());
-        assertTrue(respuesta.usuario().debeCambiarPassword());
-        assertEquals(2, respuesta.getClass().getRecordComponents().length);
+        assertEquals(10L, resultado.resultado().usuario().id());
+        assertEquals("EMPLEADO", resultado.resultado().usuario().rol());
+        assertTrue(resultado.resultado().usuario().debeCambiarPassword());
+        assertTrue(resultado.notificacionAceptada());
+        assertTrue(resultado.notificacionRequerida());
     }
 
     @Test
-    void crearEmpleadoFallaSiNoPuedeEnviarCorreo() {
+    void crearEmpleadoAceptaRolAdministradorSinCambiarLaReglaDeCambioInicial() {
+        when(usuarioRepository.buscarPorEmail("admin-nuevo@luany.com")).thenReturn(Optional.empty());
+        when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        CrearEmpleadoRequest request = new CrearEmpleadoRequest();
+        request.setNombre("Admin nuevo");
+        request.setEmail("admin-nuevo@luany.com");
+        request.setRol("ADMIN");
+
+        var resultado = authService.crearEmpleado(request);
+        ejecutarDespuesDelCommit();
+
+        assertEquals("ADMIN", resultado.resultado().usuario().rol());
+        assertTrue(resultado.resultado().usuario().debeCambiarPassword());
+    }
+
+    @Test
+    void crearEmpleadoConservaLaCuentaSiFallaLaNotificacionDespuesDelCommit() {
         when(usuarioRepository.buscarPorEmail("empleado@luany.com")).thenReturn(Optional.empty());
         when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
         doThrow(new CorreoEnvioException()).when(correoService)
@@ -97,8 +129,15 @@ class AuthServiceTests {
         request.setNombre("Ana");
         request.setEmail("empleado@luany.com");
 
-        assertThrows(CorreoEnvioException.class, () -> authService.crearEmpleado(request));
+        var resultado = authService.crearEmpleado(request);
         verify(usuarioRepository).saveAndFlush(any(Usuario.class));
+        verifyNoInteractions(correoService);
+        ejecutarDespuesDelCommit();
+
+        assertTrue(resultado.notificacionRequerida());
+        assertFalse(resultado.notificacionAceptada());
+        assertEquals("empleado@luany.com", resultado.resultado().usuario().email());
+        assertFalse(resultado.resultado().toString().contains("passwordTemporal"));
     }
 
     @Test
@@ -282,5 +321,12 @@ class AuthServiceTests {
         usuario.setPassword(passwordEncoder.encode(passwordTemporal));
         usuario.setDebeCambiarPassword(true);
         return usuario;
+    }
+
+    private void ejecutarDespuesDelCommit() {
+        for (TransactionSynchronization sincronizacion
+                : TransactionSynchronizationManager.getSynchronizations()) {
+            sincronizacion.afterCommit();
+        }
     }
 }

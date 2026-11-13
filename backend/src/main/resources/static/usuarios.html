@@ -81,9 +81,16 @@
               <label for="empleado-email">Correo electrónico</label>
               <input id="empleado-email" class="form-control" type="email" maxlength="120" autocomplete="email" required />
             </div>
+            <div class="form-grupo">
+              <label for="empleado-rol">Rol</label>
+              <select id="empleado-rol" class="form-control" required>
+                <option value="EMPLEADO" selected>Almacén</option>
+                <option value="ADMIN">Administrador</option>
+              </select>
+            </div>
             <p class="usuarios-mensaje-error" id="error-crear-empleado" role="alert" hidden></p>
             <div class="modal-footer usuarios-acciones-formulario">
-              <button type="submit" class="btn btn-primario" id="btn-crear-empleado">Crear cuenta para almacén</button>
+              <button type="submit" class="btn btn-primario" id="btn-crear-empleado">Crear cuenta</button>
               <button type="button" class="btn btn-secundario" id="btn-cancelar-registro">Cancelar</button>
             </div>
           </form>

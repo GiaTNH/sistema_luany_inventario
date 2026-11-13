@@ -4,6 +4,7 @@ import com.luany.inventory.model.ActualizarUsuarioRequest;
 import com.luany.inventory.model.CambiarRolRequest;
 import com.luany.inventory.model.Usuario;
 import com.luany.inventory.model.UsuarioGestionResponse;
+import com.luany.inventory.model.ResultadoNotificacion;
 import com.luany.inventory.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,8 @@ public class UsuarioGestionService {
 
     private final UsuarioRepository usuarioRepository;
     private final SessionRegistry sessionRegistry;
+    private final CorreoService correoService;
+    private final NotificacionTrasCommit notificacionTrasCommit;
 
     @Transactional(readOnly = true)
     public List<UsuarioGestionResponse> listar() {
@@ -66,7 +69,8 @@ public class UsuarioGestionService {
     }
 
     @Transactional
-    public UsuarioGestionResponse actualizar(Long id, ActualizarUsuarioRequest request, String emailAdministrador) {
+    public ResultadoNotificacion<UsuarioGestionResponse> actualizar(
+            Long id, ActualizarUsuarioRequest request, String emailAdministrador) {
         List<Usuario> administradores = usuarioRepository.buscarAdministradoresParaActualizar();
         Usuario usuario = usuarioRepository.buscarPorIdParaActualizar(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "El usuario no existe"));
@@ -116,10 +120,19 @@ public class UsuarioGestionService {
         usuario.setEstado(nuevoEstado);
 
         Usuario guardado = usuarioRepository.saveAndFlush(usuario);
+        boolean cambiaCorreo = !emailAnterior.equalsIgnoreCase(nuevoEmail);
+        ResultadoNotificacion<UsuarioGestionResponse> resultado =
+                new ResultadoNotificacion<>(aRespuesta(guardado), cambiaCorreo);
+        if (cambiaCorreo) {
+            notificacionTrasCommit.registrar(
+                    "cambio de correo",
+                    () -> correoService.enviarNotificacionCambioCorreo(nuevoEmail, guardado.getNombre()),
+                    resultado::marcarNotificacionAceptada);
+        }
         if (cambiaRol || seDesactiva || !emailAnterior.equalsIgnoreCase(nuevoEmail)) {
             expirarSesiones(emailAnterior);
         }
-        return aRespuesta(guardado);
+        return resultado;
     }
 
     private void expirarSesiones(String email) {

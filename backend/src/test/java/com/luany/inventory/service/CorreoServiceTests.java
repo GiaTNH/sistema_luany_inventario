@@ -66,6 +66,46 @@ class CorreoServiceTests {
     }
 
     @Test
+    void notificaElCambioAlNuevoCorreoSinIncluirDatosSensibles() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer servidor = MockRestServiceServer.bindTo(builder).build();
+        CorreoService correoService = new CorreoService(
+                builder.build(), "test-api-key", "noreply@luany.com", "LUANY");
+
+        servidor.expect(requestTo("https://api.brevo.com/v3/smtp/email"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"email\":\"nuevo@luany.com\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("actualizado")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("password"))))
+                .andRespond(withSuccess());
+
+        assertDoesNotThrow(() ->
+                correoService.enviarNotificacionCambioCorreo("nuevo@luany.com", "Ana"));
+        servidor.verify();
+    }
+
+    @Test
+    void falloDeNotificacionNoExponeRespuestaDelProveedor() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer servidor = MockRestServiceServer.bindTo(builder).build();
+        CorreoService correoService = new CorreoService(
+                builder.build(), "test-api-key", "noreply@luany.com", "LUANY");
+        servidor.expect(requestTo("https://api.brevo.com/v3/smtp/email"))
+                .andRespond(withStatus(HttpStatus.BAD_GATEWAY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"message\":\"provider private detail\"}"));
+
+        CorreoNotificacionException error = assertThrows(
+                CorreoNotificacionException.class,
+                () -> correoService.enviarNotificacionCambioCorreo("nuevo@luany.com", "Ana"));
+
+        assertFalse(error.getMessage().contains("provider private detail"));
+        assertFalse(error.getMessage().contains("test-api-key"));
+        servidor.verify();
+    }
+
+    @Test
     void fallaSinExponerLaRespuestaDelProveedorNiLasCredenciales() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer servidor = MockRestServiceServer.bindTo(builder).build();

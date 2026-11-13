@@ -81,7 +81,7 @@
       </div>
 
       <div class="dashboard-header-actions">
-        <a class="dashboard-header-icon-button" id="dashboard-alerts-link" href="/alertas.html" aria-label="Ver alertas de stock">
+        <a class="dashboard-header-icon-button" id="dashboard-alerts-link" href="/alertas.html" aria-label="Ver alertas">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
           <span class="dashboard-alert-count" id="dashboard-alert-count" hidden></span>
         </a>
@@ -89,10 +89,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
           <span><time id="dashboard-date">—</time><small id="dashboard-time">—</small></span>
         </div>
-        <div class="dashboard-user-chip" aria-label="Usuario con sesión iniciada">
+        <a class="dashboard-user-chip dashboard-user-chip-link" href="/perfil.html" aria-label="Abrir perfil de usuario">
           <span class="dashboard-user-avatar" id="dashboard-avatar-inicial">U</span>
           <svg class="dashboard-user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
-        </div>
+        </a>
       </div>
     </header>
 
@@ -201,6 +201,8 @@
                 <option value="hoy">Hoy</option>
                 <option value="7">Últimos 7 días</option>
                 <option value="30" selected>Últimos 30 días</option>
+                <option value="90">Últimos 90 días</option>
+                <option value="365">Últimos 12 meses</option>
               </select>
               <svg class="dashboard-period-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
             </label>

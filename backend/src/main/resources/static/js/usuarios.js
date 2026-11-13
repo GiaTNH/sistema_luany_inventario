@@ -220,14 +220,23 @@ if (!usuarioActual) {
         rol: document.getElementById('edicion-rol').value,
         estado: nuevoEstado,
       });
+      const notificacionFallida = actualizado.notificacionFallida === true;
       cerrarEdicion();
       if (id === usuarioIdActual
           && (actualizado.estado === 'INACTIVO' || actualizado.email !== usuarioActual.email)) {
+        if (notificacionFallida) {
+          sessionStorage.setItem('avisoCorreoNoNotificado', '1');
+        }
         sessionStorage.removeItem('usuario');
         window.location.href = '/index.html';
         return;
       }
-      mostrarToast('Los datos del personal se actualizaron correctamente.', 'exito');
+      mostrarToast(
+        notificacionFallida
+          ? 'Los datos se guardaron, pero no se pudo enviar la notificación de cambio de correo.'
+          : 'Los datos del personal se actualizaron correctamente.',
+        notificacionFallida ? 'info' : 'exito',
+      );
       await cargarUsuarios();
     } catch (err) {
       errorEdicion.textContent = err.message;
@@ -247,14 +256,20 @@ if (!usuarioActual) {
     botonCrear.textContent = 'Creando cuenta...';
 
     try {
-      await apiPost('/api/usuarios', {
+      const resultado = await apiPost('/api/usuarios', {
         nombre: document.getElementById('empleado-nombre').value.trim(),
         apellido: document.getElementById('empleado-apellido').value.trim(),
         email: document.getElementById('empleado-email').value.trim(),
+        rol: document.getElementById('empleado-rol').value,
       });
 
       cerrarRegistro();
-      mostrarToast('Invitación enviada correctamente.', 'exito');
+      mostrarToast(
+        resultado.notificacionFallida
+          ? 'La cuenta se guardó, pero no se pudo enviar la notificación de bienvenida.'
+          : 'La cuenta se creó correctamente.',
+        resultado.notificacionFallida ? 'info' : 'exito',
+      );
       await cargarUsuarios();
     } catch (err) {
       errorCrear.textContent = err.message;

@@ -1,14 +1,14 @@
-iniciarLayout('Notas de venta');
+iniciarLayout(window.location.pathname.endsWith('/nueva-nota-venta.html') ? 'Nueva nota de venta' : 'Notas de venta');
 
 const tbodyNotasVenta = document.getElementById('tabla-notas-venta-body');
 const mensajeNotasVenta = document.getElementById('notas-venta-mensaje');
 const busquedaNotasVenta = document.getElementById('buscar-nota-venta');
-const modalNuevaVenta = document.getElementById('modal-nueva-venta');
 const modalDetalleVenta = document.getElementById('modal-detalle-venta');
 const formNuevaVenta = document.getElementById('form-nueva-venta');
 const selectClienteVenta = document.getElementById('venta-cliente');
 const cuerpoLineasVenta = document.getElementById('venta-lineas-body');
 const botonRegistrarVenta = document.getElementById('btn-registrar-venta');
+let notaActualDetalle = null;
 let notasVenta = [];
 let clientesVenta = [];
 let productosVenta = [];
@@ -31,6 +31,10 @@ function normalizarFecha(fecha) {
 
 function formatoMoneda(valor) {
   return `S/ ${Number(valor || 0).toFixed(2)}`;
+}
+
+function documentoClienteVisible(documento) {
+  return documento === 'CLIENTE-GENERAL' ? 'No proporcionado' : documento || '—';
 }
 
 function renderizarNotasVenta() {
@@ -99,9 +103,7 @@ function ocultarModal(modal) {
 }
 
 function cerrarModalesVenta() {
-  [modalNuevaVenta, modalDetalleVenta].forEach((modal) => {
-    if (!modal.hidden) ocultarModal(modal);
-  });
+  if (!modalDetalleVenta.hidden) ocultarModal(modalDetalleVenta);
 }
 
 function catalogoProducto(id) {
@@ -174,23 +176,22 @@ function agregarLineaVenta() {
   fila.querySelector('.venta-cantidad').addEventListener('input', () => actualizarLineaVenta(fila));
 }
 
-function abrirFormularioVenta() {
-  formNuevaVenta.reset();
-  document.getElementById('venta-error').hidden = true;
-  cuerpoLineasVenta.replaceChildren();
-  selectClienteVenta.innerHTML = '<option value="">Selecciona un cliente</option>' +
-    clientesVenta.map((cliente) =>
-      `<option value="${escapar(cliente.id)}">${escapar(cliente.nombre)} · ${escapar(cliente.numeroDocumento)}</option>`)
-      .join('');
-  agregarLineaVenta();
-  document.getElementById('venta-total').textContent = formatoMoneda(0);
-  mostrarModal(modalNuevaVenta);
+function quitarLineaVenta(evento) {
+  const boton = evento.target.closest('.venta-quitar-linea');
+  if (!boton) return;
+  boton.closest('.venta-linea').remove();
+  cuerpoLineasVenta.querySelectorAll('.venta-producto').forEach((select) => {
+    const actual = select.value;
+    select.innerHTML = opcionesProductoVenta(actual);
+  });
+  actualizarTotalVenta();
 }
 
 function renderizarDetalleVenta(nota) {
+  notaActualDetalle = nota;
   document.getElementById('modal-detalle-venta-titulo').textContent = `Nota ${nota.numeroNota}`;
   document.getElementById('venta-detalle-resumen').textContent =
-    `Fecha: ${normalizarFecha(nota.fechaEmision)} · Cliente: ${nota.clienteNombre} (${nota.clienteDocumento}) · Registrado por: ${nota.usuarioNombre}`;
+    `Fecha: ${normalizarFecha(nota.fechaEmision)} · Cliente: ${nota.clienteNombre} (${documentoClienteVisible(nota.clienteDocumento)}) · Registrado por: ${nota.usuarioNombre}`;
   const tbody = document.getElementById('venta-detalle-lineas');
   tbody.replaceChildren();
   nota.productos.forEach((producto) => {
@@ -207,8 +208,7 @@ function renderizarDetalleVenta(nota) {
   mostrarModal(modalDetalleVenta);
 }
 
-document.getElementById('btn-nueva-venta').addEventListener('click', abrirFormularioVenta);
-document.getElementById('btn-agregar-producto-venta').addEventListener('click', agregarLineaVenta);
+document.getElementById('btn-agregar-producto-venta')?.addEventListener('click', agregarLineaVenta);
 document.querySelectorAll('[data-cerrar-venta]').forEach((boton) => {
   boton.addEventListener('click', cerrarModalesVenta);
 });
@@ -221,18 +221,9 @@ document.addEventListener('keydown', (evento) => {
   if (evento.key === 'Escape') cerrarModalesVenta();
 });
 
-cuerpoLineasVenta.addEventListener('click', (evento) => {
-  const boton = evento.target.closest('.venta-quitar-linea');
-  if (!boton) return;
-  boton.closest('.venta-linea').remove();
-  cuerpoLineasVenta.querySelectorAll('.venta-producto').forEach((select) => {
-    const actual = select.value;
-    select.innerHTML = opcionesProductoVenta(actual);
-  });
-  actualizarTotalVenta();
-});
+cuerpoLineasVenta?.addEventListener('click', quitarLineaVenta);
 
-tbodyNotasVenta.addEventListener('click', async (evento) => {
+tbodyNotasVenta?.addEventListener('click', async (evento) => {
   const boton = evento.target.closest('[data-nota-id]');
   if (!boton) return;
   try {
@@ -243,79 +234,121 @@ tbodyNotasVenta.addEventListener('click', async (evento) => {
   }
 });
 
-busquedaNotasVenta.addEventListener('input', () => {
+busquedaNotasVenta?.addEventListener('input', () => {
   clearTimeout(temporizadorBusqueda);
   temporizadorBusqueda = setTimeout(cargarNotasVenta, 250);
 });
 
-formNuevaVenta.addEventListener('submit', async (evento) => {
-  evento.preventDefault();
-  const error = document.getElementById('venta-error');
-  error.hidden = true;
-  if (!formNuevaVenta.reportValidity()) return;
-
-  const filas = [...cuerpoLineasVenta.querySelectorAll('.venta-linea')];
-  if (!filas.length) {
-    error.textContent = 'Agrega al menos un producto a la nota.';
-    error.hidden = false;
-    return;
-  }
-  const productos = filas.map((fila) => ({
-    productoId: Number(fila.querySelector('.venta-producto').value),
-    cantidad: Number(fila.querySelector('.venta-cantidad').value),
-  }));
-  if (productos.some((producto) => !producto.productoId || producto.cantidad < 1)) {
-    error.textContent = 'Selecciona un producto y una cantidad válida en cada línea.';
-    error.hidden = false;
-    return;
-  }
-  if (new Set(productos.map((producto) => producto.productoId)).size !== productos.length) {
-    error.textContent = 'No repitas un producto en la misma nota de venta.';
-    error.hidden = false;
-    return;
-  }
-  const sinStock = productos.find((linea) => {
-    const producto = catalogoProducto(linea.productoId);
-    return !producto || linea.cantidad > Number(producto.stockActual);
-  });
-  if (sinStock) {
-    error.textContent = `Stock insuficiente para ${catalogoProducto(sinStock.productoId)?.nombre || 'un producto'}.`;
-    error.hidden = false;
-    return;
-  }
-
-  botonRegistrarVenta.disabled = true;
-  try {
-    const nota = await apiPost('/api/notas-venta', {
-      clienteId: Number(selectClienteVenta.value),
-      productos,
-    });
-    cerrarModalesVenta();
-    mostrarToast(`Venta registrada correctamente: ${nota.numeroNota}.`, 'exito');
-    await cargarNotasVenta();
-  } catch (exception) {
-    error.textContent = exception.message;
-    error.hidden = false;
-  } finally {
-    botonRegistrarVenta.disabled = false;
-  }
-});
-
 async function cargarCatalogosVenta() {
   const botonNuevaVenta = document.getElementById('btn-nueva-venta');
-  botonNuevaVenta.disabled = true;
+  if (botonNuevaVenta) botonNuevaVenta.setAttribute('aria-disabled', 'true');
   try {
     [clientesVenta, productosVenta] = await Promise.all([
       apiGet('/api/clientes'),
       apiGet('/api/productos'),
     ]);
-    botonNuevaVenta.disabled = clientesVenta.length === 0 || productosVenta.length === 0;
-    if (botonNuevaVenta.disabled) {
-      mostrarToast('Registra al menos un cliente y un producto antes de vender.', 'info');
+    if (selectClienteVenta) {
+      const clientesEspecificos = clientesVenta.filter((cliente) =>
+        cliente.numeroDocumento?.trim().toUpperCase() !== 'CLIENTE-GENERAL');
+      selectClienteVenta.innerHTML = '<option value="">Cliente general (sin datos personales)</option>' +
+        clientesEspecificos.map((cliente) =>
+          `<option value="${escapar(cliente.id)}">${escapar(cliente.nombre)} · ${escapar(cliente.numeroDocumento)}</option>`)
+          .join('');
+    }
+    if (botonNuevaVenta) {
+      botonNuevaVenta.removeAttribute('aria-disabled');
+      if (!productosVenta.length) {
+        botonNuevaVenta.setAttribute('aria-disabled', 'true');
+        mostrarToast('No hay productos disponibles para registrar una venta.', 'info');
+      }
     }
   } catch (error) {
     mostrarToast(`No se pudieron cargar los catálogos: ${error.message}`, 'error');
+    if (botonNuevaVenta) botonNuevaVenta.setAttribute('aria-disabled', 'true');
   }
 }
 
-Promise.all([cargarCatalogosVenta(), cargarNotasVenta()]);
+if (tbodyNotasVenta) {
+  cargarNotasVenta();
+}
+
+if (formNuevaVenta) {
+  cargarCatalogosVenta().then(() => {
+    if (productosVenta.length) agregarLineaVenta();
+  });
+  formNuevaVenta.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const error = document.getElementById('venta-error');
+    error.hidden = true;
+    if (!formNuevaVenta.reportValidity()) return;
+    const filas = [...cuerpoLineasVenta.querySelectorAll('.venta-linea')];
+    if (!filas.length) {
+      error.textContent = 'Agrega al menos un producto a la nota.';
+      error.hidden = false;
+      return;
+    }
+    const productos = filas.map((fila) => ({
+      productoId: Number(fila.querySelector('.venta-producto').value),
+      cantidad: Number(fila.querySelector('.venta-cantidad').value),
+    }));
+    if (productos.some((producto) => !producto.productoId || producto.cantidad < 1)) {
+      error.textContent = 'Selecciona un producto y una cantidad válida en cada línea.';
+      error.hidden = false;
+      return;
+    }
+    if (new Set(productos.map((producto) => producto.productoId)).size !== productos.length) {
+      error.textContent = 'No repitas un producto en la misma nota de venta.';
+      error.hidden = false;
+      return;
+    }
+    const sinStock = productos.find((linea) => {
+      const producto = catalogoProducto(linea.productoId);
+      return !producto || linea.cantidad > Number(producto.stockActual);
+    });
+    if (sinStock) {
+      error.textContent = `Stock insuficiente para ${catalogoProducto(sinStock.productoId)?.nombre || 'un producto'}.`;
+      error.hidden = false;
+      return;
+    }
+
+    botonRegistrarVenta.disabled = true;
+    try {
+      const nota = await apiPost('/api/notas-venta', {
+        clienteId: selectClienteVenta.value ? Number(selectClienteVenta.value) : null,
+        productos,
+      });
+      mostrarToast(`Venta registrada correctamente: ${nota.numeroNota}.`, 'exito');
+      window.location.replace('/notas-venta.html');
+    } catch (exception) {
+      error.textContent = exception.message;
+      error.hidden = false;
+    } finally {
+      botonRegistrarVenta.disabled = false;
+    }
+  });
+}
+
+document.getElementById('btn-imprimir-nota')?.addEventListener('click', () => {
+  if (!notaActualDetalle) return;
+  const filas = notaActualDetalle.productos.map((producto) => `
+    <tr><td>${escapar(producto.productoNombre)}</td><td>${Number(producto.cantidad)}</td>
+    <td>${escapar(formatoMoneda(producto.precioUnitario))}</td><td>${escapar(formatoMoneda(producto.subtotal))}</td></tr>
+  `).join('');
+  const ventana = window.open('', '_blank');
+  if (!ventana) {
+    mostrarToast('El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para continuar.', 'error');
+    return;
+  }
+  ventana.opener = null;
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escapar(notaActualDetalle.numeroNota)}</title>
+    <style>body{font:14px Arial,sans-serif;color:#211738;margin:36px}header{border-bottom:2px solid #6d3bd1;padding-bottom:14px;margin-bottom:22px}
+    h1{margin:0;color:#5630a8}p{margin:8px 0}table{width:100%;border-collapse:collapse;margin-top:24px}th,td{padding:10px;border:1px solid #d8d1e5;text-align:left}
+    th{background:#f3effa}.total{text-align:right;font-size:18px;font-weight:bold;margin-top:20px}@media print{body{margin:16mm}}</style></head>
+    <body><header><h1>LUANY</h1><p>Juega · Viste · Crece</p><strong>Nota de venta ${escapar(notaActualDetalle.numeroNota)}</strong></header>
+    <p><strong>Fecha:</strong> ${escapar(normalizarFecha(notaActualDetalle.fechaEmision))}</p>
+    <p><strong>Cliente:</strong> ${escapar(notaActualDetalle.clienteNombre)} (${escapar(documentoClienteVisible(notaActualDetalle.clienteDocumento))})</p>
+    <table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody>${filas}</tbody></table>
+    <p class="total">Total: ${escapar(formatoMoneda(notaActualDetalle.total))}</p>
+    <script>window.onload=()=>window.print();</script></body></html>`);
+  ventana.document.close();
+});

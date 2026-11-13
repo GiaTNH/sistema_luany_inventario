@@ -4,6 +4,7 @@ import com.luany.inventory.model.UsuarioCreadoResponse;
 import com.luany.inventory.model.CambiarRolRequest;
 import com.luany.inventory.model.ActualizarUsuarioRequest;
 import com.luany.inventory.model.UsuarioGestionResponse;
+import com.luany.inventory.model.ResultadoNotificacion;
 import com.luany.inventory.model.RegistroInicialRequest;
 import com.luany.inventory.model.UsuarioResponse;
 import com.luany.inventory.model.Producto;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -33,8 +35,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {AuthController.class, UsuarioController.class, ProductoController.class})
@@ -94,6 +98,36 @@ class UsuarioControllerSecurityTests {
                 .andExpect(jsonPath("$.disponible").value(true));
 
         verify(authService).registroInicialDisponible();
+    }
+
+    @Test
+    void perfilPermiteActualizarNombreSinExponerRolEditable() throws Exception {
+        when(authService.actualizarPerfil(eq("admin@luany.com"), any()))
+                .thenReturn(usuario("ADMIN", false));
+
+        mockMvc.perform(put("/api/auth/me/perfil")
+                        .with(user("admin@luany.com").roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Usuario actualizado\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rol").value("ADMIN"))
+                .andExpect(jsonPath("$.password").doesNotExist());
+
+        verify(authService).actualizarPerfil(eq("admin@luany.com"), any());
+    }
+
+    @Test
+    void perfilBloqueaUsuariosConCambioDePasswordPendiente() throws Exception {
+        mockMvc.perform(put("/api/auth/me/perfil")
+                        .with(user("temporal").authorities(
+                                new SimpleGrantedAuthority("PASSWORD_CHANGE_REQUIRED")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"No permitido\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(authService, never()).actualizarPerfil(any(), any());
     }
 
     @Test
@@ -308,8 +342,8 @@ class UsuarioControllerSecurityTests {
         MockHttpSession session = iniciarSesion("ADMIN");
         when(usuarioGestionService.actualizar(
                 eq(2L), any(ActualizarUsuarioRequest.class), eq("prueba@luany.com")))
-                .thenReturn(new UsuarioGestionResponse(
-                        2L, "Ana", "Pérez", "ana@luany.com", "ana", "EMPLEADO", "INACTIVO", false));
+                .thenReturn(new ResultadoNotificacion<>(new UsuarioGestionResponse(
+                        2L, "Ana", "Pérez", "ana@luany.com", "ana", "EMPLEADO", "INACTIVO", false), false));
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put("/api/usuarios/2")
@@ -338,6 +372,27 @@ class UsuarioControllerSecurityTests {
 
         verify(usuarioGestionService, times(1)).actualizar(
                 eq(2L), any(ActualizarUsuarioRequest.class), eq("prueba@luany.com"));
+    }
+
+    @Test
+    void cambioDeCorreoFallidoSeRespondeComoGuardadoConAvisoDeNotificacion() throws Exception {
+        MockHttpSession session = iniciarSesion("ADMIN");
+        when(usuarioGestionService.actualizar(
+                eq(2L), any(ActualizarUsuarioRequest.class), eq("prueba@luany.com")))
+                .thenReturn(new ResultadoNotificacion<>(new UsuarioGestionResponse(
+                        2L, "Ana", "Pérez", "nuevo@luany.com", "ana", "EMPLEADO", "ACTIVO", false), true));
+
+        mockMvc.perform(put("/api/usuarios/2")
+                        .session(session)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nombre":"Ana","apellido":"Pérez","email":"nuevo@luany.com",
+                                 "rol":"EMPLEADO","estado":"ACTIVO"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Notification-Status", "not-sent"))
+                .andExpect(jsonPath("$.email").value("nuevo@luany.com"));
     }
 
     @Test
@@ -451,9 +506,12 @@ class UsuarioControllerSecurityTests {
     @Test
     void administradorPuedeCrearEmpleadoYNoSeDevuelveElHash() throws Exception {
         MockHttpSession session = iniciarSesion("ADMIN");
-        when(authService.crearEmpleado(any())).thenReturn(new UsuarioCreadoResponse(
-                new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true),
-                "ana"));
+        ResultadoNotificacion<UsuarioCreadoResponse> resultado = new ResultadoNotificacion<>(
+                new UsuarioCreadoResponse(
+                        new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true), "ana"),
+                true);
+        resultado.marcarNotificacionAceptada();
+        when(authService.crearEmpleado(any())).thenReturn(resultado);
 
         mockMvc.perform(post("/api/usuarios")
                         .session(session)
@@ -470,19 +528,22 @@ class UsuarioControllerSecurityTests {
     }
 
     @Test
-    void falloDeCorreoSeRespondeComoServicioNoDisponible() throws Exception {
+    void falloDeCorreoSeInformaSinDeshacerLaCreacion() throws Exception {
         MockHttpSession session = iniciarSesion("ADMIN");
-        when(authService.crearEmpleado(any())).thenThrow(
-                new CorreoEnvioException());
+        when(authService.crearEmpleado(any())).thenReturn(new ResultadoNotificacion<>(
+                new UsuarioCreadoResponse(
+                        new UsuarioResponse(12L, "Ana", "ana@luany.com", "EMPLEADO", true), "ana"),
+                true));
 
         mockMvc.perform(post("/api/usuarios")
                         .session(session)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nombre\":\"Ana\",\"email\":\"ana@luany.com\"}"))
-                .andExpect(status().isServiceUnavailable())
-                .andExpect(jsonPath("$.error").value(
-                        "No se pudo enviar el correo de bienvenida. No se creó la cuenta."));
+                .andExpect(status().isCreated())
+                .andExpect(header().string("X-Notification-Status", "not-sent"))
+                .andExpect(jsonPath("$.usuario.email").value("ana@luany.com"))
+                .andExpect(jsonPath("$.passwordTemporal").doesNotExist());
     }
 
     @Test

@@ -7,7 +7,9 @@ import com.luany.inventory.repository.NotaVentaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,10 +20,13 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class ClienteService {
 
+    private static final String DOCUMENTO_CLIENTE_GENERAL = "CLIENTE-GENERAL";
+    private static final String NOMBRE_CLIENTE_GENERAL = "Cliente general";
     private static final Sort ORDEN_NOMBRE = Sort.by(Sort.Order.asc("nombre").ignoreCase());
 
     private final ClienteRepository clienteRepository;
     private final NotaVentaRepository notaVentaRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional(readOnly = true)
     public List<Cliente> listar(String busqueda) {
@@ -31,6 +36,18 @@ public class ClienteService {
         String termino = busqueda.trim();
         return clienteRepository.findByNombreContainingIgnoreCaseOrNumeroDocumentoContainingIgnoreCase(
                 termino, termino, ORDEN_NOMBRE);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Cliente obtenerOCrearGeneral() {
+        jdbcTemplate.update("""
+                INSERT INTO clientes (nombre, tipo_documento, numero_documento)
+                VALUES (?, 'OTRO', ?)
+                ON DUPLICATE KEY UPDATE numero_documento = VALUES(numero_documento)
+                """, NOMBRE_CLIENTE_GENERAL, DOCUMENTO_CLIENTE_GENERAL);
+        return clienteRepository.findByNumeroDocumentoIgnoreCase(DOCUMENTO_CLIENTE_GENERAL)
+                .map(this::validarClienteGeneral)
+                .orElseThrow(() -> new IllegalStateException("No se pudo resolver el cliente general"));
     }
 
     @Transactional
@@ -78,6 +95,14 @@ public class ClienteService {
         cliente.setNumeroDocumento(numeroDocumento);
         cliente.setTelefono(limpiarOpcional(request.getTelefono()));
         cliente.setDireccion(limpiarOpcional(request.getDireccion()));
+    }
+
+    private Cliente validarClienteGeneral(Cliente cliente) {
+        if (!NOMBRE_CLIENTE_GENERAL.equals(cliente.getNombre()) || !"OTRO".equals(cliente.getTipoDocumento())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "El identificador reservado para Cliente general ya está en uso");
+        }
+        return cliente;
     }
 
     private String limpiar(String valor) {

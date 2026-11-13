@@ -2,6 +2,7 @@ package com.luany.inventory.controller;
 
 import com.luany.inventory.model.LoginRequest;
 import com.luany.inventory.model.CambioPasswordRequest;
+import com.luany.inventory.model.ActualizarPerfilRequest;
 import com.luany.inventory.model.RegistroInicialRequest;
 import com.luany.inventory.model.RestablecerPasswordRequest;
 import com.luany.inventory.model.SolicitudRecuperacionPasswordRequest;
@@ -88,6 +89,13 @@ public class AuthController {
     @GetMapping("/me")
     public UsuarioResponse me(Authentication authentication) {
         return authService.obtenerUsuarioAutenticado(authentication.getName());
+    }
+
+    @PutMapping("/me/perfil")
+    public UsuarioResponse actualizarPerfil(
+            @Valid @RequestBody ActualizarPerfilRequest request,
+            Authentication authentication) {
+        return authService.actualizarPerfil(authentication.getName(), request);
     }
 
     @PostMapping("/cambiar-password")

@@ -2,6 +2,13 @@ iniciarLayout('Reportes');
 
 const desdeInput = document.getElementById('reporte-desde');
 const hastaInput = document.getElementById('reporte-hasta');
+const rutasApiExportacion = {
+  ventas: 'ventas',
+  productos: 'productos-mas-vendidos',
+  movimientos: 'movimientos',
+  inventario: 'inventario',
+  pedidos: 'pedidos-recepciones',
+};
 const panelesReporte = {
   ventas: document.getElementById('reporte-ventas'),
   productos: document.getElementById('reporte-productos'),
@@ -33,7 +40,13 @@ function rangoQuery() {
 
 function fechaHora(fecha) {
   if (!fecha) return '—';
-  return new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(fecha));
+  return new Intl.DateTimeFormat('es-PE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(fecha));
 }
 
 function moneda(valor) {
@@ -352,7 +365,7 @@ async function exportarReporte(formato) {
   botones.forEach((boton) => { boton.disabled = true; });
   try {
     const response = await fetch(
-      `/api/reportes/${reporteActual}/${formato}?${parametrosExportacion()}`,
+      `/api/reportes/${rutasApiExportacion[reporteActual]}/${formato}?${parametrosExportacion()}`,
       { headers: { Accept: formato === 'excel'
         ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         : 'application/pdf' } },

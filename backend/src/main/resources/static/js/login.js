@@ -27,6 +27,14 @@ function limpiarAvisoApi(id) {
   if (aviso) aviso.hidden = true;
 }
 
+if (sessionStorage.getItem('avisoCorreoNoNotificado') === '1') {
+  sessionStorage.removeItem('avisoCorreoNoNotificado');
+  mostrarAvisoApi(
+    'login-api-error',
+    'El cambio de correo se guardó, pero no se pudo enviar la notificación.',
+  );
+}
+
 function configurarOjito(idCampo, idBoton) {
   const campo = document.getElementById(idCampo);
   const boton = document.getElementById(idBoton);

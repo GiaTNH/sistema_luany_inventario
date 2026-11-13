@@ -113,6 +113,19 @@ class PedidoServiceTests {
     }
 
     @Test
+    void detallePedidoCalculaSubtotalYTotalDeCincoUnidades() {
+        when(pedidoRepository.findById(11L)).thenReturn(Optional.of(detalle.getPedido()));
+        when(detallePedidoRepository.findByPedidoIdOrderById(11L)).thenReturn(List.of(detalle));
+        when(detalleRecepcionPedidoRepository.totalRecibido(13L)).thenReturn(0L);
+        when(recepcionPedidoRepository.findByPedidoIdOrderByFechaDescIdDesc(11L)).thenReturn(List.of());
+
+        PedidoDetalleResponse respuesta = pedidoService.obtener(11L);
+
+        assertEquals(new BigDecimal("92.50"), respuesta.productos().get(0).subtotal());
+        assertEquals(new BigDecimal("92.50"), respuesta.total());
+    }
+
+    @Test
     void crearPedidoRechazaProveedorInactivoSinCrearPedido() {
         proveedor.setEstado("INACTIVO");
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));

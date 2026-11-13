@@ -20,9 +20,19 @@ function fechaKanban(valor, incluirHora = false) {
     : new Date(Array.isArray(valor) ? valor : typeof valor === 'string' && valor.length === 10
       ? `${valor}T00:00:00` : valor);
   if (Number.isNaN(fecha.getTime())) return 'No definida';
-  return fecha.toLocaleDateString('es-PE', incluirHora
-    ? { dateStyle: 'short', timeStyle: 'short' }
-    : { dateStyle: 'medium' });
+  return incluirHora
+    ? fecha.toLocaleString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    : fecha.toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
 }
 
 function badgeKanban(estado) {

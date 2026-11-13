@@ -4,8 +4,10 @@ import com.luany.inventory.model.CambiarRolRequest;
 import com.luany.inventory.model.ActualizarUsuarioRequest;
 import com.luany.inventory.model.Usuario;
 import com.luany.inventory.model.UsuarioGestionResponse;
+import com.luany.inventory.model.ResultadoNotificacion;
 import com.luany.inventory.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -13,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,11 +36,23 @@ class UsuarioGestionServiceTests {
     @Mock
     private SessionRegistry sessionRegistry;
 
+    @Mock
+    private CorreoService correoService;
+
     private UsuarioGestionService usuarioGestionService;
 
     @BeforeEach
     void setUp() {
-        usuarioGestionService = new UsuarioGestionService(usuarioRepository, sessionRegistry);
+        TransactionSynchronizationManager.initSynchronization();
+        usuarioGestionService = new UsuarioGestionService(
+                usuarioRepository, sessionRegistry, correoService, new NotificacionTrasCommit());
+    }
+
+    @AfterEach
+    void limpiarSincronizacion() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test
@@ -93,7 +109,7 @@ class UsuarioGestionServiceTests {
         when(usuarioRepository.saveAndFlush(empleado)).thenReturn(empleado);
         when(sessionRegistry.getAllSessions("empleado@luany.com", false)).thenReturn(List.of());
 
-        UsuarioGestionResponse respuesta = usuarioGestionService.actualizar(
+        var resultado = usuarioGestionService.actualizar(
                 2L, actualizacion("Ana María", "Pérez", "nuevo@luany.com", "EMPLEADO", "INACTIVO"),
                 "admin@luany.com");
 
@@ -102,9 +118,37 @@ class UsuarioGestionServiceTests {
         assertEquals("nuevo@luany.com", empleado.getEmail());
         assertEquals("INACTIVO", empleado.getEstado());
         assertEquals(passwordHashOriginal, empleado.getPassword());
-        assertEquals("INACTIVO", respuesta.estado());
-        assertFalse(respuesta.debeCambiarPassword());
+        assertEquals("INACTIVO", resultado.resultado().estado());
+        assertFalse(resultado.resultado().debeCambiarPassword());
+        assertTrue(resultado.notificacionRequerida());
+        assertFalse(resultado.notificacionAceptada());
+        verifyNoInteractions(correoService);
         verify(sessionRegistry).getAllSessions("empleado@luany.com", false);
+        ejecutarDespuesDelCommit();
+        verify(correoService).enviarNotificacionCambioCorreo("nuevo@luany.com", "Ana María");
+        assertTrue(resultado.notificacionAceptada());
+    }
+
+    @Test
+    void falloDeNotificacionNoRevierteElCambioDeCorreo() {
+        Usuario admin = usuario(1L, "admin@luany.com", "ADMIN", "ACTIVO");
+        Usuario empleado = usuario(2L, "empleado@luany.com", "EMPLEADO", "ACTIVO");
+        when(usuarioRepository.buscarAdministradoresParaActualizar()).thenReturn(List.of(admin));
+        when(usuarioRepository.buscarPorIdParaActualizar(2L)).thenReturn(Optional.of(empleado));
+        when(usuarioRepository.buscarPorEmail("nuevo@luany.com")).thenReturn(Optional.empty());
+        when(usuarioRepository.saveAndFlush(empleado)).thenReturn(empleado);
+        when(sessionRegistry.getAllSessions("empleado@luany.com", false)).thenReturn(List.of());
+        doThrow(new CorreoNotificacionException()).when(correoService)
+                .enviarNotificacionCambioCorreo("nuevo@luany.com", "Ana");
+
+        var resultado = usuarioGestionService.actualizar(
+                2L, actualizacion("Ana", null, "nuevo@luany.com", "EMPLEADO", "ACTIVO"),
+                "admin@luany.com");
+        ejecutarDespuesDelCommit();
+
+        assertEquals("nuevo@luany.com", empleado.getEmail());
+        assertTrue(resultado.notificacionRequerida());
+        assertFalse(resultado.notificacionAceptada());
     }
 
     @Test
@@ -200,5 +244,12 @@ class UsuarioGestionServiceTests {
         usuario.setRol(rol);
         usuario.setEstado(estado);
         return usuario;
+    }
+
+    private void ejecutarDespuesDelCommit() {
+        for (TransactionSynchronization sincronizacion
+                : TransactionSynchronizationManager.getSynchronizations()) {
+            sincronizacion.afterCommit();
+        }
     }
 }

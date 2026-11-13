@@ -234,32 +234,13 @@ async function cargarDashboard() {
     mostrarToast('No se pudieron cargar los datos del catálogo.', 'error');
   }
 
-  if (alertasResult.status === 'fulfilled' && Array.isArray(alertasResult.value)) {
+  if (alertasResult.status === 'fulfilled') {
     const alertas = alertasResult.value;
-    const alertCount = document.getElementById('dashboard-alert-count');
-    const alertLink = document.getElementById('dashboard-alerts-link');
-    if (alertCount) {
-      alertCount.textContent = alertas.length;
-      alertCount.hidden = alertas.length === 0;
-    }
-    if (alertLink) {
-      alertLink.setAttribute(
-        'aria-label',
-        alertas.length === 0
-          ? 'Sin alertas de stock. Ver alertas'
-          : `${alertas.length} alertas de stock. Ver alertas`,
-      );
-    }
+    actualizarContadorAlertas(alertas);
     renderAlertas(alertas);
   } else {
+    actualizarContadorAlertas(null);
     renderAlertas(null);
-    const alertCount = document.getElementById('dashboard-alert-count');
-    if (alertCount) {
-      alertCount.textContent = '';
-      alertCount.hidden = true;
-    }
-    const alertLink = document.getElementById('dashboard-alerts-link');
-    if (alertLink) alertLink.setAttribute('aria-label', 'No se pudieron cargar las alertas de stock');
   }
 
   if (movimientosResult.status === 'fulfilled') {
@@ -275,6 +256,25 @@ async function cargarDashboard() {
     document.getElementById('stat-ventas').textContent = '—';
     renderGrafico(null);
   }
+}
+
+function actualizarContadorAlertas(alertas) {
+  const contador = document.getElementById('dashboard-alert-count');
+  const enlace = document.getElementById('dashboard-alerts-link');
+  if (!Array.isArray(alertas)) {
+    if (contador) {
+      contador.textContent = '';
+      contador.hidden = true;
+    }
+    if (enlace) enlace.setAttribute('aria-label', 'Ver alertas de stock');
+    return;
+  }
+
+  if (contador) {
+    contador.textContent = String(alertas.length);
+    contador.hidden = alertas.length === 0;
+  }
+  if (enlace) enlace.setAttribute('aria-label', `${alertas.length} alertas de stock. Ver alertas`);
 }
 
 function ventasEnDia(movimientos, fechaObjetivo) {

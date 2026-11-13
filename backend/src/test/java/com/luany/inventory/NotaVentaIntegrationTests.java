@@ -146,6 +146,28 @@ class NotaVentaIntegrationTests {
     }
 
     @Test
+    void clienteGeneralSeCreaUnaVezYLaNumeracionEsCorta() {
+        producto.setStockActual(2);
+        productoRepository.saveAndFlush(producto);
+        CrearNotaVentaRequest primeraRequest = request(1);
+        primeraRequest.setClienteId(null);
+        CrearNotaVentaRequest segundaRequest = request(1);
+        segundaRequest.setClienteId(null);
+
+        var primera = notaVentaService.crear(primeraRequest, usuario.getEmail());
+        var segunda = notaVentaService.crear(segundaRequest, usuario.getEmail());
+
+        assertTrue(primera.numeroNota().matches("Nota-\\d{3,}"));
+        assertTrue(segunda.numeroNota().matches("Nota-\\d{3,}"));
+        assertEquals(2, notaVentaRepository.count());
+        assertEquals(primera.numeroNota(),
+                notaVentaRepository.findById(primera.id()).orElseThrow().getNumeroNota());
+        assertEquals(1, clienteRepository.findByNumeroDocumentoIgnoreCase("CLIENTE-GENERAL").stream().count());
+        assertEquals("Cliente general", clienteRepository.findByNumeroDocumentoIgnoreCase("CLIENTE-GENERAL")
+                .orElseThrow().getNombre());
+    }
+
+    @Test
     void recepcionesConcurrentesDePedidosDistintosCompartenBloqueoDeProducto() throws Exception {
         Pedido primerPedido = crearPedidoConDetalle("PENDIENTE");
         Pedido segundoPedido = crearPedidoConDetalle("PENDIENTE");

@@ -98,13 +98,17 @@ class InventoryApplicationTests {
     }
 
     @Test
-    void faltaDeApiKeyRevierteLaCreacionDelUsuarioEnBaseDeDatos() {
+    void faltaDeApiKeyConservaLaCuentaYMarcaLaNotificacionComoFallidaDespuesDelCommit() {
         CrearEmpleadoRequest request = new CrearEmpleadoRequest();
-        request.setNombre("Usuario rollback");
-        request.setEmail("rollback@luany.com");
+        request.setNombre("Usuario guardado");
+        request.setEmail("guardado@luany.com");
 
-        assertThrows(CorreoEnvioException.class, () -> authService.crearEmpleado(request));
-        assertTrue(usuarioRepository.buscarPorEmail("rollback@luany.com").isEmpty());
+        var resultado = authService.crearEmpleado(request);
+
+        assertTrue(resultado.notificacionRequerida());
+        assertFalse(resultado.notificacionAceptada());
+        assertEquals("guardado@luany.com", resultado.resultado().usuario().email());
+        assertTrue(usuarioRepository.buscarPorEmail("guardado@luany.com").isPresent());
     }
 
     @Test
