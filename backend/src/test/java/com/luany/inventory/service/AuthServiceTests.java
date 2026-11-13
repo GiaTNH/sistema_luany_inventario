@@ -92,6 +92,10 @@ class AuthServiceTests {
         assertEquals(guardado.getNombreUsuario(), usernameCaptor.getValue());
         assertEquals("EMPLEADO", guardado.getRol());
         assertEquals(16, passwordCaptor.getValue().length());
+        assertTrue(passwordCaptor.getValue().matches("[ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789]{16}"));
+        assertTrue(passwordCaptor.getValue().matches(".*[A-Z].*"));
+        assertTrue(passwordCaptor.getValue().matches(".*[a-z].*"));
+        assertTrue(passwordCaptor.getValue().matches(".*[2-9].*"));
         assertTrue(guardado.isDebeCambiarPassword());
         assertNotEquals(passwordCaptor.getValue(), guardado.getPassword());
         assertTrue(passwordEncoder.matches(passwordCaptor.getValue(), guardado.getPassword()));

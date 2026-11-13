@@ -108,6 +108,7 @@
       </div>
       <form id="form-pedido" novalidate>
         <div class="modal-body">
+          <p class="pedidos-reposicion-ayuda" id="pedido-reposicion-ayuda" hidden></p>
           <div class="form-fila">
             <div class="form-grupo"><label for="pedido-proveedor">Proveedor *</label><select id="pedido-proveedor" class="form-control" required><option value="">Selecciona proveedor</option></select></div>
             <div class="form-grupo"><label for="pedido-fecha-estimada">Fecha estimada de entrega</label><input id="pedido-fecha-estimada" class="form-control" type="date" /></div>
@@ -133,7 +134,7 @@
     <div class="modal pedidos-modal-ancho">
       <div class="modal-header"><h3 id="titulo-detalle-pedido">Detalle del pedido</h3><button type="button" class="btn-cerrar-modal" data-cerrar-modal aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="m18 6-12 12M6 6l12 12"/></svg></button></div>
       <div class="modal-body">
-        <p id="pedido-detalle-resumen" class="text-suave"></p>
+        <dl id="pedido-detalle-resumen" class="pedidos-detalle-metadatos"></dl>
         <div class="tabla-wrapper"><table class="pedidos-tabla"><thead><tr><th>Producto</th><th>Pedido</th><th>Recibido</th><th>Pendiente</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody id="pedido-detalle-lineas"></tbody></table></div>
         <div class="pedidos-detalle-total"><span>Total del pedido</span><strong id="pedido-detalle-total">S/ 0.00</strong></div>
         <h4 class="pedidos-historial-titulo">Historial de recepciones</h4>

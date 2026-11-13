@@ -439,6 +439,36 @@ function renderAlertas(alertas) {
   });
 }
 
+function fechaInicioPeriodo(periodo, referencia = new Date()) {
+  const inicio = new Date(referencia);
+  inicio.setHours(0, 0, 0, 0);
+
+  if (periodo === '6m' || periodo === '1y') {
+    const dia = inicio.getDate();
+    const meses = periodo === '6m' ? 6 : 12;
+    inicio.setDate(1);
+    inicio.setMonth(inicio.getMonth() - meses);
+    const ultimoDia = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0).getDate();
+    inicio.setDate(Math.min(dia, ultimoDia));
+    return inicio;
+  }
+
+  const dias = Number(periodo) || 30;
+  inicio.setDate(inicio.getDate() - dias + 1);
+  return inicio;
+}
+
+function filtrarVentasPeriodo(movimientos, periodo, referencia = new Date()) {
+  const inicio = fechaInicioPeriodo(periodo, referencia);
+  const fin = new Date(referencia);
+  fin.setHours(23, 59, 59, 999);
+  return movimientos.filter((movimiento) => {
+    if (movimiento.tipo !== 'VENTA') return false;
+    const fecha = fechaMovimiento(movimiento.fecha);
+    return Boolean(fecha && fecha >= inicio && fecha <= fin && movimiento.producto);
+  });
+}
+
 function renderGrafico(movimientos, periodo = '30') {
   const contenedor = document.getElementById('grafico-ventas');
   contenedor.replaceChildren();
@@ -448,19 +478,10 @@ function renderGrafico(movimientos, periodo = '30') {
     return;
   }
 
-  const dias = periodo === 'hoy' ? 1 : Number(periodo) || 30;
-  const inicio = new Date();
-  inicio.setHours(0, 0, 0, 0);
-  inicio.setDate(inicio.getDate() - dias + 1);
-  const fin = new Date();
-  fin.setHours(23, 59, 59, 999);
   const productos = new Map();
 
-  movimientos.forEach((movimiento) => {
-    if (movimiento.tipo !== 'VENTA') return;
-    const fecha = fechaMovimiento(movimiento.fecha);
+  filtrarVentasPeriodo(movimientos, periodo).forEach((movimiento) => {
     const producto = movimiento.producto;
-    if (!fecha || fecha < inicio || fecha > fin || !producto) return;
 
     const clave = producto.id ?? producto.nombre;
     if (clave == null) return;

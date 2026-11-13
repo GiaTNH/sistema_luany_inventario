@@ -4,6 +4,7 @@ import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.FontFactory;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
@@ -18,13 +19,16 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -78,11 +82,51 @@ public class ReportesExportService {
             encabezadoFont.setBold(true);
             encabezadoStyle.setFont(encabezadoFont);
             encabezadoStyle.setBorderBottom(BorderStyle.THIN);
+            encabezadoStyle.setBorderTop(BorderStyle.THIN);
+            encabezadoStyle.setBorderLeft(BorderStyle.THIN);
+            encabezadoStyle.setBorderRight(BorderStyle.THIN);
+
+            CellStyle filaStyle = workbook.createCellStyle();
+            filaStyle.setBorderBottom(BorderStyle.THIN);
+            filaStyle.setBorderTop(BorderStyle.THIN);
+            filaStyle.setBorderLeft(BorderStyle.THIN);
+            filaStyle.setBorderRight(BorderStyle.THIN);
+            filaStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+
+            CellStyle monedaStyle = workbook.createCellStyle();
+            monedaStyle.cloneStyleFrom(filaStyle);
+            monedaStyle.setDataFormat(workbook.createDataFormat().getFormat("\"S/ \"#,##0.00"));
+            monedaStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+            CellStyle numeroStyle = workbook.createCellStyle();
+            numeroStyle.cloneStyleFrom(filaStyle);
+            numeroStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
+            numeroStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+            CellStyle totalesStyle = workbook.createCellStyle();
+            totalesStyle.cloneStyleFrom(filaStyle);
+            totalesStyle.setFillForegroundColor(IndexedColors.LAVENDER.getIndex());
+            totalesStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            org.apache.poi.ss.usermodel.Font totalesFont = workbook.createFont();
+            totalesFont.setBold(true);
+            totalesFont.setColor(IndexedColors.DARK_BLUE.getIndex());
+            totalesStyle.setFont(totalesFont);
+
+            CellStyle totalesMonedaStyle = workbook.createCellStyle();
+            totalesMonedaStyle.cloneStyleFrom(totalesStyle);
+            totalesMonedaStyle.setDataFormat(workbook.createDataFormat().getFormat("\"S/ \"#,##0.00"));
+            totalesMonedaStyle.setAlignment(HorizontalAlignment.RIGHT);
+
+            CellStyle totalesNumeroStyle = workbook.createCellStyle();
+            totalesNumeroStyle.cloneStyleFrom(totalesStyle);
+            totalesNumeroStyle.setDataFormat(workbook.createDataFormat().getFormat("#,##0"));
+            totalesNumeroStyle.setAlignment(HorizontalAlignment.RIGHT);
 
             int rowIndex = 0;
             Row brand = sheet.createRow(rowIndex++);
             brand.createCell(0).setCellValue("LUANY");
             brand.getCell(0).setCellStyle(tituloStyle);
+            agregarLogoExcel(workbook, sheet);
             Row title = sheet.createRow(rowIndex++);
             title.createCell(0).setCellValue(exportacion.titulo());
             title.getCell(0).setCellStyle(tituloStyle);
@@ -102,14 +146,16 @@ public class ReportesExportService {
                 }
                 for (List<Object> valores : seccion.filas()) {
                     Row fila = sheet.createRow(rowIndex++);
-                    escribirFilaExcel(fila, valores);
+                    escribirFilaExcel(fila, valores, seccion.encabezados(), filaStyle, monedaStyle, numeroStyle);
                 }
                 if (!seccion.totales().isEmpty()) {
                     Row totales = sheet.createRow(rowIndex++);
                     for (int columna = 0; columna < seccion.totales().size(); columna++) {
                         Cell celda = totales.createCell(columna);
-                        escribirCelda(celda, seccion.totales().get(columna));
-                        celda.setCellStyle(seccionStyle);
+                        Object valor = seccion.totales().get(columna);
+                        escribirCelda(celda, valor);
+                        celda.setCellStyle(esCeldaMonetaria(seccion.encabezados(), columna)
+                                ? totalesMonedaStyle : valor instanceof Number ? totalesNumeroStyle : totalesStyle);
                     }
                 }
             }
@@ -120,6 +166,10 @@ public class ReportesExportService {
                 sheet.autoSizeColumn(columna);
                 sheet.setColumnWidth(columna, Math.min(sheet.getColumnWidth(columna) + 600, 15000));
             }
+            sheet.createFreezePane(0, 4);
+            sheet.getPrintSetup().setLandscape(true);
+            sheet.getPrintSetup().setFitWidth((short) 1);
+            sheet.setFitToPage(true);
             workbook.write(output);
             return new ReporteArchivo(
                     exportacion.nombreArchivo() + ".xlsx", XLSX_MEDIA_TYPE, output.toByteArray());
@@ -150,7 +200,23 @@ public class ReportesExportService {
             com.lowagie.text.Font metadata =
                     FontFactory.getFont(FontFactory.HELVETICA, 9, java.awt.Color.DARK_GRAY);
 
-            document.add(new Paragraph("LUANY", titulo));
+            byte[] logo = cargarLogo();
+            if (logo != null) {
+                Image imagen = Image.getInstance(logo);
+                imagen.scaleToFit(48, 48);
+                PdfPTable marca = new PdfPTable(new float[]{1, 8});
+                marca.setWidthPercentage(100);
+                PdfPCell celdaLogo = new PdfPCell(imagen, true);
+                celdaLogo.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
+                PdfPCell celdaMarca = new PdfPCell(new Phrase("LUANY", titulo));
+                celdaMarca.setBorder(com.lowagie.text.Rectangle.NO_BORDER);
+                celdaMarca.setVerticalAlignment(com.lowagie.text.Element.ALIGN_MIDDLE);
+                marca.addCell(celdaLogo);
+                marca.addCell(celdaMarca);
+                document.add(marca);
+            } else {
+                document.add(new Paragraph("LUANY", titulo));
+            }
             document.add(new Paragraph(exportacion.titulo(), titulo));
             document.add(new Paragraph("Generado: " + exportacion.generadoEn().format(FECHA_HORA), metadata));
             document.add(new Paragraph("Filtros: " + exportacion.filtros(), metadata));
@@ -168,18 +234,32 @@ public class ReportesExportService {
                     cell.setPadding(5);
                     table.addCell(cell);
                 }
-                for (List<Object> fila : seccion.filas()) {
-                    for (Object valor : fila) {
-                        PdfPCell cell = new PdfPCell(new Phrase(textoCelda(valor), cuerpo));
+                for (int indiceFila = 0; indiceFila < seccion.filas().size(); indiceFila++) {
+                    List<Object> fila = seccion.filas().get(indiceFila);
+                    for (int columna = 0; columna < fila.size(); columna++) {
+                        Object valor = fila.get(columna);
+                        PdfPCell cell = new PdfPCell(new Phrase(
+                                textoCelda(valor, seccion.encabezados(), columna), cuerpo));
                         cell.setPadding(4);
+                        if (indiceFila % 2 == 1) {
+                            cell.setBackgroundColor(new java.awt.Color(248, 246, 252));
+                        }
+                        if (valor instanceof Number) {
+                            cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_RIGHT);
+                        }
                         table.addCell(cell);
                     }
                 }
                 if (!seccion.totales().isEmpty()) {
-                    for (Object valor : seccion.totales()) {
-                        PdfPCell cell = new PdfPCell(new Phrase(textoCelda(valor), encabezado));
+                    for (int columna = 0; columna < seccion.totales().size(); columna++) {
+                        Object valor = seccion.totales().get(columna);
+                        PdfPCell cell = new PdfPCell(new Phrase(
+                                textoCelda(valor, seccion.encabezados(), columna), encabezado));
                         cell.setBackgroundColor(new java.awt.Color(104, 75, 181));
                         cell.setPadding(5);
+                        if (valor instanceof Number) {
+                            cell.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_RIGHT);
+                        }
                         table.addCell(cell);
                     }
                 }
@@ -355,9 +435,55 @@ public class ReportesExportService {
         return rowIndex;
     }
 
-    private void escribirFilaExcel(Row fila, List<Object> valores) {
+    private void escribirFilaExcel(
+            Row fila,
+            List<Object> valores,
+            List<String> encabezados,
+            CellStyle filaStyle,
+            CellStyle monedaStyle,
+            CellStyle numeroStyle) {
         for (int columna = 0; columna < valores.size(); columna++) {
-            escribirCelda(fila.createCell(columna), valores.get(columna));
+            Cell celda = fila.createCell(columna);
+            Object valor = valores.get(columna);
+            escribirCelda(celda, valor);
+            if (valor instanceof Number) {
+                celda.setCellStyle(esCeldaMonetaria(encabezados, columna) ? monedaStyle : numeroStyle);
+            } else {
+                celda.setCellStyle(filaStyle);
+            }
+        }
+    }
+
+    private boolean esCeldaMonetaria(List<String> encabezados, int columna) {
+        return columna < encabezados.size()
+                && encabezados.get(columna).toLowerCase(Locale.ROOT)
+                        .matches(".*(importe|precio|subtotal|total).*");
+    }
+
+    private String textoCelda(Object valor, List<String> encabezados, int columna) {
+        if (valor instanceof Number numero && esCeldaMonetaria(encabezados, columna)) {
+            return String.format(Locale.ROOT, "S/ %.2f", numero.doubleValue());
+        }
+        return textoCelda(valor);
+    }
+
+    private void agregarLogoExcel(XSSFWorkbook workbook, Sheet sheet) throws IOException {
+        byte[] logo = cargarLogo();
+        if (logo == null) return;
+        int indiceImagen = workbook.addPicture(logo, XSSFWorkbook.PICTURE_TYPE_PNG);
+        var ancla = workbook.getCreationHelper().createClientAnchor();
+        ancla.setCol1(3);
+        ancla.setRow1(0);
+        ancla.setCol2(4);
+        ancla.setRow2(2);
+        sheet.createDrawingPatriarch().createPicture(ancla, indiceImagen).resize(0.75);
+    }
+
+    private byte[] cargarLogo() throws IOException {
+        ClassPathResource recurso = new ClassPathResource("static/img/logo-bolsa.png");
+        if (!recurso.exists()) return null;
+        try (InputStream entrada = recurso.getInputStream()) {
+            return entrada.readAllBytes();
         }
     }
 

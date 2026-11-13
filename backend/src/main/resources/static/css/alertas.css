@@ -62,6 +62,9 @@
 
 .alertas-page .alertas-panel-header h3 { color: #382B76; font-family: 'Fredoka', sans-serif; font-size: 18px; }
 .alertas-page .alertas-panel-header p { margin-top: 3px; color: #827B9F; font-size: 11px; }
+.alertas-page .alertas-panel-actions { display: flex; align-items: center; gap: 10px; }
+.alertas-page .alertas-panel-actions .btn { min-height: 38px; }
+.alertas-page #btn-reponer-alertas[hidden] { display: none; }
 
 .alertas-page .alertas-total {
   flex: 0 0 auto;
@@ -115,6 +118,7 @@
   .alertas-page .alertas-header .topbar-titulo h2 { font-size: 24px; }
   .alertas-page .alertas-content { padding: 12px 12px 20px; }
   .alertas-page .alertas-panel-header { padding: 14px; }
+  .alertas-page .alertas-panel-actions { flex-wrap: wrap; justify-content: flex-end; }
   .alertas-page .alertas-panel-header p { max-width: 440px; }
   .alertas-page .alertas-table-wrapper { padding: 4px 8px 10px; }
 }
