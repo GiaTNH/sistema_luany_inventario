@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -80,6 +81,12 @@ public class PedidoService {
                 detallePedidoRepository.cantidadesSolicitadasPorPedido(ids));
         Map<Long, Long> recibidas = cantidadesPorPedido(
                 detalleRecepcionPedidoRepository.cantidadesRecibidasPorPedido(ids));
+        Map<Long, List<Long>> productosPorPedido = detallePedidoRepository.productosPorPedido(ids).stream()
+                .collect(Collectors.groupingBy(
+                        fila -> ((Number) fila[0]).longValue(),
+                        Collectors.mapping(
+                                fila -> ((Number) fila[1]).longValue(),
+                                Collectors.collectingAndThen(Collectors.toCollection(LinkedHashSet::new), List::copyOf))));
 
         return resumenes.stream()
                 .map(pedido -> {
@@ -95,7 +102,8 @@ public class PedidoService {
                             pedido.totalProductos(),
                             cantidadSolicitada,
                             cantidadRecibida,
-                            Math.max(cantidadSolicitada - cantidadRecibida, 0));
+                            Math.max(cantidadSolicitada - cantidadRecibida, 0),
+                            productosPorPedido.getOrDefault(pedido.id(), List.of()));
                 })
                 .toList();
     }

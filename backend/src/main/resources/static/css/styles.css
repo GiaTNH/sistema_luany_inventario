@@ -680,6 +680,9 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .kanban-dato strong { overflow-wrap: anywhere; color: #303B68; font-size: 11px; font-weight: 700; }
 .kanban-acciones { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 3px; border-top: 1px solid #EEF0F6; }
 .kanban-acciones .btn { flex: 1 1 auto; justify-content: center; padding: 8px 10px; font-size: 11px; text-decoration: none; }
+.kanban-tarjeta-producto { border-color: #E5D9FA; background: linear-gradient(160deg, #fff 60%, #FAF7FF); }
+.kanban-tarjeta-producto > h4 { margin: 0; color: #382174; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.kanban-tarjeta-producto .kanban-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .kanban-vacio { margin: 0; padding: 25px 14px; color: #818BA7; text-align: center; font-size: 12px; }
 .pedidos-kanban-modal[hidden] { display: none; }
 .pedidos-kanban-modal .modal { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; }
@@ -716,6 +719,23 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .ventas-total strong { color: var(--morado); font-size: 20px; }
 .ventas-aviso { margin: 10px 0 0; color: var(--texto-suave); font-size: 12px; }
 .ventas-error { margin: 12px 0 0; color: var(--rojo); font-size: 13px; }
+.nota-venta-imprimible { max-width: 760px; margin: 0 auto; padding: 8px; color: #281C4A; font: 14px Arial, sans-serif; }
+.nota-venta-encabezado { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 0 18px; border-bottom: 2px solid #6D3BD1; }
+.nota-venta-marca { display: flex; align-items: center; gap: 8px; color: #5630A8; font: 700 24px 'Fredoka', sans-serif; }
+.nota-venta-logo { width: 58px; height: 58px; object-fit: contain; }
+.nota-venta-tienda { display: grid; gap: 5px; color: #5630A8; text-align: right; }
+.nota-venta-tienda span { color: #756B91; font-size: 12px; }
+.nota-venta-imprimible h2 { margin: 24px 0 18px; color: #32216E; font-size: 21px; }
+.nota-venta-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 24px; }
+.nota-venta-datos p { margin: 3px 0; overflow-wrap: anywhere; }
+.nota-venta-imprimible table { width: 100%; margin-top: 22px; border-collapse: collapse; }
+.nota-venta-imprimible th,
+.nota-venta-imprimible td { padding: 10px; border: 1px solid #D8D1E5; text-align: left; overflow-wrap: anywhere; }
+.nota-venta-imprimible th { background: #F3EFFA; color: #5630A8; }
+.nota-venta-total { margin: 18px 0; color: #32216E; font-size: 19px; font-weight: 700; text-align: right; }
+.nota-venta-legal { margin-top: 28px; color: #8A2C50; font-size: 11px; font-weight: 700; text-align: center; }
+.nota-venta-gracias { margin-top: 22px; color: #5630A8; font-size: 17px; font-weight: 700; text-align: center; }
+.nota-venta-eslogan { color: #756B91; text-align: center; }
 
 @media (max-width: 768px) {
   .usuarios-filtros { grid-template-columns: 1fr; padding: 0 18px 18px; }
@@ -751,6 +771,13 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .ventas-modal .modal-body { padding: 20px; }
   .ventas-modal .modal-footer { margin: 18px -20px -20px; padding: 16px 20px; }
   .ventas-lineas-header { align-items: flex-start; flex-direction: column; }
+  .nota-venta-imprimible { padding: 0; font-size: 12px; }
+  .nota-venta-encabezado { gap: 12px; }
+  .nota-venta-logo { width: 48px; height: 48px; }
+  .nota-venta-marca { font-size: 20px; }
+  .nota-venta-datos { grid-template-columns: 1fr; gap: 5px; }
+  .nota-venta-imprimible th,
+  .nota-venta-imprimible td { padding: 7px 5px; font-size: 11px; }
 }
 
 /* ===== MODAL ===== */
@@ -842,6 +869,38 @@ td:first-child { font-weight: 600; color: var(--texto); }
 }
 .btn-cerrar-modal:hover { background: var(--primario-claro); color: var(--primario); }
 .btn-cerrar-modal svg { width: 18px; height: 18px; }
+
+@media print {
+  @page { margin: 14mm; size: A4 portrait; }
+  body.printing-venta > .layout,
+  body.printing-venta > .btn-menu-movil,
+  body.printing-venta > #toast-container { display: none !important; }
+  body.printing-venta .ventas-modal {
+    display: block !important;
+    position: static !important;
+    padding: 0 !important;
+    background: #fff !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    backdrop-filter: none !important;
+  }
+  body.printing-venta .ventas-modal .modal {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  body.printing-venta .ventas-modal .modal-header,
+  body.printing-venta .ventas-modal .modal-footer { display: none !important; }
+  body.printing-venta .ventas-modal .modal-body { padding: 0 !important; }
+  .nota-venta-imprimible { max-width: none; margin: 0; padding: 0; font-size: 12px; }
+  .nota-venta-encabezado,
+  .nota-venta-imprimible tr { break-inside: avoid; }
+  .nota-venta-imprimible th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 
 /* ===== TOAST ===== */
 #toast-container {

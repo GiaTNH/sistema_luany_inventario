@@ -22,7 +22,7 @@ import java.util.Set;
 public class AuthService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final String MAYUSCULAS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    private static final String MAYUSCULAS = "ABCDEFGHJKMNPQRSTUVWXYZ";
     private static final String MINUSCULAS = "abcdefghjkmnpqrstuvwxyz";
     private static final String DIGITOS = "23456789";
     private static final String CARACTERES_PASSWORD = MAYUSCULAS + MINUSCULAS + DIGITOS;
