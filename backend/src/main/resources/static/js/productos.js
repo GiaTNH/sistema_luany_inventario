@@ -109,9 +109,11 @@ async function cargarTodo() {
   try {
     todosProveedores = await apiGet('/api/proveedores');
     poblarSelectsCatalogos();
+    poblarFiltroProveedor();
   } catch (err) {
     mostrarToast(err.message, 'error');
   }
+  aplicarFiltros();
 }
 
 function poblarFiltroCategoria() {
@@ -120,6 +122,18 @@ function poblarFiltroCategoria() {
   sel.innerHTML = '<option value="">Todas las categorías</option>' +
     todasCategorias.map(c => `<option value="${c.id}">${escapar(c.nombre)}</option>`).join('');
   sel.value = actual;
+}
+
+function poblarFiltroProveedor() {
+  const select = document.getElementById('filtro-proveedor');
+  const actual = select.value;
+  select.innerHTML = '<option value="">Todos los proveedores</option>' +
+    todosProveedores
+      .slice()
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+      .map(proveedor => `<option value="${proveedor.id}">${escapar(proveedor.nombre)}</option>`)
+      .join('');
+  select.value = actual;
 }
 
 // ---------- TABLA PRODUCTOS ----------
@@ -138,22 +152,22 @@ function renderTablaProductos(lista) {
     const iconoCategoria = iconoCategoriaSvg(p.categoria);
     const iconoPrenda = iconoPrendaSvg(p.nombre);
     return `<tr class="productos-card-row">
-      <td><div class="producto-table-name">
+      <td data-label="Producto"><div class="producto-table-name">
         <span class="producto-table-thumb">
           <span class="producto-thumb-fallback" aria-hidden="true">${iconoPrenda}</span>
           <img src="/img/productos/${encodeURIComponent(p.id)}.png" alt="" loading="lazy" onerror="this.hidden=true" />
         </span>
         <span class="producto-table-copy"><strong>${nombre}</strong></span>
       </div></td>
-      <td>${escapar(p.codigo || '—')}</td>
-      <td><span class="producto-category-tag ${categoriaClase}">${iconoCategoria}${escapar(p.categoria?.nombre || '—')}</span></td>
-      <td><span class="producto-provider-name">${escapar(p.proveedor?.nombre || '—')}</span></td>
-      <td class="producto-stock-current"><strong>${Number(p.stockActual) || 0}</strong></td>
-      <td class="producto-stock-muted">${Number(p.stockMinimo) || 0}</td>
-      <td class="producto-stock-muted">${Number(p.stockMaximo) || 0}</td>
-      <td>S/ ${Number(p.precio).toFixed(2)}</td>
-      <td><span class="producto-status producto-status-${estado.toLowerCase()}"><i></i>${estado}</span></td>
-      <td><div class="productos-row-actions">
+      <td data-label="Código">${escapar(p.codigo || '—')}</td>
+      <td data-label="Categoría"><span class="producto-category-tag ${categoriaClase}">${iconoCategoria}${escapar(p.categoria?.nombre || '—')}</span></td>
+      <td data-label="Proveedor"><span class="producto-provider-name">${escapar(p.proveedor?.nombre || '—')}</span></td>
+      <td data-label="Stock actual" class="producto-stock-current"><strong>${Number(p.stockActual) || 0}</strong></td>
+      <td data-label="Stock mínimo" class="producto-stock-muted">${Number(p.stockMinimo) || 0}</td>
+      <td data-label="Stock máximo" class="producto-stock-muted">${Number(p.stockMaximo) || 0}</td>
+      <td data-label="Precio">S/ ${Number(p.precio).toFixed(2)}</td>
+      <td data-label="Estado"><span class="producto-status producto-status-${estado.toLowerCase()}"><i></i>${estado}</span></td>
+      <td data-label="Acciones"><div class="productos-row-actions">
         <button type="button" class="productos-action-button productos-row-history" title="Ver movimientos" aria-label="Ver movimientos de ${nombre}" data-product-action="history" data-product-id="${p.id}" data-product-name="${nombre}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>
         </button>
@@ -283,18 +297,20 @@ function iconoPrendaSvg(nombre) {
 // ---------- FILTROS ----------
 
 function aplicarFiltros() {
-  const texto    = document.getElementById('buscador').value.toLowerCase();
+  const texto    = document.getElementById('buscador').value.trim().toLocaleLowerCase('es-PE');
   const catId    = document.getElementById('filtro-categoria').value;
   const estadoF  = document.getElementById('filtro-estado').value;
+  const proveedorId = document.getElementById('filtro-proveedor').value;
 
   const filtrados = todosProductos.filter(p => {
     const nombre = (p.nombre || '').toLocaleLowerCase('es-PE');
-    const categoria = (p.categoria?.nombre || '').toLocaleLowerCase('es-PE');
-    const coincideNombre = nombre.includes(texto);
+    const codigo = (p.codigo || '').toLocaleLowerCase('es-PE');
+    const coincideNombreOCodigo = nombre.includes(texto) || codigo.includes(texto);
     const coincideCat    = !catId || String(p.categoria?.id) === catId;
+    const coincideProveedor = !proveedorId || String(p.proveedor?.id) === proveedorId;
     const estado         = calcularEstado(p.stockActual, p.stockMinimo, p.stockMaximo);
     const coincideEstado = !estadoF || estado === estadoF;
-    return coincideNombre && coincideCat && coincideEstado;
+    return coincideNombreOCodigo && coincideCat && coincideEstado && coincideProveedor;
   });
 
   renderTablaProductos(aplicarOrdenProductos(filtrados));
@@ -303,6 +319,7 @@ function aplicarFiltros() {
 document.getElementById('buscador').addEventListener('input', aplicarFiltros);
 document.getElementById('filtro-categoria').addEventListener('change', aplicarFiltros);
 document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
+document.getElementById('filtro-proveedor').addEventListener('change', aplicarFiltros);
 
 // ---------- MODAL PRODUCTO ----------
 

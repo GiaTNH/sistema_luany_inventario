@@ -3,7 +3,9 @@ package com.luany.inventory.service;
 import com.luany.inventory.model.Proveedor;
 import com.luany.inventory.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -39,10 +41,17 @@ public class ProveedorService {
         return proveedorRepository.save(proveedor);
     }
 
+    @Transactional
     public void eliminar(Long id) {
         Proveedor proveedor = proveedorRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("El proveedor no existe"));
-        proveedorRepository.delete(proveedor);
+        try {
+            proveedorRepository.delete(proveedor);
+            proveedorRepository.flush();
+        } catch (DataIntegrityViolationException error) {
+            throw new IllegalArgumentException(
+                    "No se puede eliminar el proveedor porque está asociado a productos, pedidos u otros registros.");
+        }
     }
 
     // Los campos opcionales (ruc, correo, direccion, estado) solo se cambian

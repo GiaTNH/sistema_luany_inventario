@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/css/styles.css" />
   <link rel="stylesheet" href="/css/animaciones.css" />
 </head>
-<body class="movimientos-page">
+<body class="movimientos-page movimientos-module-page">
   <button class="btn-menu-movil" id="btn-menu-movil" aria-label="Menú">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" aria-hidden="true">
       <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -89,6 +89,15 @@
                   <option value="">Todos los productos</option>
                 </select>
               </label>
+              <label class="form-grupo" for="filtro-movimiento-tipo">
+                <span>Tipo</span>
+                <select class="form-control" id="filtro-movimiento-tipo">
+                  <option value="">Todos los tipos</option>
+                  <option value="ENTRADA">Entrada</option>
+                  <option value="SALIDA">Salida</option>
+                  <option value="VENTA">Venta</option>
+                </select>
+              </label>
               <label class="form-grupo" for="filtro-movimiento-desde">
                 <span>Desde</span>
                 <input class="form-control" id="filtro-movimiento-desde" type="date" />
@@ -100,7 +109,7 @@
             </div>
             <p class="text-suave" id="movimientos-mensaje" role="status" aria-live="polite">Cargando movimientos...</p>
             <div class="tabla-wrapper">
-              <table class="productos-list-table productos-entity-table">
+              <table class="productos-list-table movimientos-table">
                 <thead>
                   <tr>
                     <th>Tipo</th>
@@ -118,6 +127,11 @@
                 </tbody>
               </table>
             </div>
+            <nav class="movimientos-paginacion" aria-label="Paginación del historial">
+              <button type="button" class="btn btn-secundario" id="btn-movimientos-anterior" disabled>Anterior</button>
+              <span id="movimientos-pagina-info" aria-live="polite">Página 1 de 1</span>
+              <button type="button" class="btn btn-secundario" id="btn-movimientos-siguiente" disabled>Siguiente</button>
+            </nav>
           </div>
         </div>
       </section>
