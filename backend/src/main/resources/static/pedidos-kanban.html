@@ -63,6 +63,10 @@
         <div class="topbar-titulo"><h2 id="titulo-pagina">Tablero Kanban</h2><p>Seguimiento de pedidos y recepción de productos</p></div>
       </header>
       <section class="pagina pedidos-kanban-contenido">
+        <div class="pedidos-kanban-resumen" aria-live="polite">
+          <strong id="kanban-productos-seguimiento">0 productos en seguimiento</strong>
+          <time id="kanban-ultima-actualizacion">Última actualización: —</time>
+        </div>
         <div class="panel pedidos-kanban-filtros">
           <div class="panel-body">
             <div class="pedidos-kanban-filtro">
@@ -91,13 +95,13 @@
         </div>
         <p class="pedidos-kanban-mensaje text-suave" id="kanban-mensaje" role="status" aria-live="polite">Cargando pedidos...</p>
         <div class="pedidos-kanban-columnas" id="kanban-columnas">
-          <section class="pedidos-kanban-columna estado-pendiente" aria-labelledby="kanban-titulo-pendiente">
-            <header><h3 id="kanban-titulo-pendiente">Pendiente</h3><span class="kanban-conteo" id="kanban-conteo-pendiente">0</span></header>
-            <div class="kanban-tarjetas" id="kanban-pendiente"></div>
+          <section class="pedidos-kanban-columna estado-parcial" aria-labelledby="kanban-titulo-abastecer">
+            <header><h3 id="kanban-titulo-abastecer">Por abastecer</h3><span class="kanban-conteo" id="kanban-conteo-abastecer">0</span></header>
+            <div class="kanban-tarjetas" id="kanban-por-abastecer"></div>
           </section>
-          <section class="pedidos-kanban-columna estado-parcial" aria-labelledby="kanban-titulo-parcial">
-            <header><h3 id="kanban-titulo-parcial">Recepción parcial</h3><span class="kanban-conteo" id="kanban-conteo-parcial">0</span></header>
-            <div class="kanban-tarjetas" id="kanban-parcial"></div>
+          <section class="pedidos-kanban-columna estado-pendiente" aria-labelledby="kanban-titulo-pedido">
+            <header><h3 id="kanban-titulo-pedido">Pedido</h3><span class="kanban-conteo" id="kanban-conteo-pedido">0</span></header>
+            <div class="kanban-tarjetas" id="kanban-pedido"></div>
           </section>
           <section class="pedidos-kanban-columna estado-recibido" aria-labelledby="kanban-titulo-recibido">
             <header><h3 id="kanban-titulo-recibido">Recibido</h3><span class="kanban-conteo" id="kanban-conteo-recibido">0</span></header>
@@ -114,8 +118,9 @@
         <button type="button" class="btn-cerrar-modal" data-cerrar-kanban-modal aria-label="Cerrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
       </div>
       <div class="modal-body">
-        <p id="kanban-detalle-resumen" class="text-suave"></p>
-        <div class="tabla-wrapper"><table class="pedidos-tabla"><thead><tr><th>Producto</th><th>Pedido</th><th>Recibido</th><th>Pendiente</th></tr></thead><tbody id="kanban-detalle-lineas"></tbody></table></div>
+        <dl id="kanban-detalle-resumen" class="pedidos-detalle-metadatos"></dl>
+        <div class="tabla-wrapper"><table class="pedidos-tabla"><thead><tr><th>Producto</th><th>Pedido</th><th>Recibido</th><th>Pendiente</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody id="kanban-detalle-lineas"></tbody></table></div>
+        <div class="pedidos-detalle-total"><span>Total del pedido</span><strong id="kanban-detalle-total">S/ 0.00</strong></div>
         <h4 class="pedidos-historial-titulo">Historial de recepciones</h4>
         <div id="kanban-historial-recepciones"></div>
       </div>

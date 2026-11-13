@@ -52,6 +52,9 @@ class ReportesExportServiceTests {
             assertEquals("Desde 2026-11-01 hasta 2026-11-02", sheet.getRow(3).getCell(1).getStringCellValue());
             assertEquals("TOTAL", sheet.getRow(9).getCell(0).getStringCellValue());
             assertEquals(32.5, sheet.getRow(9).getCell(2).getNumericCellValue());
+            assertTrue(sheet.getRow(7).getCell(2).getCellStyle().getDataFormatString().contains("0.00"));
+            assertEquals(1,
+                    ((org.apache.poi.xssf.usermodel.XSSFWorkbook) workbook).getAllPictures().size());
         }
         verify(reportesService).ventas(desde, hasta);
     }
@@ -75,6 +78,11 @@ class ReportesExportServiceTests {
             assertTrue(texto.contains("Ventas por período"));
             assertTrue(texto.contains("2026-10-05"));
             assertTrue(texto.contains("TOTAL"));
+            assertTrue(texto.contains("S/ 18.00"));
+            var recursos = reader.getPageN(1)
+                    .getAsDict(com.lowagie.text.pdf.PdfName.RESOURCES)
+                    .getAsDict(com.lowagie.text.pdf.PdfName.XOBJECT);
+            assertTrue(recursos != null && !recursos.getKeys().isEmpty());
         }
         verify(reportesService).ventas(desde, hasta);
     }

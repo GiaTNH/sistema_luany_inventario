@@ -2,7 +2,14 @@ iniciarLayout('Alertas');
 
 const tablaAlertas = document.getElementById('alertas-tabla');
 const totalAlertas = document.getElementById('alertas-total');
+const botonReponerAlertas = document.getElementById('btn-reponer-alertas');
 const columnasAlerta = 6;
+const usuarioAlertas = obtenerSesion();
+const esAdministradorAlertas = usuarioAlertas?.rol === 'ADMIN';
+
+if (botonReponerAlertas && esAdministradorAlertas) {
+  botonReponerAlertas.hidden = false;
+}
 
 function mostrarMensajeAlertas(texto, estado = '') {
   tablaAlertas.replaceChildren();
@@ -29,11 +36,24 @@ function validarValorStock(valor) {
   return Number.isFinite(numero) ? numero : null;
 }
 
+function productosParaReposicion(alertas) {
+  return alertas
+    .filter((alerta) => Number.isSafeInteger(Number(alerta.productoId))
+      && Number(alerta.productoId) > 0
+      && Number.isSafeInteger(Number(alerta.cantidadSugerida))
+      && Number(alerta.cantidadSugerida) > 0)
+    .map((alerta) => ({
+      productoId: Number(alerta.productoId),
+      cantidad: Number(alerta.cantidadSugerida),
+    }));
+}
+
 function renderizarAlertas(alertas) {
   tablaAlertas.replaceChildren();
   totalAlertas.classList.remove('is-error');
 
   if (alertas.length === 0) {
+    if (botonReponerAlertas) botonReponerAlertas.disabled = true;
     totalAlertas.textContent = 'Sin alertas';
     totalAlertas.classList.add('is-empty');
     const fila = document.createElement('tr');
@@ -48,6 +68,9 @@ function renderizarAlertas(alertas) {
 
   totalAlertas.classList.remove('is-empty');
   totalAlertas.textContent = `${alertas.length} ${alertas.length === 1 ? 'producto' : 'productos'}`;
+  if (botonReponerAlertas) {
+    botonReponerAlertas.disabled = productosParaReposicion(alertas).length === 0;
+  }
   alertas.forEach((alerta) => {
     const stockActual = validarValorStock(alerta.stockActual);
     const stockMinimo = validarValorStock(alerta.stockMinimo);
@@ -87,6 +110,7 @@ async function cargarAlertas() {
     }
     renderizarAlertas(alertas);
   } catch (error) {
+    if (botonReponerAlertas) botonReponerAlertas.disabled = true;
     totalAlertas.textContent = 'No disponible';
     totalAlertas.classList.remove('is-empty');
     totalAlertas.classList.add('is-error');
@@ -94,5 +118,26 @@ async function cargarAlertas() {
     mostrarToast(`No se pudieron cargar las alertas: ${error.message}`, 'error');
   }
 }
+
+botonReponerAlertas?.addEventListener('click', async () => {
+  if (!esAdministradorAlertas || botonReponerAlertas.disabled) return;
+  botonReponerAlertas.disabled = true;
+  try {
+    const alertas = await apiGet('/api/alertas/stock');
+    if (!Array.isArray(alertas)) {
+      throw new Error('La respuesta del servidor no tiene el formato esperado.');
+    }
+    const productos = productosParaReposicion(alertas);
+    if (!productos.length) {
+      mostrarToast('No hay productos con una cantidad de reposición válida.', 'info');
+      return;
+    }
+    sessionStorage.setItem('luany-reposicion-pendiente', JSON.stringify(productos));
+    window.location.href = '/pedidos.html?reponer=1';
+  } catch (error) {
+    botonReponerAlertas.disabled = false;
+    mostrarToast(`No se pudo preparar la reposición: ${error.message}`, 'error');
+  }
+});
 
 cargarAlertas();

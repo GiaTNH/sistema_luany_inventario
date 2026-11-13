@@ -24,6 +24,10 @@ let pedidoRecepcionActual = null;
 let claveIdempotenciaRecepcion = null;
 let temporizadorBusqueda;
 let solicitudListado = 0;
+let reposicionesPendientes = [];
+let reposicionActiva = false;
+let guardandoPedido = false;
+const claveReposicion = 'luany-reposicion-pendiente';
 
 function celda(texto) {
   const elemento = document.createElement('td');
@@ -128,7 +132,17 @@ function mostrarModal(modal) {
 }
 
 function ocultarModal(modal) {
+  if (modal === modalPedido && reposicionActiva) cancelarReposicionPreparada();
   cerrarModalAccesible(modal);
+}
+
+function cancelarReposicionPreparada() {
+  reposicionActiva = false;
+  reposicionesPendientes = [];
+  sessionStorage.removeItem(claveReposicion);
+  const url = new URL(window.location.href);
+  url.searchParams.delete('reponer');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
 function cerrarModales() {
@@ -160,23 +174,136 @@ function agregarLineaPedido() {
   cuerpoLineasPedido.appendChild(fila);
 }
 
+function opcionesProveedoresActivos() {
+  return proveedores.filter((proveedor) =>
+    String(proveedor.estado || '').trim().toUpperCase() === 'ACTIVO');
+}
+
+function mostrarGrupoReposicion(proveedorId) {
+  const grupo = reposicionesPendientes.find((item) => String(item.proveedorId) === String(proveedorId));
+  if (!grupo) return false;
+  formPedido.reset();
+  cuerpoLineasPedido.replaceChildren();
+  selectProveedor.value = String(grupo.proveedorId);
+  grupo.productos.forEach((sugerido) => {
+    agregarLineaPedido();
+    const fila = cuerpoLineasPedido.lastElementChild;
+    const productoSelect = fila.querySelector('.pedido-producto');
+    productoSelect.value = String(sugerido.producto.id);
+    fila.querySelector('.pedido-cantidad').value = String(sugerido.cantidad);
+    fila.querySelector('.pedido-precio').value = Number(sugerido.producto.precio).toFixed(2);
+  });
+  document.getElementById('pedido-error').hidden = true;
+  const ayuda = document.getElementById('pedido-reposicion-ayuda');
+  ayuda.textContent = `Reposición para ${grupo.proveedorNombre}: revisa o edita los productos y cantidades. Cada proveedor requiere confirmar su propio pedido; el stock solo cambiará al registrar la recepción.`;
+  ayuda.hidden = false;
+  return true;
+}
+
+function agruparReposiciones(productosSugeridos) {
+  const proveedoresActivos = new Map(opcionesProveedoresActivos()
+    .map((proveedor) => [String(proveedor.id), proveedor]));
+  const productosPorId = new Map(productos.map((producto) => [String(producto.id), producto]));
+  const grupos = new Map();
+  productosSugeridos.forEach((sugerido) => {
+    const producto = productosPorId.get(String(sugerido.productoId));
+    const proveedor = producto && proveedoresActivos.get(String(producto.proveedor?.id));
+    const cantidad = Number(sugerido.cantidad);
+    if (!producto || !proveedor || !Number.isSafeInteger(cantidad) || cantidad < 1) return;
+    const id = String(proveedor.id);
+    if (!grupos.has(id)) grupos.set(id, { proveedorId: proveedor.id, proveedorNombre: proveedor.nombre, productos: [] });
+    grupos.get(id).productos.push({ producto, cantidad });
+  });
+  return [...grupos.values()];
+}
+
+function persistirReposicionesPendientes() {
+  const restantes = reposicionesPendientes.flatMap((grupo) => grupo.productos.map((item) => ({
+    productoId: Number(item.producto.id),
+    cantidad: Number(item.cantidad),
+  })));
+  if (restantes.length) {
+    sessionStorage.setItem(claveReposicion, JSON.stringify(restantes));
+  } else {
+    sessionStorage.removeItem(claveReposicion);
+  }
+}
+
+function prepararReposicionDesdeAlertas() {
+  let sugeridos;
+  try {
+    sugeridos = JSON.parse(sessionStorage.getItem(claveReposicion) || '[]');
+  } catch (error) {
+    sessionStorage.removeItem(claveReposicion);
+    mostrarToast('No se pudo leer la reposición preparada. Vuelve a intentarlo desde Alertas.', 'error');
+    return;
+  }
+  if (!Array.isArray(sugeridos)) {
+    sessionStorage.removeItem(claveReposicion);
+    mostrarToast('La reposición preparada no tiene un formato válido.', 'error');
+    return;
+  }
+  reposicionesPendientes = agruparReposiciones(sugeridos);
+  if (!reposicionesPendientes.length) {
+    sessionStorage.removeItem(claveReposicion);
+    mostrarToast('No se encontraron productos válidos con proveedores activos para reponer.', 'error');
+    return;
+  }
+  reposicionActiva = true;
+  const url = new URL(window.location.href);
+  url.searchParams.delete('reponer');
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  abrirNuevoPedido();
+  const cantidadPreparada = reposicionesPendientes.reduce(
+    (total, grupo) => total + grupo.productos.length,
+    0,
+  );
+  if (cantidadPreparada < sugeridos.length) {
+    mostrarToast('Algunos productos no se pudieron preparar porque no tienen un proveedor activo asociado.', 'error');
+  }
+  if (reposicionesPendientes.length > 1) {
+    mostrarToast(`Hay ${reposicionesPendientes.length} proveedores; revisa y confirma cada pedido por separado.`, 'info');
+  }
+}
+
 function abrirNuevoPedido() {
   formPedido.reset();
   document.getElementById('pedido-error').hidden = true;
+  document.getElementById('pedido-reposicion-ayuda').hidden = true;
   cuerpoLineasPedido.replaceChildren();
-  const proveedorActivo = proveedores.filter((proveedor) =>
-    String(proveedor.estado || '').trim().toUpperCase() === 'ACTIVO');
+  const proveedoresFormulario = reposicionActiva
+    ? opcionesProveedoresActivos().filter((proveedor) => reposicionesPendientes.some((grupo) =>
+      String(grupo.proveedorId) === String(proveedor.id)))
+    : opcionesProveedoresActivos();
   selectProveedor.innerHTML = '<option value="">Selecciona proveedor</option>' +
-    proveedorActivo.map((proveedor) =>
+    proveedoresFormulario.map((proveedor) =>
       `<option value="${escapar(proveedor.id)}">${escapar(proveedor.nombre)}</option>`).join('');
-  agregarLineaPedido();
+  if (!reposicionActiva || !reposicionesPendientes.length) agregarLineaPedido();
   mostrarModal(modalPedido);
+  if (reposicionActiva && reposicionesPendientes.length) {
+    mostrarGrupoReposicion(reposicionesPendientes[0].proveedorId);
+  }
 }
 
 function renderizarDetalle(pedido) {
   document.getElementById('titulo-detalle-pedido').textContent = `Detalle del pedido #${pedido.id}`;
-  document.getElementById('pedido-detalle-resumen').textContent =
-    `Proveedor: ${pedido.proveedorNombre} · Creado: ${horaLocal(pedido.fechaPedido)} · Entrega estimada: ${fechaCorta(pedido.fechaEstimadaEntrega)} · Creado por: ${pedido.usuarioNombre} · Estado: ${pedido.estado}`;
+  const resumen = document.getElementById('pedido-detalle-resumen');
+  resumen.replaceChildren();
+  [
+    ['Proveedor', pedido.proveedorNombre],
+    ['Fecha del pedido', horaLocal(pedido.fechaPedido)],
+    ['Entrega estimada', fechaCorta(pedido.fechaEstimadaEntrega)],
+    ['Registrado por', pedido.usuarioNombre],
+    ['Estado', pedido.estado],
+  ].forEach(([etiqueta, valor]) => {
+    const bloque = document.createElement('div');
+    const titulo = document.createElement('dt');
+    titulo.textContent = etiqueta;
+    const contenido = document.createElement('dd');
+    contenido.textContent = valor || '—';
+    bloque.append(titulo, contenido);
+    resumen.appendChild(bloque);
+  });
   const tbody = document.getElementById('pedido-detalle-lineas');
   tbody.replaceChildren();
   pedido.productos.forEach((producto) => {
@@ -273,8 +400,10 @@ document.addEventListener('keydown', (evento) => {
 });
 
 selectProveedor.addEventListener('change', () => {
+  if (reposicionActiva && mostrarGrupoReposicion(selectProveedor.value)) return;
   cuerpoLineasPedido.querySelectorAll('.pedido-producto').forEach((select) => {
-    select.innerHTML = opcionesProducto();
+    const valor = select.value;
+    select.innerHTML = opcionesProducto(valor);
   });
 });
 
@@ -299,6 +428,7 @@ filtroEstado.addEventListener('change', cargarPedidos);
 
 formPedido.addEventListener('submit', async (evento) => {
   evento.preventDefault();
+  if (guardandoPedido) return;
   const error = document.getElementById('pedido-error');
   error.hidden = true;
   if (!formPedido.reportValidity()) return;
@@ -323,17 +453,41 @@ formPedido.addEventListener('submit', async (evento) => {
     error.hidden = false;
     return;
   }
+  if (datos.productos.some((item) => !Number.isSafeInteger(item.cantidad) || item.cantidad < 1
+      || !Number.isFinite(item.precio) || item.precio < 0
+      || String(productos.find((producto) => Number(producto.id) === item.productoId)?.proveedor?.id)
+        !== String(datos.proveedorId))) {
+    error.textContent = 'Verifica que los productos pertenezcan al proveedor y que las cantidades y precios sean válidos.';
+    error.hidden = false;
+    return;
+  }
 
+  guardandoPedido = true;
   botonGuardarPedido.disabled = true;
   try {
     await apiPost('/api/pedidos', datos);
-    cerrarModales();
-    mostrarToast('Pedido registrado. El stock se actualizará al confirmar la recepción.', 'exito');
+    if (reposicionActiva) {
+      reposicionesPendientes = reposicionesPendientes.filter((grupo) =>
+        String(grupo.proveedorId) !== String(datos.proveedorId));
+      persistirReposicionesPendientes();
+      if (reposicionesPendientes.length) {
+        mostrarGrupoReposicion(reposicionesPendientes[0].proveedorId);
+        mostrarToast('Pedido registrado. Revisa y confirma el siguiente proveedor; el stock se actualizará al recibir.', 'exito');
+      } else {
+        reposicionActiva = false;
+        cerrarModales();
+        mostrarToast('Pedidos de reposición registrados. El stock se actualizará al confirmar cada recepción.', 'exito');
+      }
+    } else {
+      cerrarModales();
+      mostrarToast('Pedido registrado. El stock se actualizará al confirmar la recepción.', 'exito');
+    }
     await cargarPedidos();
   } catch (exception) {
     error.textContent = exception.message;
     error.hidden = false;
   } finally {
+    guardandoPedido = false;
     botonGuardarPedido.disabled = false;
   }
 });
@@ -390,6 +544,9 @@ async function cargarCatalogos() {
       apiGet('/api/productos'),
     ]);
     botonNuevoPedido.disabled = false;
+    if (new URLSearchParams(window.location.search).get('reponer') === '1') {
+      prepararReposicionDesdeAlertas();
+    }
   } catch (error) {
     mostrarToast(`No se pudieron cargar los catálogos: ${error.message}`, 'error');
   }

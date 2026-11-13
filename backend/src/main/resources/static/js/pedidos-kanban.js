@@ -1,8 +1,8 @@
 iniciarLayout('Tablero Kanban');
 
 const estadosKanban = [
-  { clave: 'PENDIENTE', columna: 'kanban-pendiente', conteo: 'kanban-conteo-pendiente', vacio: 'No hay pedidos pendientes.' },
-  { clave: 'PARCIAL', columna: 'kanban-parcial', conteo: 'kanban-conteo-parcial', vacio: 'No hay pedidos con recepción parcial.' },
+  { clave: 'PARCIAL', columna: 'kanban-por-abastecer', conteo: 'kanban-conteo-abastecer', vacio: 'No hay pedidos pendientes de abastecimiento.' },
+  { clave: 'PENDIENTE', columna: 'kanban-pedido', conteo: 'kanban-conteo-pedido', vacio: 'No hay pedidos por recibir.' },
   { clave: 'RECIBIDO', columna: 'kanban-recibido', conteo: 'kanban-conteo-recibido', vacio: 'No hay pedidos recibidos.' },
 ];
 const modalDetalle = document.getElementById('kanban-modal-detalle');
@@ -99,7 +99,7 @@ function crearTarjetaPedido(pedido) {
   return tarjeta;
 }
 
-function renderizarTablero(pedidos) {
+function renderizarTablero(pedidos, actualizado = true) {
   estadosKanban.forEach((estado) => {
     const columna = document.getElementById(estado.columna);
     const pedidosEstado = pedidos.filter((pedido) => pedido.estado === estado.clave);
@@ -114,6 +114,27 @@ function renderizarTablero(pedidos) {
     }
     pedidosEstado.forEach((pedido) => columna.appendChild(crearTarjetaPedido(pedido)));
   });
+  const productosEnSeguimiento = contarProductosSeguimiento(pedidos);
+  document.getElementById('kanban-productos-seguimiento').textContent =
+    `${productosEnSeguimiento} producto${productosEnSeguimiento === 1 ? '' : 's'} en seguimiento`;
+  if (actualizado) {
+    const actualizacion = new Date();
+    const horaActualizacion = document.getElementById('kanban-ultima-actualizacion');
+    horaActualizacion.dateTime = actualizacion.toISOString();
+    horaActualizacion.textContent = `Última actualización: ${actualizacion.toLocaleString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+  }
+}
+
+function contarProductosSeguimiento(pedidos) {
+  return pedidos
+    .filter((pedido) => pedido.estado === 'PENDIENTE' || pedido.estado === 'PARCIAL')
+    .reduce((total, pedido) => total + Number(pedido.totalProductos || 0), 0);
 }
 
 async function cargarTablero() {
@@ -134,7 +155,8 @@ async function cargarTablero() {
     mensaje.textContent = `${pedidos.length} pedido${pedidos.length === 1 ? '' : 's'} en el tablero`;
   } catch (error) {
     if (numeroSolicitud !== solicitudKanban) return;
-    renderizarTablero([]);
+    renderizarTablero([], false);
+    document.getElementById('kanban-productos-seguimiento').textContent = 'No disponible';
     mensaje.textContent = 'No se pudieron cargar los pedidos.';
     mostrarToast(error.message, 'error');
   }
@@ -142,22 +164,38 @@ async function cargarTablero() {
 
 function renderizarDetalle(pedido) {
   document.getElementById('kanban-detalle-titulo').textContent = `Detalle del pedido #${pedido.id}`;
-  document.getElementById('kanban-detalle-resumen').textContent =
-    `Proveedor: ${pedido.proveedorNombre} · Creado: ${fechaKanban(pedido.fechaPedido, true)}`
-    + ` · Entrega estimada: ${fechaKanban(pedido.fechaEstimadaEntrega)} · Estado: ${pedido.estado}`;
+  const resumen = document.getElementById('kanban-detalle-resumen');
+  resumen.replaceChildren();
+  [
+    ['Proveedor', pedido.proveedorNombre],
+    ['Fecha del pedido', fechaKanban(pedido.fechaPedido, true)],
+    ['Entrega estimada', fechaKanban(pedido.fechaEstimadaEntrega)],
+    ['Registrado por', pedido.usuarioNombre],
+    ['Estado', pedido.estado],
+  ].forEach(([etiqueta, valor]) => {
+    const bloque = document.createElement('div');
+    const titulo = document.createElement('dt');
+    titulo.textContent = etiqueta;
+    const contenido = document.createElement('dd');
+    contenido.textContent = valor || '—';
+    bloque.append(titulo, contenido);
+    resumen.appendChild(bloque);
+  });
   const tbody = document.getElementById('kanban-detalle-lineas');
   tbody.replaceChildren();
   if (!pedido.productos.length) {
     const vacio = document.createElement('tr');
     const celda = document.createElement('td');
-    celda.colSpan = 4;
+    celda.colSpan = 6;
     celda.textContent = 'Este pedido no tiene productos asociados.';
     vacio.appendChild(celda);
     tbody.appendChild(vacio);
   } else {
     pedido.productos.forEach((producto) => {
       const fila = document.createElement('tr');
-      [producto.productoNombre, producto.cantidadPedida, producto.cantidadRecibida, producto.cantidadPendiente]
+      [producto.productoNombre, producto.cantidadPedida, producto.cantidadRecibida,
+        producto.cantidadPendiente, `S/ ${Number(producto.precio).toFixed(2)}`,
+        `S/ ${Number(producto.subtotal).toFixed(2)}`]
         .forEach((valor) => {
           const celda = document.createElement('td');
           celda.textContent = String(valor);
@@ -166,6 +204,7 @@ function renderizarDetalle(pedido) {
       tbody.appendChild(fila);
     });
   }
+  document.getElementById('kanban-detalle-total').textContent = `S/ ${Number(pedido.total).toFixed(2)}`;
 
   const historial = document.getElementById('kanban-historial-recepciones');
   historial.replaceChildren();

@@ -70,7 +70,10 @@
             <h3 id="alertas-titulo">Stock bajo</h3>
             <p>Productos con stock actual igual o inferior al mínimo establecido.</p>
           </div>
-          <span class="alertas-total" id="alertas-total" aria-live="polite">Cargando...</span>
+          <div class="alertas-panel-actions">
+            <button type="button" class="btn btn-primario" id="btn-reponer-alertas" hidden disabled>Reponer</button>
+            <span class="alertas-total" id="alertas-total" aria-live="polite">Cargando...</span>
+          </div>
         </div>
         <div class="tabla-wrapper alertas-table-wrapper">
           <table class="alertas-table">

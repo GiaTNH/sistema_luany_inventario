@@ -631,6 +631,11 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .pedidos-modal .modal { max-width: 760px; max-height: calc(100vh - 40px); overflow-y: auto; }
 .pedidos-modal .modal-footer { margin: 18px -26px -24px; }
 .pedidos-modal-ancho { width: min(760px, 100%); }
+.pedidos-reposicion-ayuda { margin: 0 0 16px; padding: 12px 14px; border: 1px solid #E5DDF8; border-radius: 12px; background: #F7F3FF; color: #4F3A8C; font-size: 13px; line-height: 1.5; }
+.pedidos-detalle-metadatos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 0 18px; }
+.pedidos-detalle-metadatos > div { padding: 12px 14px; border: 1px solid #E8E4F2; border-radius: 12px; background: #FAF9FD; }
+.pedidos-detalle-metadatos dt { color: var(--texto-suave); font-size: 11px; }
+.pedidos-detalle-metadatos dd { margin: 4px 0 0; color: #342766; font-size: 13px; font-weight: 700; }
 .pedidos-lineas-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 10px; }
 .pedidos-lineas-header h4,
 .pedidos-historial-titulo { margin: 0; color: var(--texto); font-size: 15px; }
@@ -649,6 +654,9 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .pedidos-kanban-filtro label { color: var(--texto); font-size: 12px; font-weight: 700; }
 .pedidos-kanban-filtros .btn { min-height: 42px; }
 .pedidos-kanban-mensaje { min-height: 18px; margin: 0; font-size: 13px; }
+.pedidos-kanban-resumen { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border: 1px solid #E5DFF3; border-radius: 16px; background: linear-gradient(110deg, #F7F3FF, #FFFFFF); color: #5D5682; }
+.pedidos-kanban-resumen strong { color: #382B76; font-size: 15px; }
+.pedidos-kanban-resumen time { color: #827B9F; font-size: 12px; text-align: right; }
 .pedidos-kanban-columnas { display: grid; grid-template-columns: repeat(3, minmax(270px, 1fr)); align-items: start; gap: 16px; overflow-x: auto; padding: 2px 2px 12px; }
 .pedidos-kanban-columna { min-height: 260px; overflow: hidden; border: 1px solid #E5E8F4; border-radius: 17px; background: #F7F8FC; box-shadow: 0 4px 14px rgba(41,63,131,.05); }
 .pedidos-kanban-columna > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #E5E8F4; background: #fff; }
@@ -693,6 +701,8 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .ventas-tabla td { color: var(--texto); font-size: 13px; }
 .ventas-tabla-form { min-width: 760px; }
 .ventas-tabla .form-control { min-width: 95px; padding: 9px 10px; }
+.ventas-tabla-form .venta-producto-busqueda { min-width: 210px; }
+.ventas-tabla .venta-producto-busqueda { min-width: 210px; }
 .ventas-tabla-form td:first-child .form-control { min-width: 180px; }
 .ventas-accion,
 .venta-quitar-linea { padding: 8px 11px; font-size: 12px; }
@@ -724,6 +734,9 @@ td:first-child { font-weight: 600; color: var(--texto); }
   .pedidos-modal .modal-body { padding: 20px; }
   .pedidos-modal .modal-footer { margin: 18px -20px -20px; padding: 16px 20px; }
   .pedidos-lineas-header { align-items: flex-start; flex-direction: column; }
+  .pedidos-detalle-metadatos { grid-template-columns: 1fr; }
+  .pedidos-kanban-resumen { align-items: flex-start; flex-direction: column; }
+  .pedidos-kanban-resumen time { text-align: left; }
   .pedidos-kanban-filtros > .panel-body { grid-template-columns: 1fr 1fr; }
   .pedidos-kanban-filtro:first-child { grid-column: 1 / -1; }
   .pedidos-kanban-filtros .btn { width: 100%; }
