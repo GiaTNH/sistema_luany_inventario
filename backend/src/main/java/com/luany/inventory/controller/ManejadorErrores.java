@@ -1,5 +1,6 @@
 package com.luany.inventory.controller;
 
+import com.luany.inventory.service.CorreoAlertaStockException;
 import com.luany.inventory.service.CorreoEnvioException;
 import com.luany.inventory.service.CorreoRecuperacionException;
 import com.luany.inventory.service.CorreoNotificacionException;
@@ -79,4 +80,11 @@ public class ManejadorErrores {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Map.of("error", e.getMessage()));
     }
+
+    @ExceptionHandler(CorreoAlertaStockException.class)
+    public ResponseEntity<Map<String, String>> alertaStockNoEnviada(CorreoAlertaStockException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", e.getMessage()));
+    }
+
 }

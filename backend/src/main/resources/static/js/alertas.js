@@ -3,6 +3,7 @@ iniciarLayout('Alertas');
 const tablaAlertas = document.getElementById('alertas-tabla');
 const totalAlertas = document.getElementById('alertas-total');
 const botonReponerAlertas = document.getElementById('btn-reponer-alertas');
+const botonNotificarStock = document.getElementById('btn-notificar-stock');
 const columnasAlerta = 7;
 const usuarioAlertas = obtenerSesion();
 const esAdministradorAlertas = usuarioAlertas?.rol === 'ADMIN';
@@ -134,6 +135,7 @@ function renderizarAlertas(alertas) {
 
   if (alertas.length === 0) {
     if (botonReponerAlertas) botonReponerAlertas.disabled = true;
+    if (botonNotificarStock) botonNotificarStock.disabled = true;
     totalAlertas.textContent = 'Sin alertas';
     totalAlertas.classList.add('is-empty');
     const fila = document.createElement('tr');
@@ -204,6 +206,7 @@ async function cargarAlertas() {
       throw new Error('La respuesta del servidor no tiene el formato esperado.');
     }
     renderizarAlertas(alertas);
+    if (botonNotificarStock) botonNotificarStock.disabled = alertas.length === 0;
     const productoEnlace = window.location.hash.match(/^#alerta-producto-(\d+)$/);
     if (productoEnlace && esAdministradorAlertas) {
       const url = new URL(window.location.href);
@@ -221,6 +224,26 @@ async function cargarAlertas() {
     mostrarToast(`No se pudieron cargar las alertas: ${error.message}`, 'error');
   }
 }
+
+
+botonNotificarStock?.addEventListener('click', async () => {
+  if (botonNotificarStock.disabled) return;
+  botonNotificarStock.disabled = true;
+  const textoOriginal = botonNotificarStock.textContent;
+  botonNotificarStock.textContent = 'Enviando...';
+  try {
+    const respuesta = await apiPost('/api/alertas/notificar-stock', {});
+    mostrarToast(
+      `Correo enviado al administrador con ${respuesta.cantidadProductos} productos.`,
+      'exito',
+    );
+  } catch (error) {
+    mostrarToast(`No se pudo enviar la alerta: ${error.message}`, 'error');
+  } finally {
+    botonNotificarStock.textContent = textoOriginal;
+    botonNotificarStock.disabled = false;
+  }
+});
 
 botonReponerAlertas?.addEventListener('click', async () => {
   if (!esAdministradorAlertas || botonReponerAlertas.disabled) return;
