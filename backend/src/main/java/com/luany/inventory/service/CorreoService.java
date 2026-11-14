@@ -1,5 +1,6 @@
 package com.luany.inventory.service;
 
+import com.luany.inventory.model.AlertaStock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -295,4 +296,113 @@ public class CorreoService {
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
     }
+
+    public void enviarAlertaStock(List<AlertaStock> alertas, List<String> destinatarios) {
+        if (!configuracionCompleta()) {
+            throw new CorreoAlertaStockException();
+        }
+        if (alertas == null || alertas.isEmpty() || destinatarios == null || destinatarios.isEmpty()) {
+            throw new IllegalArgumentException("No hay productos o administradores para enviar la alerta.");
+        }
+
+        StringBuilder contenidoTexto = new StringBuilder(
+                "Se han identificado productos que necesitan revisión de inventario.\\n\\n");
+        for (AlertaStock alerta : alertas) {
+            contenidoTexto.append("- ").append(alerta.nombre())
+                    .append(" | Stock: ").append(alerta.stockActual())
+                    .append(" | Mínimo: ").append(alerta.stockMinimo())
+                    .append(" | Estado: ").append(alerta.estado())
+                    .append("\\n");
+        }
+        contenidoTexto.append("\\nIngresa al sistema LUANY para revisar el inventario.\\n")
+                .append(URL_ACCESO)
+                .append("\\n\\nEste es un mensaje automático de LUANY.");
+
+        String filasHtml = alertas.stream()
+                .map(alerta -> """
+                        <tr>
+                          <td style="padding:12px;border-bottom:1px solid #EEE8F8;">%s</td>
+                          <td style="padding:12px;border-bottom:1px solid #EEE8F8;text-align:center;">%s</td>
+                          <td style="padding:12px;border-bottom:1px solid #EEE8F8;text-align:center;">%s</td>
+                          <td style="padding:12px;border-bottom:1px solid #EEE8F8;font-weight:700;color:%s;">%s</td>
+                        </tr>
+                        """.formatted(
+                        escaparHtml(alerta.nombre()),
+                        escaparHtml(String.valueOf(alerta.stockActual())),
+                        escaparHtml(String.valueOf(alerta.stockMinimo())),
+                        "AGOTADO".equalsIgnoreCase(alerta.estado()) ? "#D92D55" : "#B76B00",
+                        escaparHtml(alerta.estado())))
+                .collect(java.util.stream.Collectors.joining());
+
+        String contenidoHtml = """
+                <!DOCTYPE html>
+                <html lang="es">
+                <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Alerta de inventario LUANY</title></head>
+                <body style="margin:0;padding:28px 12px;background:#F7F3FF;font-family:Arial,Helvetica,sans-serif;color:#241442;">
+                  <table role="presentation" width="100%%" cellpadding="0" cellspacing="0">
+                    <tr><td align="center">
+                      <table role="presentation" width="600" cellpadding="0" cellspacing="0"
+                        style="width:100%%;max-width:600px;background:#fff;border:1px solid #E9D8FF;border-radius:16px;overflow:hidden;">
+                        <tr><td style="padding:24px;text-align:center;background:#873CF0;color:#fff;">
+                          <div style="font-size:28px;font-weight:700;letter-spacing:1px;">LUANY</div>
+                          <div style="font-size:12px;letter-spacing:2px;margin-top:4px;">ALERTA DE INVENTARIO</div>
+                        </td></tr>
+                        <tr><td style="padding:28px 24px 12px;">
+                          <h2 style="margin:0 0 10px;color:#241442;">Productos que necesitan reposición</h2>
+                          <p style="margin:0;color:#625574;line-height:1.6;">
+                            Se encontraron <strong>%s productos</strong> con stock bajo o agotado.
+                          </p>
+                        </td></tr>
+                        <tr><td style="padding:12px 24px 24px;">
+                          <table role="presentation" width="100%%" cellpadding="0" cellspacing="0"
+                            style="border-collapse:collapse;font-size:14px;">
+                            <thead><tr style="background:#F4F1FB;color:#5633A8;">
+                              <th style="padding:12px;text-align:left;">Producto</th>
+                              <th style="padding:12px;">Stock</th>
+                              <th style="padding:12px;">Mínimo</th>
+                              <th style="padding:12px;text-align:left;">Estado</th>
+                            </tr></thead>
+                            <tbody>%s</tbody>
+                          </table>
+                        </td></tr>
+                        <tr><td style="padding:0 24px 24px;text-align:center;">
+                          <a href="%s" style="display:inline-block;padding:13px 22px;background:#873CF0;color:#fff;border-radius:9px;text-decoration:none;font-weight:700;">
+                            REVISAR INVENTARIO
+                          </a>
+                        </td></tr>
+                        <tr><td style="padding:16px 24px;border-top:1px solid #F0EAF8;text-align:center;color:#81758F;font-size:12px;">
+                          Este es un mensaje automático de LUANY.
+                        </td></tr>
+                      </table>
+                    </td></tr>
+                  </table>
+                </body></html>
+                """.formatted(alertas.size(), filasHtml, URL_ACCESO);
+
+        List<Map<String, String>> destinatariosCorreo = destinatarios.stream()
+                .filter(email -> email != null && !email.isBlank())
+                .distinct()
+                .map(email -> Map.of("email", email))
+                .toList();
+
+        if (destinatariosCorreo.isEmpty()) {
+            throw new IllegalArgumentException("No hay un correo de administrador válido.");
+        }
+
+        Map<String, Object> solicitud = Map.of(
+                "sender", remitente(),
+                "to", destinatariosCorreo,
+                "subject", "LUANY - Alerta de stock: " + alertas.size() + " productos",
+                "textContent", contenidoTexto.toString(),
+                "htmlContent", contenidoHtml);
+
+        try {
+            enviar(solicitud);
+        } catch (RestClientException exception) {
+            LOGGER.error("Falló el envío de la alerta de stock mediante Brevo.");
+            throw new CorreoAlertaStockException();
+        }
+    }
+
 }
