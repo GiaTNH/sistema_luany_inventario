@@ -3,6 +3,8 @@ package com.luany.inventory.service;
 import com.luany.inventory.model.Proveedor;
 import com.luany.inventory.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,11 @@ public class ProveedorService {
 
     public List<Proveedor> listar() {
         return proveedorRepository.findAll();
+    }
+
+    public List<Proveedor> listarParaAsistente(int limite) {
+        return proveedorRepository.findAll(PageRequest.of(
+                0, limite, Sort.by(Sort.Order.asc("nombre").ignoreCase()))).getContent();
     }
 
     public Proveedor crear(Proveedor datos) {

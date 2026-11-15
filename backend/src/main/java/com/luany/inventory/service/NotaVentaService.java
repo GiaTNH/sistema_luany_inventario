@@ -3,6 +3,8 @@ package com.luany.inventory.service;
 import com.luany.inventory.model.*;
 import com.luany.inventory.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Locale;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +44,24 @@ public class NotaVentaService {
                 ? notaVentaRepository.findAllByOrderByFechaEmisionDesc()
                 : notaVentaRepository.buscar(termino);
         return notas.stream().map(this::resumen).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotaVentaResumenResponse> listarParaAsistente(
+            LocalDate desde, LocalDate hasta, int limite) {
+        return listarParaAsistente(null, desde, hasta, limite);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NotaVentaResumenResponse> listarParaAsistente(
+            String cliente, LocalDate desde, LocalDate hasta, int limite) {
+        return notaVentaRepository.buscarParaAsistente(
+                        cliente == null || cliente.isBlank() ? null : cliente.trim(),
+                        desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay(),
+                        PageRequest.of(0, limite, Sort.by(Sort.Order.desc("fechaEmision"))))
+                .stream()
+                .map(this::resumen)
+                .toList();
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,6 @@
 # Sistema Inteligente Integrador para la Gestión de Inventario — Empresa LUANY
 
-Sistema web desarrollado en **Spring Boot** con arquitectura en capas y un asistente inteligente contextual para optimizar el control de existencias, alertas de stock y reposición de productos en la empresa LUANY.
+Sistema web desarrollado en **Spring Boot** con arquitectura en capas y un asistente inteligente contextual para consultar productos, movimientos, proveedores, pedidos, clientes, reportes, alertas y rotación de inventario de LUANY. El asistente obtiene información mediante los servicios existentes, limita los registros enviados al modelo y restringe las consultas de usuarios al rol administrador.
 
 ##  Tecnologías utilizadas
 - **Java 17**

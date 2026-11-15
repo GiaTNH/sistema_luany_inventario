@@ -5,6 +5,7 @@ import com.luany.inventory.model.RespuestaAsistente;
 import com.luany.inventory.service.AsistenteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,7 +16,11 @@ public class AsistenteController {
     private final AsistenteService asistenteService;
 
     @PostMapping("/consulta")
-    public RespuestaAsistente consultar(@Valid @RequestBody ConsultaRequest request) {
-        return asistenteService.consultar(request.getPregunta());
+    public RespuestaAsistente consultar(
+            @Valid @RequestBody ConsultaRequest request,
+            Authentication authentication) {
+        boolean administrador = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        return asistenteService.consultar(request.getPregunta(), administrador);
     }
 }

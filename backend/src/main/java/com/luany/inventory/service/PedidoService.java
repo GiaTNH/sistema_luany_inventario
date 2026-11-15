@@ -4,6 +4,7 @@ import com.luany.inventory.model.*;
 import com.luany.inventory.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +62,17 @@ public class PedidoService {
                         || String.valueOf(pedido.getId()).contains(termino)
                         || pedido.getProveedor().getNombre().toLowerCase(Locale.ROOT).contains(termino))
                 .map(this::resumen)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoDetalleResponse> listarParaAsistente(LocalDate desde, LocalDate hasta, int limite) {
+        LocalDateTime inicio = desde.atStartOfDay();
+        LocalDateTime finExclusivo = hasta.plusDays(1).atStartOfDay();
+        return pedidoRepository.listarParaAsistente(inicio, finExclusivo, PageRequest.of(
+                        0, limite, Sort.by(Sort.Order.desc("fechaPedido"))))
+                .stream()
+                .map(this::detalle)
                 .toList();
     }
 
