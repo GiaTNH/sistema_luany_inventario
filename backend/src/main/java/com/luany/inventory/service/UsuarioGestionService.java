@@ -8,6 +8,7 @@ import com.luany.inventory.model.ResultadoNotificacion;
 import com.luany.inventory.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionInformation;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,18 @@ public class UsuarioGestionService {
         return usuarioRepository.findAll(org.springframework.data.domain.Sort.by(
                         org.springframework.data.domain.Sort.Order.asc("apellido").ignoreCase(),
                         org.springframework.data.domain.Sort.Order.asc("nombre").ignoreCase()))
+                .stream()
+                .map(this::aRespuesta)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioGestionResponse> listarParaAsistente(int limite) {
+        return usuarioRepository.findAll(PageRequest.of(
+                        0, limite,
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Order.asc("apellido").ignoreCase(),
+                                org.springframework.data.domain.Sort.Order.asc("nombre").ignoreCase())))
                 .stream()
                 .map(this::aRespuesta)
                 .toList();

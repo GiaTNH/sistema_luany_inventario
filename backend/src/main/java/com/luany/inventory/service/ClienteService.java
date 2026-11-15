@@ -6,6 +6,7 @@ import com.luany.inventory.repository.ClienteRepository;
 import com.luany.inventory.repository.NotaVentaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,20 @@ public class ClienteService {
         String termino = busqueda.trim();
         return clienteRepository.findByNombreContainingIgnoreCaseOrNumeroDocumentoContainingIgnoreCase(
                 termino, termino, ORDEN_NOMBRE);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Cliente> listarParaAsistente(int limite) {
+        return listarParaAsistente(null, limite);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Cliente> listarParaAsistente(String nombre, int limite) {
+        var solicitud = PageRequest.of(0, limite, ORDEN_NOMBRE);
+        if (nombre == null || nombre.isBlank()) {
+            return clienteRepository.findAll(solicitud).getContent();
+        }
+        return clienteRepository.buscarPorNombreParaAsistente(nombre, solicitud).getContent();
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

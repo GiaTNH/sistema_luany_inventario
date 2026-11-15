@@ -38,4 +38,11 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
             + "WHERE m.tipo = :tipo AND m.fecha >= :desde GROUP BY m.producto.id")
     List<Object[]> ventasPorProducto(@Param("tipo") TipoMovimiento tipo,
                                      @Param("desde") LocalDateTime desde);
+
+    @Query("SELECT m.producto.id, SUM(m.cantidad) FROM Movimiento m "
+            + "WHERE m.tipo = :tipo AND m.fecha >= :desde AND m.fecha < :hasta "
+            + "GROUP BY m.producto.id")
+    List<Object[]> ventasPorProducto(@Param("tipo") TipoMovimiento tipo,
+                                     @Param("desde") LocalDateTime desde,
+                                     @Param("hasta") LocalDateTime hasta);
 }

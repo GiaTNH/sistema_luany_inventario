@@ -3,6 +3,13 @@ package com.luany.inventory;
 import com.luany.inventory.model.*;
 import com.luany.inventory.repository.*;
 import com.luany.inventory.service.ReportesService;
+import com.luany.inventory.service.MovimientoService;
+import com.luany.inventory.service.ProductoService;
+import com.luany.inventory.service.ProveedorService;
+import com.luany.inventory.service.ClienteService;
+import com.luany.inventory.service.NotaVentaService;
+import com.luany.inventory.service.PedidoService;
+import com.luany.inventory.service.UsuarioGestionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +35,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ReportesRepositoryIntegrationTests {
 
     @Autowired private ReportesService reportesService;
+    @Autowired private MovimientoService movimientoService;
+    @Autowired private ProductoService productoService;
+    @Autowired private ProveedorService proveedorService;
+    @Autowired private ClienteService clienteService;
+    @Autowired private NotaVentaService notaVentaService;
+    @Autowired private PedidoService pedidoService;
+    @Autowired private UsuarioGestionService usuarioGestionService;
     @Autowired private CategoriaRepository categoriaRepository;
     @Autowired private ProveedorRepository proveedorRepository;
     @Autowired private UsuarioRepository usuarioRepository;
@@ -135,6 +149,16 @@ class ReportesRepositoryIntegrationTests {
         var movimientos = reportesService.movimientos(hoy, hoy, producto.getId(), TipoMovimiento.VENTA, 0, 20);
         var inventario = reportesService.inventario("NORMAL");
         var pedidos = reportesService.pedidosRecepciones(hoy, hoy);
+        var productosAsistente = productoService.listarParaAsistente(10);
+        var proveedoresAsistente = proveedorService.listarParaAsistente(10);
+        var clientesAsistente = clienteService.listarParaAsistente(10);
+        var clienteFiltradoAsistente = clienteService.listarParaAsistente("Cliente Reporte", 10);
+        var ventasAsistente = notaVentaService.listarParaAsistente(hoy, hoy, 10);
+        var ventasClienteAsistente = notaVentaService.listarParaAsistente(
+                "Cliente Reporte", hoy, hoy, 10);
+        var pedidosAsistente = pedidoService.listarParaAsistente(hoy, hoy, 10);
+        var usuariosAsistente = usuarioGestionService.listarParaAsistente(10);
+        var ventasPorMovimiento = movimientoService.ventasPorProducto(hoy, hoy);
 
         assertEquals(new BigDecimal("50.00"), ventas.importeTotal());
         assertEquals(1L, ventas.cantidadNotas());
@@ -145,6 +169,15 @@ class ReportesRepositoryIntegrationTests {
         assertEquals(4L, pedidos.pedidos().get(0).unidadesRecibidas());
         assertEquals(6L, pedidos.pedidos().get(0).unidadesPendientes());
         assertEquals(4L, pedidos.recepcionesPorDia().get(0).unidadesRecibidas());
+        assertEquals("Producto Reporte", productosAsistente.get(0).getNombre());
+        assertEquals("Proveedor reporte", proveedoresAsistente.get(0).getNombre());
+        assertEquals("Cliente Reporte", clientesAsistente.get(0).getNombre());
+        assertEquals(1, clienteFiltradoAsistente.size());
+        assertEquals("NV-REPORTES-TEST", ventasAsistente.get(0).numeroNota());
+        assertEquals("NV-REPORTES-TEST", ventasClienteAsistente.get(0).numeroNota());
+        assertEquals("Producto Reporte", pedidosAsistente.get(0).productos().get(0).productoNombre());
+        assertEquals("Usuario Reporte", usuariosAsistente.get(0).nombre());
+        assertEquals(4L, ventasPorMovimiento.get(producto.getId()));
     }
 
     private Movimiento crearMovimiento(Producto producto, TipoMovimiento tipo, int cantidad, LocalDateTime fecha) {

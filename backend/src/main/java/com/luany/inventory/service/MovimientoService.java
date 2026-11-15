@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -69,6 +71,16 @@ public class MovimientoService {
         return movimientoRepository.findAll(Sort.by(
                 Sort.Order.desc("fecha"),
                 Sort.Order.desc("id")));
+    }
+
+    public Map<Long, Long> ventasPorProducto(LocalDate desde, LocalDate hasta) {
+        Map<Long, Long> ventas = new HashMap<>();
+        List<Object[]> filas = movimientoRepository.ventasPorProducto(
+                TipoMovimiento.VENTA, desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay());
+        for (Object[] fila : filas) {
+            ventas.put(((Number) fila[0]).longValue(), ((Number) fila[1]).longValue());
+        }
+        return ventas;
     }
 
     public Page<Movimiento> listarPaginado(

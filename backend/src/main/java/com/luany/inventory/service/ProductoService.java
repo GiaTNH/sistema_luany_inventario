@@ -5,6 +5,8 @@ import com.luany.inventory.repository.CategoriaRepository;
 import com.luany.inventory.repository.ProductoRepository;
 import com.luany.inventory.repository.ProveedorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,11 @@ public class ProductoService {
         return productoRepository.findAll();
     }
 
+    public List<Producto> listarParaAsistente(int limite) {
+        return productoRepository.findAll(PageRequest.of(
+                0, limite, Sort.by(Sort.Order.asc("nombre").ignoreCase()))).getContent();
+    }
+
     public Producto obtener(Long id) {
         return productoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("El producto no existe"));
@@ -35,6 +42,10 @@ public class ProductoService {
 
     public List<Producto> productosConStockBajo() {
         return productoRepository.findStockBajo();
+    }
+
+    public List<Producto> productosConStockBajoParaAsistente(int limite) {
+        return productoRepository.findStockBajo(PageRequest.of(0, limite));
     }
 
     @Transactional
