@@ -12,6 +12,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.List;
 
 import static com.luany.inventory.model.ReportesResponse.*;
@@ -26,6 +27,7 @@ public class ReportesService {
 
     private final ReportesRepository reportesRepository;
     private final ProductoRepository productoRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public VentasPeriodo ventas(LocalDate desde, LocalDate hasta) {
@@ -162,7 +164,7 @@ public class ReportesService {
 
     private Periodo validarPeriodo(LocalDate desde, LocalDate hasta) {
         if (desde == null && hasta == null) {
-            hasta = LocalDate.now();
+            hasta = LocalDate.now(clock);
             desde = hasta.minusDays(29);
         } else if (desde == null || hasta == null) {
             throw new IllegalArgumentException("Debes indicar ambas fechas: desde y hasta");

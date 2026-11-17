@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
@@ -15,6 +16,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,6 +47,8 @@ class NotaVentaServiceTests {
     private UsuarioRepository usuarioRepository;
     @Mock
     private MovimientoService movimientoService;
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("America/Lima"));
 
     @InjectMocks
     private NotaVentaService notaVentaService;
@@ -90,13 +96,16 @@ class NotaVentaServiceTests {
             detalles.forEach(detalleGuardado::set);
             return List.of();
         });
+        LocalDateTime antes = LocalDateTime.now(clock);
 
         NotaVentaDetalleResponse respuesta = notaVentaService.crear(request(2), usuario.getEmail());
+        LocalDateTime despues = LocalDateTime.now(clock);
 
         verify(notaVentaRepository).saveAndFlush(notaCaptor.capture());
         NotaVenta nota = notaCaptor.getValue();
         assertEquals("Nota-015", nota.getNumeroNota());
         assertEquals(new BigDecimal("24.70"), nota.getTotal());
+        assertTrue(!nota.getFechaEmision().isBefore(antes) && !nota.getFechaEmision().isAfter(despues));
         assertEquals(new BigDecimal("12.35"), detalleGuardado.get().getPrecioUnitario());
         assertEquals(new BigDecimal("24.70"), detalleGuardado.get().getSubtotal());
         assertEquals(15L, respuesta.id());

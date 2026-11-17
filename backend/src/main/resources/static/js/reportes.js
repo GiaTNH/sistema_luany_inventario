@@ -23,12 +23,14 @@ let exportandoReporte = false;
 let solicitudReporte = 0;
 
 function fechaLocal(fecha) {
-  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+  return fechaIsoLuany(fecha);
 }
 
 function inicializarFechas() {
-  const hoy = new Date();
-  const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 29);
+  const hoy = fechaActualLuany();
+  const inicio = new Date(Date.UTC(
+    hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate() - 29,
+  ));
   desdeInput.value = fechaLocal(inicio);
   hastaInput.value = fechaLocal(hoy);
 }
@@ -39,14 +41,7 @@ function rangoQuery() {
 }
 
 function fechaHora(fecha) {
-  if (!fecha) return '—';
-  return new Intl.DateTimeFormat('es-PE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(fecha));
+  return formatearFechaHoraLuany(fecha);
 }
 
 function moneda(valor) {

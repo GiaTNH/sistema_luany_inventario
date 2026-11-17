@@ -16,7 +16,7 @@ public class Pedido {
     private Long id;
 
     @Column(name = "fecha_pedido", nullable = false)
-    private LocalDateTime fechaPedido = LocalDateTime.now();
+    private LocalDateTime fechaPedido;
 
     @Column(nullable = false, length = 30)
     private String estado = "PENDIENTE";

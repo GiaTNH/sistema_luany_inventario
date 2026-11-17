@@ -19,7 +19,7 @@ public class NotaVenta {
     private String numeroNota;
 
     @Column(name = "fecha_emision", nullable = false)
-    private LocalDateTime fechaEmision = LocalDateTime.now();
+    private LocalDateTime fechaEmision;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total = BigDecimal.ZERO;

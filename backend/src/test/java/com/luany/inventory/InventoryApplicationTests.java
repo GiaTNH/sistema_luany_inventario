@@ -15,6 +15,7 @@ import com.luany.inventory.model.Usuario;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -32,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 
@@ -53,6 +55,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @AutoConfigureMockMvc
 class InventoryApplicationTests {
+    @Value("${server.servlet.session.timeout}")
+    private Duration sessionTimeout;
 
     @Autowired
     private AuthService authService;
@@ -88,6 +92,9 @@ class InventoryApplicationTests {
                 )
                 """);
         tokenRepository.deleteAll();
+        jdbcTemplate.execute("DELETE FROM intentos_seguridad");
+        jdbcTemplate.execute("DELETE FROM bloqueos_historial");
+        jdbcTemplate.execute("DELETE FROM auditoria_seguridad");
         usuarioRepository.deleteAll();
         jdbcTemplate.update("DELETE FROM registro_inicial");
         jdbcTemplate.update("INSERT INTO registro_inicial (id, completado) VALUES (1, FALSE)");
@@ -95,6 +102,11 @@ class InventoryApplicationTests {
 
     @Test
     void contextLoads() {
+    }
+
+    @Test
+    void sesionTieneExpiracionDeTreintaMinutos() {
+        assertEquals(Duration.ofMinutes(30), sessionTimeout);
     }
 
     @Test
@@ -240,7 +252,8 @@ class InventoryApplicationTests {
         SolicitudRecuperacionPasswordRequest request = new SolicitudRecuperacionPasswordRequest();
         request.setEmail(usuario.getEmail());
 
-        assertEquals("No pudimos enviar el enlace de recuperación. Inténtalo más tarde.",
+        assertEquals("Si existe una cuenta activa asociada a ese correo, recibirás instrucciones "
+                        + "para restablecer tu contraseña.",
                 recuperacionPasswordService.solicitarRecuperacion(request));
         assertEquals(1, tokenRepository.count());
         assertNotNull(tokenRepository.findAll().get(0).getUtilizadoEn());
@@ -249,7 +262,7 @@ class InventoryApplicationTests {
     }
 
     @Test
-    void respuestaHttpDistingueCuentaInexistenteDeFalloDeEnvioSinDetallesTecnicos() throws Exception {
+    void respuestaHttpNoRevelaSiExisteUnaCuentaEnLaRecuperacion() throws Exception {
         String cuerpo = """
                 {"email":"desconocido@luany.com"}
                 """;
@@ -258,8 +271,9 @@ class InventoryApplicationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(cuerpo))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mensaje")
-                        .value("No existe una cuenta activa asociada a ese correo."))
+                .andExpect(jsonPath("$.mensaje").value(
+                        "Si existe una cuenta activa asociada a ese correo, recibirás instrucciones "
+                                + "para restablecer tu contraseña."))
                 .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn()
                 .getResponse()
@@ -274,13 +288,14 @@ class InventoryApplicationTests {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje")
-                        .value("No pudimos enviar el enlace de recuperación. Inténtalo más tarde."))
+                        .value("Si existe una cuenta activa asociada a ese correo, recibirás instrucciones "
+                                + "para restablecer tu contraseña."))
                 .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
 
-        assertNotEquals(correoInexistente, correoRegistradoConFalloProveedor);
+        assertEquals(correoInexistente, correoRegistradoConFalloProveedor);
         assertEquals(1, tokenRepository.count());
         assertNotNull(tokenRepository.findAll().get(0).getUtilizadoEn());
     }

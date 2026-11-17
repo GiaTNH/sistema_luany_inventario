@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,7 @@ public class PedidoService {
     private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
     private final MovimientoService movimientoService;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public List<PedidoResumenResponse> listar(String busqueda, String estado) {
@@ -146,6 +148,7 @@ public class PedidoService {
                 .orElseThrow(() -> new IllegalStateException("No se encontró el usuario de la sesión"));
 
         Pedido pedido = new Pedido();
+        pedido.setFechaPedido(LocalDateTime.now(clock));
         pedido.setProveedor(proveedor);
         pedido.setUsuario(usuario);
         pedido.setFechaEstimadaEntrega(request.getFechaEstimadaEntrega());
@@ -232,6 +235,7 @@ public class PedidoService {
         recepcion.setPedido(pedido);
         recepcion.setUsuario(usuario);
         recepcion.setClaveIdempotencia(request.getClaveIdempotencia());
+        recepcion.setFecha(LocalDateTime.now(clock));
         recepcion = recepcionPedidoRepository.saveAndFlush(recepcion);
 
         for (RegistrarRecepcionItemRequest item : request.getProductos()) {

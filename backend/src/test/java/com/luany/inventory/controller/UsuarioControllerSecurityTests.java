@@ -75,7 +75,7 @@ class UsuarioControllerSecurityTests {
         String header = extraer(cuerpoCsrf, "headerName");
         String token = extraer(cuerpoCsrf, "token");
         MockHttpSession session = (MockHttpSession) resultado.getRequest().getSession(false);
-        when(authService.iniciarSesion(any())).thenReturn(
+        when(authService.iniciarSesion(any(), any())).thenReturn(
                 usuario("ADMIN", false));
 
         mockMvc.perform(post("/api/auth/login")
@@ -132,8 +132,9 @@ class UsuarioControllerSecurityTests {
 
     @Test
     void solicitudesDeRecuperacionSonPublicasPeroRequierenCsrf() throws Exception {
-        when(recuperacionPasswordService.solicitarRecuperacion(any()))
-                .thenReturn("Enviamos un enlace para restablecer tu contraseña al correo registrado.");
+        when(recuperacionPasswordService.solicitarRecuperacion(any(), any()))
+                .thenReturn("Si existe una cuenta activa asociada a ese correo, recibirás instrucciones "
+                        + "para restablecer tu contraseña.");
         when(recuperacionPasswordService.restablecerPassword(any()))
                 .thenReturn("Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.");
 
@@ -149,7 +150,8 @@ class UsuarioControllerSecurityTests {
                         .content("{\"email\":\"ana@luany.com\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value(
-                        "Enviamos un enlace para restablecer tu contraseña al correo registrado."))
+                        "Si existe una cuenta activa asociada a ese correo, recibirás instrucciones "
+                                + "para restablecer tu contraseña."))
                 .andExpect(jsonPath("$.token").doesNotExist());
 
         mockMvc.perform(post("/api/auth/restablecer-password")
@@ -171,7 +173,7 @@ class UsuarioControllerSecurityTests {
                 .andExpect(jsonPath("$.mensaje").exists())
                 .andExpect(jsonPath("$.token").doesNotExist());
 
-        verify(recuperacionPasswordService).solicitarRecuperacion(any());
+        verify(recuperacionPasswordService).solicitarRecuperacion(any(), any());
         verify(recuperacionPasswordService).restablecerPassword(any());
     }
 
@@ -501,6 +503,23 @@ class UsuarioControllerSecurityTests {
                         .session(session)
                         .with(csrf()))
                 .andExpect(status().isNoContent());
+
+        org.junit.jupiter.api.Assertions.assertTrue(session.isInvalid());
+        mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void limitaLasSesionesConcurrentesPorUsuario() throws Exception {
+        MockHttpSession primera = iniciarSesion("ADMIN");
+        iniciarSesion("ADMIN");
+        iniciarSesion("ADMIN");
+        MockHttpSession cuarta = iniciarSesion("ADMIN");
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                sessionRegistry.getSessionInformation(primera.getId()).isExpired());
+        org.junit.jupiter.api.Assertions.assertFalse(
+                sessionRegistry.getSessionInformation(cuarta.getId()).isExpired());
     }
 
     @Test
@@ -610,7 +629,7 @@ class UsuarioControllerSecurityTests {
     }
 
     private MockHttpSession iniciarSesion(String rol, boolean debeCambiarPassword) throws Exception {
-        when(authService.iniciarSesion(any())).thenReturn(usuario(rol, debeCambiarPassword));
+        when(authService.iniciarSesion(any(), any())).thenReturn(usuario(rol, debeCambiarPassword));
 
         return (MockHttpSession) mockMvc.perform(post("/api/auth/login")
                         .with(csrf())

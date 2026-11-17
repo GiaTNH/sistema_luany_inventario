@@ -2,7 +2,7 @@ package com.luany.inventory.service;
 
 import com.luany.inventory.model.*;
 import com.luany.inventory.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,20 +18,61 @@ import java.util.Objects;
 import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String MAYUSCULAS = "ABCDEFGHJKMNPQRSTUVWXYZ";
     private static final String MINUSCULAS = "abcdefghjkmnpqrstuvwxyz";
     private static final String DIGITOS = "23456789";
-    private static final String CARACTERES_PASSWORD = MAYUSCULAS + MINUSCULAS + DIGITOS;
+    private static final String SIMBOLOS = "!@#$%&*+-_";
+    private static final String CARACTERES_PASSWORD = MAYUSCULAS + MINUSCULAS + DIGITOS + SIMBOLOS;
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final CorreoService correoService;
     private final JdbcTemplate jdbcTemplate;
     private final NotificacionTrasCommit notificacionTrasCommit;
+    private final IntentosAutenticacionService intentosAutenticacionService;
+    private final SeguridadService seguridadService;
+
+    @Autowired
+    public AuthService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            CorreoService correoService,
+            JdbcTemplate jdbcTemplate,
+            NotificacionTrasCommit notificacionTrasCommit,
+            IntentosAutenticacionService intentosAutenticacionService,
+            SeguridadService seguridadService) {
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.correoService = correoService;
+        this.jdbcTemplate = jdbcTemplate;
+        this.notificacionTrasCommit = notificacionTrasCommit;
+        this.intentosAutenticacionService = intentosAutenticacionService;
+        this.seguridadService = seguridadService;
+    }
+
+    public AuthService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            CorreoService correoService,
+            JdbcTemplate jdbcTemplate,
+            NotificacionTrasCommit notificacionTrasCommit) {
+        this(usuarioRepository, passwordEncoder, correoService, jdbcTemplate,
+                notificacionTrasCommit, null, null);
+    }
+
+    public AuthService(
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder,
+            CorreoService correoService,
+            JdbcTemplate jdbcTemplate,
+            NotificacionTrasCommit notificacionTrasCommit,
+            IntentosAutenticacionService intentosAutenticacionService) {
+        this(usuarioRepository, passwordEncoder, correoService, jdbcTemplate,
+                notificacionTrasCommit, intentosAutenticacionService, null);
+    }
 
     @Transactional(readOnly = true)
     public boolean registroInicialDisponible() {
@@ -48,9 +89,7 @@ public class AuthService {
         }
 
         String password = request.getPassword();
-        if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new IllegalArgumentException("La contraseña no puede superar 72 bytes UTF-8");
-        }
+        PoliticaPassword.validar(password);
 
         int controlActualizado = jdbcTemplate.update(
                 "UPDATE registro_inicial SET completado = TRUE " +
@@ -100,6 +139,11 @@ public class AuthService {
         usuario.setRol(rol);
         usuario.setDebeCambiarPassword(true);
         usuarioRepository.saveAndFlush(usuario);
+        if (seguridadService != null) {
+            seguridadService.registrarAuditoria(usuario.getEmail(),
+                    "CREACION_USUARIO", "EXITOSO", null,
+                    "Cuenta creada por administración");
+        }
         ResultadoNotificacion<UsuarioCreadoResponse> resultado = new ResultadoNotificacion<>(
                 new UsuarioCreadoResponse(aRespuesta(usuario), usuario.getNombreUsuario()), true);
         notificacionTrasCommit.registrar(
@@ -111,17 +155,43 @@ public class AuthService {
     }
 
     public UsuarioResponse iniciarSesion(LoginRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
+        return iniciarSesion(request, null);
+    }
 
-        Usuario usuario = usuarioRepository.buscarPorEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Correo o contraseña incorrectos"));
-
-        if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
-            throw new IllegalArgumentException("Correo o contraseña incorrectos");
+    public UsuarioResponse iniciarSesion(LoginRequest request, String ip) {
+        String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (intentosAutenticacionService != null) {
+            intentosAutenticacionService.verificarLogin(email, ip);
+        }
+        if (seguridadService != null) {
+            String bloqueo = seguridadService.verificarBloqueo(email);
+            if (bloqueo != null) {
+                seguridadService.registrarAuditoria(email, "LOGIN_RECHAZADO_BLOQUEO",
+                        "BLOQUEADO", ip, bloqueo);
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, bloqueo);
+            }
         }
 
-        if ("INACTIVO".equalsIgnoreCase(usuario.getEstado())) {
-            throw new IllegalArgumentException("Tu usuario está inactivo. Contacta al administrador");
+        Usuario usuario = usuarioRepository.buscarPorEmail(email)
+                .orElse(null);
+        boolean credencialesValidas = usuario != null
+                && passwordEncoder.matches(request.getPassword(), usuario.getPassword())
+                && !"INACTIVO".equalsIgnoreCase(usuario.getEstado());
+        if (!credencialesValidas) {
+            if (intentosAutenticacionService != null) {
+                intentosAutenticacionService.registrarLoginFallido(email, ip);
+            }
+            if (seguridadService != null) {
+                seguridadService.registrarFallido(email, ip);
+            }
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos.");
+        }
+        if (intentosAutenticacionService != null) {
+            intentosAutenticacionService.registrarLoginExitoso(email);
+        }
+        if (seguridadService != null) {
+            seguridadService.registrarExitoso(email, ip);
         }
         return aRespuesta(usuario);
     }
@@ -151,10 +221,7 @@ public class AuthService {
         }
 
         String nuevaPassword = request.getNuevaPassword();
-        if (nuevaPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new IllegalArgumentException(
-                    "La nueva contraseña no puede superar 72 bytes UTF-8");
-        }
+        PoliticaPassword.validar(nuevaPassword);
 
         if (!usuario.isDebeCambiarPassword()) {
             String passwordActual = request.getPasswordActual();
@@ -174,8 +241,11 @@ public class AuthService {
 
         usuario.setPassword(passwordEncoder.encode(nuevaPassword));
         usuario.setDebeCambiarPassword(false);
-
         usuarioRepository.save(usuario);
+        if (seguridadService != null) {
+            seguridadService.registrarAuditoria(email, "CAMBIO_PASSWORD",
+                    "EXITOSO", null, "Contraseña cambiada desde la cuenta");
+        }
 
         return aRespuesta(usuario);
     }
@@ -189,7 +259,8 @@ public class AuthService {
         password[0] = MAYUSCULAS.charAt(SECURE_RANDOM.nextInt(MAYUSCULAS.length()));
         password[1] = MINUSCULAS.charAt(SECURE_RANDOM.nextInt(MINUSCULAS.length()));
         password[2] = DIGITOS.charAt(SECURE_RANDOM.nextInt(DIGITOS.length()));
-        for (int indice = 3; indice < password.length; indice++) {
+        password[3] = SIMBOLOS.charAt(SECURE_RANDOM.nextInt(SIMBOLOS.length()));
+        for (int indice = 4; indice < password.length; indice++) {
             password[indice] = CARACTERES_PASSWORD.charAt(SECURE_RANDOM.nextInt(CARACTERES_PASSWORD.length()));
         }
         for (int indice = password.length - 1; indice > 0; indice--) {

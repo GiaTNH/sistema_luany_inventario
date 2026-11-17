@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.time.Clock;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class MovimientoService {
     private final MovimientoRepository movimientoRepository;
     private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
+    private final Clock clock;
 
     @Transactional
     public Movimiento registrar(MovimientoRequest request) {
@@ -54,6 +56,7 @@ public class MovimientoService {
         movimiento.setProducto(producto);
         movimiento.setTipo(request.getTipo());
         movimiento.setCantidad(cantidad);
+        movimiento.setFecha(LocalDateTime.now(clock));
         movimiento.setObservacion(request.getObservacion());
         movimiento.setStockAnterior(stockAnterior);
         movimiento.setStockNuevo(producto.getStockActual());

@@ -20,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.Optional;
@@ -60,7 +62,8 @@ class RecuperacionPasswordServiceTests {
         lenient().when(sessionRegistry.getAllSessions(any(), anyBoolean()))
                 .thenReturn(java.util.List.of());
         service = new RecuperacionPasswordService(
-                usuarioRepository, tokenRepository, passwordEncoder, solicitudProcessor, sessionRegistry);
+                usuarioRepository, tokenRepository, passwordEncoder, solicitudProcessor, sessionRegistry,
+                new IntentosAutenticacionService(Clock.system(ZoneId.of("America/Lima"))));
         processor = new RecuperacionPasswordSolicitudProcessor(tokenService, correoService);
     }
 
@@ -99,12 +102,30 @@ class RecuperacionPasswordServiceTests {
         String respuestaInexistente = service.solicitarRecuperacion(inexistente);
         String respuestaFalloEnvio = service.solicitarRecuperacion(falloEnvio);
 
-        assertEquals(RecuperacionPasswordService.MENSAJE_CORREO_ENVIADO, respuestaExistente);
-        assertEquals(RecuperacionPasswordService.MENSAJE_CUENTA_NO_ENCONTRADA, respuestaInexistente);
-        assertEquals(RecuperacionPasswordService.MENSAJE_ERROR_ENVIO, respuestaFalloEnvio);
+        assertEquals(RecuperacionPasswordService.MENSAJE_RECUPERACION, respuestaExistente);
+        assertEquals(RecuperacionPasswordService.MENSAJE_RECUPERACION, respuestaInexistente);
+        assertEquals(RecuperacionPasswordService.MENSAJE_RECUPERACION, respuestaFalloEnvio);
         verify(solicitudProcessor).procesar("ana@luany.com");
         verify(solicitudProcessor).procesar("nadie@luany.com");
         verify(solicitudProcessor).procesar("fallo@luany.com");
+    }
+
+    @Test
+    void limitaLasSolicitudesDeRecuperacionEnQuinceMinutos() {
+        SolicitudRecuperacionPasswordRequest request = solicitud("limite@luany.com");
+        when(solicitudProcessor.procesar("limite@luany.com"))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(
+                        RecuperacionPasswordSolicitudProcessor.Resultado.CUENTA_NO_ENCONTRADA));
+
+        for (int intento = 0; intento < 5; intento++) {
+            assertEquals(RecuperacionPasswordService.MENSAJE_RECUPERACION,
+                    service.solicitarRecuperacion(request, "192.0.2.11"));
+        }
+
+        ResponseStatusException bloqueado = assertThrows(ResponseStatusException.class,
+                () -> service.solicitarRecuperacion(request, "192.0.2.11"));
+        assertEquals(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS, bloqueado.getStatusCode());
+        verify(solicitudProcessor, times(5)).procesar("limite@luany.com");
     }
 
     @Test

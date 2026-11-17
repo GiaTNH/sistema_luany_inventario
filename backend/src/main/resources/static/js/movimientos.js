@@ -7,38 +7,8 @@ let totalElementosMovimientos = 0;
 let solicitudMovimientos = 0;
 const tamanoPaginaMovimientos = 20;
 
-function fechaMovimientoComoDate(fecha) {
-  if (Array.isArray(fecha)) {
-    const [anio, mes, dia, hora = 0, minuto = 0, segundo = 0, nanosegundo = 0] = fecha;
-    const date = new Date(anio, mes - 1, dia, hora, minuto, segundo, Math.floor(nanosegundo / 1000000));
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  if (!fecha) return null;
-
-  if (typeof fecha === 'string') {
-    const fechaLocal = fecha.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?)?$/);
-    if (fechaLocal) {
-      const [, anio, mes, dia, hora = '0', minuto = '0', segundo = '0', fraccion = '0'] = fechaLocal;
-      const date = new Date(
-        Number(anio),
-        Number(mes) - 1,
-        Number(dia),
-        Number(hora),
-        Number(minuto),
-        Number(segundo),
-        Number(fraccion.padEnd(3, '0').slice(0, 3)),
-      );
-      return Number.isNaN(date.getTime()) ? null : date;
-    }
-  }
-
-  const date = new Date(fecha);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function normalizarFechaMovimiento(fecha) {
-  const date = fechaMovimientoComoDate(fecha);
-  return date ? date.toLocaleString('es-PE') : '—';
+  return formatearFechaHoraLuany(fecha);
 }
 
 function etiquetaTipoMovimiento(tipo) {

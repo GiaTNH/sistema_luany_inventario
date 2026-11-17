@@ -6,7 +6,7 @@ import com.luany.inventory.model.Usuario;
 import com.luany.inventory.model.UsuarioGestionResponse;
 import com.luany.inventory.model.ResultadoNotificacion;
 import com.luany.inventory.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.session.SessionRegistry;
@@ -19,13 +19,35 @@ import java.util.List;
 import java.util.Locale;
 
 @Service
-@RequiredArgsConstructor
 public class UsuarioGestionService {
 
     private final UsuarioRepository usuarioRepository;
     private final SessionRegistry sessionRegistry;
     private final CorreoService correoService;
     private final NotificacionTrasCommit notificacionTrasCommit;
+    private final SeguridadService seguridadService;
+
+    @Autowired
+    public UsuarioGestionService(
+            UsuarioRepository usuarioRepository,
+            SessionRegistry sessionRegistry,
+            CorreoService correoService,
+            NotificacionTrasCommit notificacionTrasCommit,
+            SeguridadService seguridadService) {
+        this.usuarioRepository = usuarioRepository;
+        this.sessionRegistry = sessionRegistry;
+        this.correoService = correoService;
+        this.notificacionTrasCommit = notificacionTrasCommit;
+        this.seguridadService = seguridadService;
+    }
+
+    public UsuarioGestionService(
+            UsuarioRepository usuarioRepository,
+            SessionRegistry sessionRegistry,
+            CorreoService correoService,
+            NotificacionTrasCommit notificacionTrasCommit) {
+        this(usuarioRepository, sessionRegistry, correoService, notificacionTrasCommit, null);
+    }
 
     @Transactional(readOnly = true)
     public List<UsuarioGestionResponse> listar() {
@@ -78,6 +100,7 @@ public class UsuarioGestionService {
         if (rolCambio) {
             expirarSesiones(guardado.getEmail());
         }
+        auditoriaRol(guardado, rolCambio, nuevoRol, emailAdministrador);
         return aRespuesta(guardado);
     }
 
@@ -125,6 +148,8 @@ public class UsuarioGestionService {
         boolean cambiaRol = !usuario.getRol().equals(nuevoRol);
         boolean seDesactiva = "ACTIVO".equalsIgnoreCase(usuario.getEstado())
                 && "INACTIVO".equals(nuevoEstado);
+        boolean seReactiva = "INACTIVO".equalsIgnoreCase(usuario.getEstado())
+                && "ACTIVO".equals(nuevoEstado);
         usuario.setNombre(request.getNombre().trim());
         usuario.setApellido(request.getApellido() == null || request.getApellido().isBlank()
                 ? null : request.getApellido().trim());
@@ -145,7 +170,33 @@ public class UsuarioGestionService {
         if (cambiaRol || seDesactiva || !emailAnterior.equalsIgnoreCase(nuevoEmail)) {
             expirarSesiones(emailAnterior);
         }
+        if (seguridadService != null) {
+            if (cambiaRol) {
+                seguridadService.registrarAuditoria(guardado.getEmail(), "CAMBIO_ROL",
+                        "EXITOSO", null,
+                        "Rol cambiado por " + emailAdministrador);
+            }
+            if (seDesactiva) {
+                seguridadService.registrarAuditoria(guardado.getEmail(), "DESACTIVACION_USUARIO",
+                        "EXITOSO", null,
+                        "Usuario deshabilitado por " + emailAdministrador);
+            }
+            if (seReactiva) {
+                seguridadService.registrarAuditoria(guardado.getEmail(), "REACTIVACION_USUARIO",
+                        "EXITOSO", null,
+                        "Usuario reactivado por " + emailAdministrador);
+            }
+        }
         return resultado;
+    }
+
+    private void auditoriaRol(
+            Usuario usuario, boolean cambio, String nuevoRol, String administrador) {
+        if (seguridadService != null && cambio) {
+            seguridadService.registrarAuditoria(usuario.getEmail(), "CAMBIO_ROL",
+                    "EXITOSO", null,
+                    "Rol cambiado a " + nuevoRol + " por " + administrador);
+        }
     }
 
     private void expirarSesiones(String email) {
@@ -161,6 +212,8 @@ public class UsuarioGestionService {
                 usuario.getNombreUsuario(),
                 usuario.getRol(),
                 usuario.getEstado(),
-                usuario.isDebeCambiarPassword());
+                usuario.isDebeCambiarPassword(),
+                usuario.isBloqueadoManual(),
+                usuario.getBloqueadoHasta());
     }
 }

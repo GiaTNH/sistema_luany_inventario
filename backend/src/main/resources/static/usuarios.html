@@ -116,6 +116,7 @@
               <option value="TODOS">Todos</option>
               <option value="PENDIENTE">Pendientes</option>
               <option value="ACTIVO">Activos</option>
+              <option value="BLOQUEADO">Bloqueados</option>
               <option value="INACTIVO">Inactivos</option>
             </select>
           </div>
@@ -143,6 +144,19 @@
             <tbody id="tabla-usuarios-body">
               <tr><td colspan="5">Cargando usuarios...</td></tr>
             </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel usuarios-listado">
+        <div class="panel-header">
+          <h3>Actividad y auditoría de seguridad</h3>
+          <button type="button" class="btn btn-secundario" id="btn-recargar-seguridad">Actualizar</button>
+        </div>
+        <div class="tabla-wrapper usuarios-tabla-wrapper">
+          <table class="usuarios-tabla">
+            <thead><tr><th>Fecha</th><th>Cuenta/IP</th><th>Evento</th><th>Resultado</th><th>Descripción</th></tr></thead>
+            <tbody id="tabla-seguridad-body"><tr><td colspan="5">Cargando actividad...</td></tr></tbody>
           </table>
         </div>
       </div>

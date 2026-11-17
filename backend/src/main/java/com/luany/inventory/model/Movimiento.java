@@ -27,7 +27,7 @@ public class Movimiento {
     private Integer cantidad;
 
     @Column(nullable = false)
-    private LocalDateTime fecha = LocalDateTime.now();
+    private LocalDateTime fecha;
 
     @Column(length = 200)
     private String observacion;

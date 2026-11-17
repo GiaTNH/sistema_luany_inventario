@@ -7,11 +7,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -37,6 +40,7 @@ class AsistenteServiceTests {
     @Mock private ReportesService reportesService;
     @Mock private UsuarioGestionService usuarioGestionService;
     @Mock private GeminiClient geminiClient;
+    @Spy private Clock clock = Clock.system(ZoneId.of("America/Lima"));
     @InjectMocks private AsistenteService asistenteService;
 
     @Test

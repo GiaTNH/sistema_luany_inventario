@@ -23,6 +23,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Optional;
+import java.time.Clock;
+import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,7 +50,8 @@ class AuthServiceTests {
         passwordEncoder = new BCryptPasswordEncoder();
         TransactionSynchronizationManager.initSynchronization();
         authService = new AuthService(
-                usuarioRepository, passwordEncoder, correoService, jdbcTemplate, new NotificacionTrasCommit());
+                usuarioRepository, passwordEncoder, correoService, jdbcTemplate, new NotificacionTrasCommit(),
+                new IntentosAutenticacionService(Clock.system(ZoneId.of("America/Lima"))));
     }
 
     @AfterEach
@@ -92,11 +95,13 @@ class AuthServiceTests {
         assertEquals(guardado.getNombreUsuario(), usernameCaptor.getValue());
         assertEquals("EMPLEADO", guardado.getRol());
         assertEquals(16, passwordCaptor.getValue().length());
-        assertTrue(passwordCaptor.getValue().matches("[ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789]{16}"));
+        assertTrue(passwordCaptor.getValue().matches(
+                "[ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*+_-]{16}"));
         assertFalse(passwordCaptor.getValue().matches(".*[ILOilo01].*"));
         assertTrue(passwordCaptor.getValue().matches(".*[A-Z].*"));
         assertTrue(passwordCaptor.getValue().matches(".*[a-z].*"));
         assertTrue(passwordCaptor.getValue().matches(".*[2-9].*"));
+        assertTrue(passwordCaptor.getValue().matches(".*[!@#$%&*+_-].*"));
         assertTrue(guardado.isDebeCambiarPassword());
         assertNotEquals(passwordCaptor.getValue(), guardado.getPassword());
         assertTrue(passwordEncoder.matches(passwordCaptor.getValue(), guardado.getPassword()));
@@ -310,10 +315,29 @@ class AuthServiceTests {
         login.setEmail("empleado@luany.com");
         login.setPassword("temporal-segura");
 
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class, () -> authService.iniciarSesion(login));
+        ResponseStatusException error = assertThrows(
+                ResponseStatusException.class, () -> authService.iniciarSesion(login));
 
-        assertEquals("Tu usuario está inactivo. Contacta al administrador", error.getMessage());
+        assertEquals(HttpStatus.UNAUTHORIZED, error.getStatusCode());
+    }
+
+    @Test
+    void bloqueaElInicioDeSesionDespuesDeCincoIntentosFallidos() {
+        when(usuarioRepository.buscarPorEmail("bloqueo@luany.com")).thenReturn(Optional.empty());
+        LoginRequest login = new LoginRequest();
+        login.setEmail("bloqueo@luany.com");
+        login.setPassword("Incorrecta2026!");
+
+        for (int intento = 0; intento < 5; intento++) {
+            ResponseStatusException error = assertThrows(
+                    ResponseStatusException.class, () -> authService.iniciarSesion(login, "192.0.2.10"));
+            assertEquals(HttpStatus.UNAUTHORIZED, error.getStatusCode());
+        }
+
+        ResponseStatusException bloqueado = assertThrows(
+                ResponseStatusException.class, () -> authService.iniciarSesion(login, "192.0.2.10"));
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, bloqueado.getStatusCode());
+        verify(usuarioRepository, times(5)).buscarPorEmail("bloqueo@luany.com");
     }
 
     private Usuario usuarioConPasswordTemporal(String passwordTemporal) {

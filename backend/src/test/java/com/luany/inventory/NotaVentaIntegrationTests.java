@@ -13,6 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.util.List;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -270,6 +272,7 @@ class NotaVentaIntegrationTests {
         pedido.setProveedor(producto.getProveedor());
         pedido.setUsuario(usuario);
         pedido.setEstado(estado);
+        pedido.setFechaPedido(LocalDateTime.now(ZoneId.of("America/Lima")));
         pedido = pedidoRepository.saveAndFlush(pedido);
 
         DetallePedido detalle = new DetallePedido();

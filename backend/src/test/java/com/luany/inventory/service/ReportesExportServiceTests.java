@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
 
@@ -18,6 +19,8 @@ import java.math.BigDecimal;
 import java.awt.image.BufferedImage;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import javax.imageio.ImageIO;
@@ -33,6 +36,8 @@ class ReportesExportServiceTests {
 
     @Mock
     private ReportesService reportesService;
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("America/Lima"));
     @InjectMocks
     private ReportesExportService exportService;
 

@@ -8,17 +8,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -50,6 +54,8 @@ class PedidoServiceTests {
     private MovimientoService movimientoService;
     @Mock
     private MovimientoRepository movimientoRepository;
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("America/Lima"));
 
     @InjectMocks
     private PedidoService pedidoService;
@@ -103,10 +109,16 @@ class PedidoServiceTests {
         });
         when(detallePedidoRepository.findByPedidoIdOrderById(11L)).thenReturn(List.of());
         when(recepcionPedidoRepository.findByPedidoIdOrderByFechaDescIdDesc(11L)).thenReturn(List.of());
+        LocalDateTime antes = LocalDateTime.now(clock);
 
         PedidoDetalleResponse respuesta = pedidoService.crear(crearRequest(5), "almacen@luany.com");
+        LocalDateTime despues = LocalDateTime.now(clock);
 
         assertEquals("PENDIENTE", respuesta.estado());
+        org.mockito.ArgumentCaptor<Pedido> pedidoGuardado = org.mockito.ArgumentCaptor.forClass(Pedido.class);
+        verify(pedidoRepository).save(pedidoGuardado.capture());
+        assertTrue(!pedidoGuardado.getValue().getFechaPedido().isBefore(antes)
+                && !pedidoGuardado.getValue().getFechaPedido().isAfter(despues));
         assertEquals(4, producto.getStockActual());
         verify(detallePedidoRepository).saveAll(any());
         verifyNoInteractions(movimientoService);
@@ -257,7 +269,9 @@ class PedidoServiceTests {
                 productoRepository,
                 productoStockLockService,
                 usuarioRepository,
-                new MovimientoService(movimientoRepository, productoStockLockService, usuarioRepository));
+                new MovimientoService(movimientoRepository, productoStockLockService, usuarioRepository,
+                        Clock.system(ZoneId.of("America/Lima"))),
+                Clock.system(ZoneId.of("America/Lima")));
 
         service.recibir(11L, recepcionRequest(2), "almacen@luany.com");
 

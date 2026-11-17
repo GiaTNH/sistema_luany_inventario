@@ -52,6 +52,7 @@ if (!usuarioActual) {
 
   function estadoVisible(usuario) {
     if (usuario.estado === 'INACTIVO') return 'INACTIVO';
+    if (usuario.bloqueadoManual) return 'BLOQUEADO';
     return usuario.debeCambiarPassword ? 'PENDIENTE' : 'ACTIVO';
   }
 
@@ -61,6 +62,7 @@ if (!usuarioActual) {
       PENDIENTE: 'Pendiente',
       ACTIVO: 'Activo',
       INACTIVO: 'Inactivo',
+      BLOQUEADO: 'Bloqueado',
     }[estado];
   }
 
@@ -92,6 +94,14 @@ if (!usuarioActual) {
       editar.dataset.usuarioId = usuario.id;
       editar.textContent = 'Editar';
       celdaAccion.appendChild(editar);
+      const seguridad = document.createElement('button');
+      seguridad.type = 'button';
+      seguridad.className = 'btn btn-secundario usuarios-seguridad';
+      seguridad.dataset.usuarioId = usuario.id;
+      seguridad.dataset.bloqueado = String(usuario.bloqueadoManual === true);
+      seguridad.textContent = usuario.bloqueadoManual ? 'Desbloquear'
+        : usuario.estado === 'INACTIVO' ? 'Reactivar' : 'Bloquear';
+      celdaAccion.appendChild(seguridad);
       fila.appendChild(celdaAccion);
       tablaUsuarios.appendChild(fila);
     });
@@ -191,6 +201,96 @@ if (!usuarioActual) {
     document.getElementById('edicion-nombre').focus();
   });
 
+  tablaUsuarios.addEventListener('click', async (evento) => {
+    const boton = evento.target.closest('.usuarios-seguridad');
+    if (!boton) return;
+    const id = Number(boton.dataset.usuarioId);
+    const usuario = usuarios.find((item) => Number(item.id) === id);
+    if (!usuario) return;
+    const motivo = window.prompt(
+      usuario.bloqueadoManual || usuario.estado === 'INACTIVO'
+        ? 'Motivo del desbloqueo'
+        : 'Motivo del bloqueo temporal administrativo',
+      usuario.bloqueadoManual || usuario.estado === 'INACTIVO'
+        ? 'Desbloqueo solicitado por administración'
+        : 'Bloqueo manual administrativo',
+    );
+    if (!motivo?.trim()) return;
+    try {
+      if (usuario.bloqueadoManual || usuario.estado === 'INACTIVO') {
+        await apiPost(`/api/seguridad/usuarios/${id}/desbloquear`, { motivo: motivo.trim() });
+        await apiPut(`/api/usuarios/${id}`, {
+          nombre: usuario.nombre,
+          apellido: usuario.apellido || '',
+          email: usuario.email,
+          rol: usuario.rol,
+          estado: 'ACTIVO',
+        });
+        mostrarToast('La cuenta fue reactivada.', 'exito');
+      } else {
+        await apiPost(`/api/seguridad/usuarios/${id}/bloquear`, { motivo: motivo.trim() });
+        mostrarToast('La cuenta fue bloqueada temporalmente y sus sesiones fueron invalidadas.', 'exito');
+      }
+      await cargarUsuarios();
+      await cargarSeguridad();
+    } catch (error) {
+      mostrarToast(error.message, 'error');
+    }
+  });
+
+  async function cargarSeguridad() {
+    const tbody = document.getElementById('tabla-seguridad-body');
+    try {
+      const [intentos, auditoria, bloqueos] = await Promise.all([
+        apiGet('/api/seguridad/intentos'),
+        apiGet('/api/seguridad/auditoria'),
+        apiGet('/api/seguridad/bloqueos'),
+      ]);
+      const filas = [
+        ...auditoria.map((item) => ({
+          fecha: item.fecha,
+          cuenta: item.usuarioRelacionado || item.ip || 'Sistema',
+          evento: item.tipoEvento,
+          resultado: item.resultado,
+          descripcion: item.descripcion,
+        })),
+        ...intentos.map((item) => ({
+          fecha: item.fecha,
+          cuenta: item.identificador || item.ip || 'Desconocido',
+          evento: item.tipo,
+          resultado: item.resultado,
+          descripcion: item.descripcion,
+        })),
+        ...bloqueos.map((item) => ({
+          fecha: item.fecha,
+          cuenta: item.usuario?.email || item.realizadoPor || 'Sistema',
+          evento: item.accion,
+          resultado: item.tipo,
+          descripcion: item.motivo,
+        })),
+      ].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))).slice(0, 100);
+      tbody.replaceChildren(...filas.map((fila) => {
+        const tr = document.createElement('tr');
+        tr.append(celda(normalizarFechaSeguridad(fila.fecha)), celda(fila.cuenta),
+          celda(fila.evento), celda(fila.resultado), celda(fila.descripcion));
+        return tr;
+      }));
+    } catch (error) {
+      tbody.replaceChildren();
+      const tr = document.createElement('tr');
+      const td = celda(`No se pudo cargar la actividad: ${error.message}`);
+      td.colSpan = 5;
+      tr.append(td);
+      tbody.append(tr);
+    }
+  }
+
+  function normalizarFechaSeguridad(fecha) {
+    return typeof normalizarFecha === 'function' ? normalizarFecha(fecha) : String(fecha || '—');
+  }
+
+  document.getElementById('btn-recargar-seguridad').addEventListener('click', cargarSeguridad);
+
   filtroBusqueda.addEventListener('input', renderizarUsuarios);
   filtroEstado.addEventListener('change', renderizarUsuarios);
   filtroRol.addEventListener('change', renderizarUsuarios);
@@ -281,4 +381,5 @@ if (!usuarioActual) {
   });
 
   cargarUsuarios();
+  cargarSeguridad();
 }
