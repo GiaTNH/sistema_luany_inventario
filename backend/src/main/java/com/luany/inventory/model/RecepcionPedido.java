@@ -30,5 +30,5 @@ public class RecepcionPedido {
     private String claveIdempotencia;
 
     @Column(nullable = false)
-    private LocalDateTime fecha = LocalDateTime.now();
+    private LocalDateTime fecha;
 }

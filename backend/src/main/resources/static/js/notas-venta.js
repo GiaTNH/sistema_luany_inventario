@@ -22,11 +22,7 @@ function celda(texto) {
 }
 
 function normalizarFecha(fecha) {
-  if (!fecha) return '—';
-  const date = Array.isArray(fecha)
-    ? new Date(fecha[0], fecha[1] - 1, fecha[2], fecha[3] || 0, fecha[4] || 0, fecha[5] || 0)
-    : new Date(fecha);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('es-PE');
+  return formatearFechaHoraLuany(fecha);
 }
 
 function formatoMoneda(valor) {

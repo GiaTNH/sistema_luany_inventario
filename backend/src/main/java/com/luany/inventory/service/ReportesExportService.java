@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +48,7 @@ public class ReportesExportService {
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ReportesService reportesService;
+    private final Clock clock;
 
     public ReporteArchivo exportarExcel(
             String reporte,
@@ -324,7 +326,7 @@ public class ReportesExportService {
             Long productoId,
             TipoMovimiento tipo,
             String estado) {
-        LocalDateTime generadoEn = LocalDateTime.now();
+        LocalDateTime generadoEn = LocalDateTime.now(clock);
         return switch (reporte) {
             case "ventas" -> exportarVentas(desde, hasta, generadoEn);
             case "productos-mas-vendidos" -> exportarProductos(desde, hasta, limite, generadoEn);

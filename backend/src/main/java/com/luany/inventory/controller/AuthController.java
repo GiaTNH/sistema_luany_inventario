@@ -26,6 +26,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -60,9 +61,10 @@ public class AuthController {
 
     @PostMapping("/solicitar-recuperacion")
     public RecuperacionPasswordResponse solicitarRecuperacion(
-            @Valid @RequestBody SolicitudRecuperacionPasswordRequest request) {
+            @Valid @RequestBody SolicitudRecuperacionPasswordRequest request,
+            HttpServletRequest httpRequest) {
         return new RecuperacionPasswordResponse(
-                recuperacionPasswordService.solicitarRecuperacion(request));
+                recuperacionPasswordService.solicitarRecuperacion(request, httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/restablecer-password")
@@ -77,9 +79,10 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
-        UsuarioResponse usuario = authService.iniciarSesion(request);
+        UsuarioResponse usuario = authService.iniciarSesion(request, httpRequest.getRemoteAddr());
         httpRequest.getSession(true);
         httpRequest.changeSessionId();
+        limitarSesiones(usuario.email(), httpRequest.getSession().getId());
 
         actualizarAutenticacion(usuario, httpRequest, httpResponse);
 
@@ -129,6 +132,17 @@ public class AuthController {
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
         sessionRegistry.registerNewSession(httpRequest.getSession(true).getId(), usuario.email());
+    }
+
+    private void limitarSesiones(String email, String sessionIdActual) {
+        var sesiones = sessionRegistry.getAllSessions(email, false).stream()
+                .filter(sesion -> !sesion.getSessionId().equals(sessionIdActual))
+                .sorted(Comparator.comparing(
+                        org.springframework.security.core.session.SessionInformation::getLastRequest))
+                .toList();
+        int excedentes = sesiones.size() - ConfiguracionSeguridad.MAX_SESIONES_POR_USUARIO + 1;
+        sesiones.stream().limit(Math.max(excedentes, 0))
+                .forEach(org.springframework.security.core.session.SessionInformation::expireNow);
     }
 
     public record CsrfTokenResponse(String token, String headerName) {

@@ -60,7 +60,8 @@ public class ManejadorErrores {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> servicioNoDisponible(IllegalStateException e) {
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("error", e.getMessage()));
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "El servicio no está disponible por ahora. Intenta nuevamente más tarde."));
     }
 
     @ExceptionHandler(CorreoEnvioException.class)

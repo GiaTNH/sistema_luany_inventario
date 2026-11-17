@@ -6,7 +6,7 @@ import com.luany.inventory.model.RecuperacionPasswordToken;
 import com.luany.inventory.model.Usuario;
 import com.luany.inventory.repository.RecuperacionPasswordTokenRepository;
 import com.luany.inventory.repository.UsuarioRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,32 +26,73 @@ import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 
 @Service
-@RequiredArgsConstructor
 public class RecuperacionPasswordService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RecuperacionPasswordService.class);
-    static final String MENSAJE_CORREO_ENVIADO =
-            "Enviamos un enlace para restablecer tu contraseña al correo registrado.";
-    static final String MENSAJE_CUENTA_NO_ENCONTRADA =
-            "No existe una cuenta activa asociada a ese correo.";
-    static final String MENSAJE_ERROR_ENVIO =
-            "No pudimos enviar el enlace de recuperación. Inténtalo más tarde.";
+    static final String MENSAJE_RECUPERACION =
+            "Si existe una cuenta activa asociada a ese correo, recibirás instrucciones para restablecer tu contraseña.";
     private final UsuarioRepository usuarioRepository;
     private final RecuperacionPasswordTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final RecuperacionPasswordSolicitudProcessor solicitudProcessor;
     private final SessionRegistry sessionRegistry;
+    private final IntentosAutenticacionService intentosAutenticacionService;
+    private final SeguridadService seguridadService;
+
+    @Autowired
+    public RecuperacionPasswordService(
+            UsuarioRepository usuarioRepository,
+            RecuperacionPasswordTokenRepository tokenRepository,
+            PasswordEncoder passwordEncoder,
+            RecuperacionPasswordSolicitudProcessor solicitudProcessor,
+            SessionRegistry sessionRegistry,
+            IntentosAutenticacionService intentosAutenticacionService,
+            SeguridadService seguridadService) {
+        this.usuarioRepository = usuarioRepository;
+        this.tokenRepository = tokenRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.solicitudProcessor = solicitudProcessor;
+        this.sessionRegistry = sessionRegistry;
+        this.intentosAutenticacionService = intentosAutenticacionService;
+        this.seguridadService = seguridadService;
+    }
+
+    public RecuperacionPasswordService(
+            UsuarioRepository usuarioRepository,
+            RecuperacionPasswordTokenRepository tokenRepository,
+            PasswordEncoder passwordEncoder,
+            RecuperacionPasswordSolicitudProcessor solicitudProcessor,
+            SessionRegistry sessionRegistry) {
+        this(usuarioRepository, tokenRepository, passwordEncoder, solicitudProcessor,
+                sessionRegistry, null, null);
+    }
+
+    public RecuperacionPasswordService(
+            UsuarioRepository usuarioRepository,
+            RecuperacionPasswordTokenRepository tokenRepository,
+            PasswordEncoder passwordEncoder,
+            RecuperacionPasswordSolicitudProcessor solicitudProcessor,
+            SessionRegistry sessionRegistry,
+            IntentosAutenticacionService intentosAutenticacionService) {
+        this(usuarioRepository, tokenRepository, passwordEncoder, solicitudProcessor,
+                sessionRegistry, intentosAutenticacionService, null);
+    }
 
     public String solicitarRecuperacion(SolicitudRecuperacionPasswordRequest request) {
+        return solicitarRecuperacion(request, null);
+    }
+
+    public String solicitarRecuperacion(SolicitudRecuperacionPasswordRequest request, String ip) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (intentosAutenticacionService != null) {
+            intentosAutenticacionService.registrarSolicitudRecuperacion(email, ip);
+        }
+        if (seguridadService != null) {
+            seguridadService.registrarAuditoria(email, "RECUPERACION_SOLICITADA",
+                    "SOLICITADO", ip, "Solicitud de restablecimiento de contraseña");
+        }
         try {
-            RecuperacionPasswordSolicitudProcessor.Resultado resultado =
-                    solicitudProcessor.procesar(email).get();
-            return switch (resultado) {
-                case CORREO_ENVIADO -> MENSAJE_CORREO_ENVIADO;
-                case CUENTA_NO_ENCONTRADA -> MENSAJE_CUENTA_NO_ENCONTRADA;
-                case ERROR_ENVIO -> MENSAJE_ERROR_ENVIO;
-            };
+            solicitudProcessor.procesar(email).get();
         } catch (TaskRejectedException exception) {
             LOGGER.warn("No se pudo encolar una solicitud de recuperación.");
         } catch (InterruptedException exception) {
@@ -60,7 +101,7 @@ public class RecuperacionPasswordService {
         } catch (ExecutionException exception) {
             LOGGER.error("No se pudo completar una solicitud de recuperación.", exception.getCause());
         }
-        return MENSAJE_ERROR_ENVIO;
+        return MENSAJE_RECUPERACION;
     }
 
     @Transactional
@@ -70,9 +111,7 @@ public class RecuperacionPasswordService {
         }
 
         String nuevaPassword = request.getNuevaPassword();
-        if (nuevaPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new IllegalArgumentException("La contraseña no puede superar 72 bytes UTF-8");
-        }
+        PoliticaPassword.validar(nuevaPassword);
 
         String hash = hashToken(request.getToken());
         LocalDateTime ahora = LocalDateTime.now(ZoneOffset.UTC);
@@ -91,6 +130,10 @@ public class RecuperacionPasswordService {
         usuarioRepository.save(usuario);
         sessionRegistry.getAllSessions(usuario.getEmail(), false)
                 .forEach(session -> session.expireNow());
+        if (seguridadService != null) {
+            seguridadService.registrarAuditoria(usuario.getEmail(), "PASSWORD_RESTABLECIDA",
+                    "EXITOSO", null, "Contraseña restablecida mediante enlace de recuperación");
+        }
         return "Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión.";
     }
 

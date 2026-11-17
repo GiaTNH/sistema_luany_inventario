@@ -24,13 +24,28 @@ public class CorreoService {
     private final String apiKey;
     private final String remitenteEmail;
     private final String remitenteNombre;
+    private final String administradorSeguridadEmail;
 
     @Autowired
     public CorreoService(
             @Value("${brevo.api-key:}") String apiKey,
             @Value("${mail.from.email}") String remitenteEmail,
-            @Value("${mail.from.name}") String remitenteNombre) {
-        this(RestClient.create(), apiKey, remitenteEmail, remitenteNombre);
+            @Value("${mail.from.name}") String remitenteNombre,
+            @Value("${security.admin.email:}") String administradorSeguridadEmail) {
+        this(RestClient.create(), apiKey, remitenteEmail, remitenteNombre, administradorSeguridadEmail);
+    }
+
+    CorreoService(
+            RestClient restClient,
+            String apiKey,
+            String remitenteEmail,
+            String remitenteNombre,
+            String administradorSeguridadEmail) {
+        this.restClient = restClient;
+        this.apiKey = apiKey;
+        this.remitenteEmail = remitenteEmail;
+        this.remitenteNombre = remitenteNombre;
+        this.administradorSeguridadEmail = administradorSeguridadEmail;
     }
 
     CorreoService(
@@ -38,10 +53,7 @@ public class CorreoService {
             String apiKey,
             String remitenteEmail,
             String remitenteNombre) {
-        this.restClient = restClient;
-        this.apiKey = apiKey;
-        this.remitenteEmail = remitenteEmail;
-        this.remitenteNombre = remitenteNombre;
+        this(restClient, apiKey, remitenteEmail, remitenteNombre, "");
     }
 
     public void enviarBienvenida(
@@ -197,6 +209,56 @@ public class CorreoService {
         } catch (RestClientException exception) {
             LOGGER.error("Falló el envío de la notificación de cambio de correo mediante Brevo.");
             throw new CorreoNotificacionException();
+        }
+    }
+
+    public void enviarAlertaSeguridad(
+            String identificador,
+            String fechaHora,
+            String ip,
+            long intentos,
+            String estadoCuenta,
+            boolean bloqueado) {
+        if (!configuracionCompleta() || administradorSeguridadEmail == null
+                || administradorSeguridadEmail.isBlank()) {
+            LOGGER.error("No se pudo enviar la alerta de seguridad: falta configuración de Brevo o destinatario.");
+            throw new CorreoAlertaStockException();
+        }
+        String asunto = "ALERTA DE SEGURIDAD - Intentos sospechosos de acceso en LUANY";
+        String texto = """
+                Cuenta/identificador: %s
+                Fecha y hora: %s
+                Dirección IP: %s
+                Intentos detectados: %d
+                Estado de la cuenta: %s
+                Bloqueo temporal aplicado: %s
+
+                Revisa la actividad desde el panel de seguridad de LUANY.
+                """.formatted(identificador, fechaHora, ip == null ? "No disponible" : ip,
+                intentos, estadoCuenta, bloqueado ? "Sí" : "No");
+
+        Map<String, Object> solicitud = Map.of(
+                "sender", remitente(),
+                "to", List.of(Map.of("email", administradorSeguridadEmail)),
+                "subject", asunto,
+                "textContent", texto,
+                "htmlContent", """
+                        <h2>Alerta de seguridad LUANY</h2>
+                        <p><strong>Cuenta/identificador:</strong> %s</p>
+                        <p><strong>Fecha y hora:</strong> %s</p>
+                        <p><strong>Dirección IP:</strong> %s</p>
+                        <p><strong>Intentos detectados:</strong> %d</p>
+                        <p><strong>Estado de la cuenta:</strong> %s</p>
+                        <p><strong>Bloqueo temporal aplicado:</strong> %s</p>
+                        <p>Revisa la actividad desde el panel de seguridad de LUANY.</p>
+                        """.formatted(escaparHtml(identificador), escaparHtml(fechaHora),
+                        escaparHtml(ip == null ? "No disponible" : ip), intentos,
+                        escaparHtml(estadoCuenta), bloqueado ? "Sí" : "No"));
+        try {
+            enviar(solicitud);
+        } catch (RestClientException exception) {
+            LOGGER.error("Falló el envío de la alerta de seguridad mediante Brevo.");
+            throw new CorreoAlertaStockException();
         }
     }
 

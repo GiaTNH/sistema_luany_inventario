@@ -3,6 +3,7 @@ package com.luany.inventory.model;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -21,9 +22,13 @@ public class RegistroInicialRequest {
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Size(min = 12, max = 72, message = "La contraseña debe tener entre 12 y 72 caracteres")
+    @Pattern(regexp = "(?s)^(?=.*\\p{Lu})(?=.*\\p{Ll})(?=.*\\d)(?=.*[^\\p{L}\\p{N}\\s]).*$",
+            message = "La contraseña debe incluir mayúsculas, minúsculas, números y símbolos")
     private String password;
 
     @NotBlank(message = "La confirmación de contraseña es obligatoria")
     @Size(min = 12, max = 72, message = "La confirmación debe tener entre 12 y 72 caracteres")
+    @Pattern(regexp = "(?s)^(?=.*\\p{Lu})(?=.*\\p{Ll})(?=.*\\d)(?=.*[^\\p{L}\\p{N}\\s]).*$",
+            message = "La confirmación debe incluir mayúsculas, minúsculas, números y símbolos")
     private String confirmarPassword;
 }

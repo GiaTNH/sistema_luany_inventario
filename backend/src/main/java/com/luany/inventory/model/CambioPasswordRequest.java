@@ -2,6 +2,7 @@ package com.luany.inventory.model;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +15,8 @@ public class CambioPasswordRequest {
 
     @NotBlank(message = "La nueva contraseña es obligatoria")
     @Size(min = 12, max = 72, message = "La nueva contraseña debe tener entre 12 y 72 caracteres")
+    @Pattern(regexp = "(?s)^(?=.*\\p{Lu})(?=.*\\p{Ll})(?=.*\\d)(?=.*[^\\p{L}\\p{N}\\s]).*$",
+            message = "La contraseña debe incluir mayúsculas, minúsculas, números y símbolos")
     private String nuevaPassword;
 
     @NotBlank(message = "La confirmación de contraseña es obligatoria")

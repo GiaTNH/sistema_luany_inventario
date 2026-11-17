@@ -36,19 +36,11 @@ function celda(texto) {
 }
 
 function fechaCorta(valor) {
-  if (!valor) return '—';
-  const fecha = Array.isArray(valor)
-    ? new Date(valor[0], valor[1] - 1, valor[2])
-    : new Date(`${valor}`.slice(0, 10) + 'T00:00:00');
-  return Number.isNaN(fecha.getTime()) ? '—' : fecha.toLocaleDateString('es-PE');
+  return formatearFechaLuany(valor);
 }
 
 function horaLocal(valor) {
-  if (!valor) return '—';
-  const fecha = Array.isArray(valor)
-    ? new Date(valor[0], valor[1] - 1, valor[2], valor[3] || 0, valor[4] || 0, valor[5] || 0)
-    : new Date(valor);
-  return Number.isNaN(fecha.getTime()) ? '—' : fecha.toLocaleString('es-PE');
+  return formatearFechaHoraLuany(valor);
 }
 
 function estadoPedidoBadge(estado) {

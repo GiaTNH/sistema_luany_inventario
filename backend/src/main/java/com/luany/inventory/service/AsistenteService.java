@@ -10,6 +10,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -62,6 +63,7 @@ public class AsistenteService {
     private final ReportesService reportesService;
     private final UsuarioGestionService usuarioGestionService;
     private final GeminiClient geminiClient;
+    private final Clock clock;
 
     public RespuestaAsistente consultar(String pregunta, boolean administrador) {
         long inicio = System.currentTimeMillis();
@@ -466,7 +468,7 @@ public class AsistenteService {
 
     private Periodo detectarPeriodo(String pregunta) {
         String p = normalizar(pregunta);
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = LocalDate.now(clock);
 
         Matcher iso = FECHA_ISO.matcher(pregunta);
         List<LocalDate> fechas = new ArrayList<>();

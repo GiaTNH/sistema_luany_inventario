@@ -10,14 +10,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.ZoneId;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -34,6 +39,8 @@ class MovimientoServiceTests {
     private ProductoStockLockService productoStockLockService;
     @Mock
     private UsuarioRepository usuarioRepository;
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("America/Lima"));
 
     @InjectMocks
     private MovimientoService movimientoService;
@@ -44,11 +51,15 @@ class MovimientoServiceTests {
         when(productoStockLockService.bloquear(1L)).thenReturn(producto);
         when(movimientoRepository.save(any(Movimiento.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        LocalDateTime antes = LocalDateTime.now(clock);
 
         Movimiento movimiento = movimientoService.registrar(request(4));
 
         assertEquals(Integer.MAX_VALUE, producto.getStockActual());
         assertEquals(Integer.MAX_VALUE, movimiento.getStockNuevo());
+        LocalDateTime despues = LocalDateTime.now(clock);
+        assertFalse(movimiento.getFecha().isBefore(antes));
+        assertFalse(movimiento.getFecha().isAfter(despues));
         verify(movimientoRepository).save(movimiento);
     }
 

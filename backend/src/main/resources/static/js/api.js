@@ -236,18 +236,90 @@ function badgeEstado(estado) {
 
 // ---------- FECHA ----------
 
-/**
- * Normaliza la fecha que puede venir como string ISO o como arreglo
- * [año, mes, día, hora, min, seg] del backend Java.
- */
-function normalizarFecha(fecha) {
-  if (!fecha) return '—';
+const ZONA_HORARIA_LUANY = 'America/Lima';
+const formatoFechaHoraLuany = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'UTC',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+const formatoFechaLuany = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'UTC',
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+const partesFechaLimaLuany = new Intl.DateTimeFormat('en-CA', {
+  timeZone: ZONA_HORARIA_LUANY,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+});
+
+function camposFechaLuany(fecha) {
+  if (!fecha) return null;
   if (Array.isArray(fecha)) {
-    // [2024, 6, 15, 10, 30, 0] → mes es 1-based en Java
-    const [y, m, d, h = 0, min = 0] = fecha;
-    return new Date(y, m - 1, d, h, min).toLocaleString('es-PE');
+    const [anio, mes, dia, hora = 0, minuto = 0, segundo = 0, nano = 0] = fecha;
+    return [anio, mes, dia, hora, minuto, segundo, Math.floor(nano / 1_000_000)];
   }
-  return new Date(fecha).toLocaleString('es-PE');
+  if (typeof fecha === 'string') {
+    const local = fecha.match(
+      /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?)?$/,
+    );
+    if (local) {
+      const [, anio, mes, dia, hora = '0', minuto = '0', segundo = '0', fraccion = '0'] = local;
+      return [
+        Number(anio), Number(mes), Number(dia), Number(hora), Number(minuto),
+        Number(segundo), Number(fraccion.padEnd(3, '0').slice(0, 3)),
+      ];
+    }
+  }
+
+  const instante = fecha instanceof Date ? fecha : new Date(fecha);
+  if (Number.isNaN(instante.getTime())) return null;
+  const partes = Object.fromEntries(partesFechaLimaLuany.formatToParts(instante)
+    .map(({ type, value }) => [type, Number(value)]));
+  return [partes.year, partes.month, partes.day, partes.hour, partes.minute, partes.second, 0];
+}
+
+/** Devuelve una fecha de cálculo que representa los componentes de pared de Lima en UTC. */
+function fechaComoDateLuany(fecha) {
+  const campos = camposFechaLuany(fecha);
+  if (!campos) return null;
+  const [anio, mes, dia, hora, minuto, segundo, milisegundo] = campos;
+  const resultado = new Date(Date.UTC(anio, mes - 1, dia, hora, minuto, segundo, milisegundo));
+  return Number.isNaN(resultado.getTime()) ? null : resultado;
+}
+
+function fechaActualLuany() {
+  return fechaComoDateLuany(new Date());
+}
+
+function fechaIsoLuany(fecha = fechaActualLuany()) {
+  if (!fecha) return '';
+  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}-${String(fecha.getUTCDate()).padStart(2, '0')}`;
+}
+
+function formatearFechaHoraLuany(fecha) {
+  const date = fechaComoDateLuany(fecha);
+  return date ? formatoFechaHoraLuany.format(date) : '—';
+}
+
+function formatearFechaLuany(fecha) {
+  const date = fechaComoDateLuany(fecha);
+  return date ? formatoFechaLuany.format(date) : '—';
+}
+
+/** Normaliza fechas locales del backend sin aplicar una segunda conversión de zona. */
+function normalizarFecha(fecha) {
+  return formatearFechaHoraLuany(fecha);
 }
 
 // ---------- SIDEBAR ACTIVO ----------

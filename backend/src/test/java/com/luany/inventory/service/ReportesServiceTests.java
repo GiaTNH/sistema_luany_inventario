@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -16,6 +17,8 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,6 +36,8 @@ class ReportesServiceTests {
     private ReportesRepository reportesRepository;
     @Mock
     private ProductoRepository productoRepository;
+    @Spy
+    private Clock clock = Clock.system(ZoneId.of("America/Lima"));
     @InjectMocks
     private ReportesService reportesService;
 

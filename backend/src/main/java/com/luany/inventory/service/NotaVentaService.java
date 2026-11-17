@@ -22,6 +22,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.Locale;
 import java.time.LocalDate;
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +38,7 @@ public class NotaVentaService {
     private final ProductoStockLockService productoStockLockService;
     private final UsuarioRepository usuarioRepository;
     private final MovimientoService movimientoService;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public List<NotaVentaResumenResponse> listar(String busqueda) {
@@ -120,6 +123,7 @@ public class NotaVentaService {
 
         NotaVenta nota = new NotaVenta();
         nota.setNumeroNota(generarNumeroNota());
+        nota.setFechaEmision(LocalDateTime.now(clock));
         nota.setCliente(cliente);
         nota.setUsuario(usuario);
         nota.setTotal(total);

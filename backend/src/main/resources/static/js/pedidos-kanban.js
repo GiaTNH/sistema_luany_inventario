@@ -15,24 +15,8 @@ let solicitudKanban = 0;
 
 function fechaKanban(valor, incluirHora = false) {
   if (!valor) return 'No definida';
-  const fecha = Array.isArray(valor)
-    ? new Date(valor[0], valor[1] - 1, valor[2], valor[3] || 0, valor[4] || 0, valor[5] || 0)
-    : new Date(Array.isArray(valor) ? valor : typeof valor === 'string' && valor.length === 10
-      ? `${valor}T00:00:00` : valor);
-  if (Number.isNaN(fecha.getTime())) return 'No definida';
-  return incluirHora
-    ? fecha.toLocaleString('es-PE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    : fecha.toLocaleDateString('es-PE', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+  const fecha = incluirHora ? formatearFechaHoraLuany(valor) : formatearFechaLuany(valor);
+  return fecha === '—' ? 'No definida' : fecha;
 }
 
 function badgeKanban(estado) {
@@ -190,6 +174,7 @@ function renderizarTablero(pedidos, alertas = [], pedidosActivos = [], actualiza
     const horaActualizacion = document.getElementById('kanban-ultima-actualizacion');
     horaActualizacion.dateTime = actualizacion.toISOString();
     horaActualizacion.textContent = `Última actualización: ${actualizacion.toLocaleString('es-PE', {
+      timeZone: ZONA_HORARIA_LUANY,
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
