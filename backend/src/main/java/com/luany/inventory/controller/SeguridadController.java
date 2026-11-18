@@ -53,23 +53,25 @@ public class SeguridadController {
     }
 
     @PostMapping("/usuarios/{id}/bloquear")
-    public void bloquear(
+    public EstadoSeguridadResponse bloquear(
             @PathVariable Long id,
             @Valid @RequestBody AccionSeguridadRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest) {
         seguridadService.bloquearManual(
                 id, request.motivo(), authentication.getName(), httpRequest.getRemoteAddr());
+        return estadoUsuario(id);
     }
 
     @PostMapping("/usuarios/{id}/desbloquear")
-    public void desbloquear(
+    public EstadoSeguridadResponse desbloquear(
             @PathVariable Long id,
             @Valid @RequestBody AccionSeguridadRequest request,
             Authentication authentication,
             HttpServletRequest httpRequest) {
         seguridadService.desbloquear(
                 id, request.motivo(), authentication.getName(), httpRequest.getRemoteAddr());
+        return estadoUsuario(id);
     }
 
     public record AccionSeguridadRequest(

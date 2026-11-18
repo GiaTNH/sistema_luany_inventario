@@ -86,11 +86,18 @@ class AsistenteServiceTests {
                 .thenReturn(new MovimientosPagina(desde, hasta, 0, 50, 1, 1, List.of(movimiento)));
         when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
 
-        asistenteService.consultar("Muéstrame los movimientos de entrada del 01/11/2026 al 07/11/2026", false);
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "Últimos movimientos de entrada del 01/11/2026 al 07/11/2026", false);
 
         String prompt = promptEnviado();
         assertTrue(prompt.contains("ENTRADA | Blusa | cantidad: 5"));
         verify(reportesService).movimientos(desde, hasta, null, TipoMovimiento.ENTRADA, 0, 50);
+        assertEquals(1, respuesta.tablas().size());
+        assertEquals("MOVIMIENTOS", respuesta.tablas().get(0).tipo());
+        assertEquals(List.of("Fecha y hora", "Tipo", "Producto", "Cantidad", "Stock anterior", "Stock nuevo"),
+                respuesta.tablas().get(0).columnas());
+        assertEquals(LocalDateTime.of(2026, 11, 3, 10, 0), respuesta.tablas().get(0).filas().get(0).get(0));
+        assertEquals(1, respuesta.tablas().get(0).total());
     }
 
     @Test
@@ -198,10 +205,47 @@ class AsistenteServiceTests {
         when(productoService.estadoStock(producto)).thenReturn("AGOTADO");
         when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
 
-        asistenteService.consultar("¿Qué productos debo reponer?", false);
+        RespuestaAsistente respuesta = asistenteService.consultar("¿Qué productos debo reponer?", false);
 
         assertTrue(promptEnviado().contains("unidades sugeridas: 12"));
         verify(productoService).productosConStockBajoParaAsistente(50);
+        assertEquals("REPOSICION", respuesta.tablas().get(0).tipo());
+        assertEquals("Falda", respuesta.tablas().get(0).filas().get(0).get(0));
+        assertEquals(12, respuesta.tablas().get(0).filas().get(0).get(4));
+    }
+
+    @Test
+    void filtraTablasParaStockBajoYSinStock() {
+        Producto agotado = producto(7L, "Falda agotada", 0, 4, 12);
+        Producto bajo = producto(8L, "Blusa baja", 2, 5, 15);
+        when(productoService.productosConStockBajoParaAsistente(50))
+                .thenReturn(List.of(agotado, bajo));
+        when(productoService.estadoStock(agotado)).thenReturn("AGOTADO");
+        when(productoService.estadoStock(bajo)).thenReturn("BAJO");
+        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
+
+        RespuestaAsistente stockBajo = asistenteService.consultar(
+                "¿Qué productos tienen stock bajo?", false);
+        RespuestaAsistente sinStock = asistenteService.consultar(
+                "¿Qué productos están sin stock?", false);
+
+        assertEquals("STOCK_BAJO", stockBajo.tablas().get(0).tipo());
+        assertEquals(List.of("Blusa baja"), stockBajo.tablas().get(0).filas().stream()
+                .map(fila -> fila.get(0)).toList());
+        assertEquals("PRODUCTOS_SIN_STOCK", sinStock.tablas().get(0).tipo());
+        assertEquals(List.of("Falda agotada"), sinStock.tablas().get(0).filas().stream()
+                .map(fila -> fila.get(0)).toList());
+    }
+
+    @Test
+    void saludoNoGeneraUnaTablaDeInventario() {
+        when(productoService.listarParaAsistente(100)).thenReturn(List.of());
+        when(geminiClient.generar(any(), any())).thenReturn("Puedo ayudarte a consultar el inventario.");
+
+        RespuestaAsistente respuesta = asistenteService.consultar("Hola, ¿qué puedes hacer?", false);
+
+        assertEquals("Puedo ayudarte a consultar el inventario.", respuesta.respuesta());
+        assertTrue(respuesta.tablas().isEmpty());
     }
 
     @Test
@@ -238,6 +282,8 @@ class AsistenteServiceTests {
         assertTrue(respuesta.tipoConsulta().contains("ROTACION"));
         assertFalse(respuesta.tipoConsulta().contains("REPORTES"));
         assertTrue(promptEnviado().contains("Sombrero | ventas: 0"));
+        assertEquals("ROTACION", respuesta.tablas().get(0).tipo());
+        assertEquals("Sombrero", respuesta.tablas().get(0).filas().get(0).get(0));
     }
 
     @Test

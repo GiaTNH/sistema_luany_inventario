@@ -215,26 +215,47 @@ if (!usuarioActual) {
         ? 'Desbloqueo solicitado por administración'
         : 'Bloqueo manual administrativo',
     );
-    if (!motivo?.trim()) return;
+    if (!motivo?.trim() || boton.disabled) return;
+    boton.disabled = true;
     try {
       if (usuario.bloqueadoManual || usuario.estado === 'INACTIVO') {
-        await apiPost(`/api/seguridad/usuarios/${id}/desbloquear`, { motivo: motivo.trim() });
-        await apiPut(`/api/usuarios/${id}`, {
-          nombre: usuario.nombre,
-          apellido: usuario.apellido || '',
-          email: usuario.email,
-          rol: usuario.rol,
-          estado: 'ACTIVO',
-        });
-        mostrarToast('La cuenta fue reactivada.', 'exito');
+        const estadoSeguridad = await apiPost(
+          `/api/seguridad/usuarios/${id}/desbloquear`,
+          { motivo: motivo.trim() },
+        );
+        usuario.bloqueadoManual = estadoSeguridad.bloqueadoManual;
+        usuario.bloqueadoHasta = estadoSeguridad.bloqueadoHasta;
+        renderizarUsuarios();
+
+        if (usuario.estado === 'INACTIVO') {
+          const actualizado = await apiPut(`/api/usuarios/${id}`, {
+            nombre: usuario.nombre,
+            apellido: usuario.apellido || '',
+            email: usuario.email,
+            rol: usuario.rol,
+            estado: 'ACTIVO',
+          });
+          Object.assign(usuario, actualizado);
+          renderizarUsuarios();
+          mostrarToast('La cuenta fue reactivada.', 'exito');
+        } else {
+          mostrarToast('La cuenta fue desbloqueada y sus sesiones fueron invalidadas.', 'exito');
+        }
       } else {
-        await apiPost(`/api/seguridad/usuarios/${id}/bloquear`, { motivo: motivo.trim() });
-        mostrarToast('La cuenta fue bloqueada temporalmente y sus sesiones fueron invalidadas.', 'exito');
+        const estadoSeguridad = await apiPost(
+          `/api/seguridad/usuarios/${id}/bloquear`,
+          { motivo: motivo.trim() },
+        );
+        usuario.bloqueadoManual = estadoSeguridad.bloqueadoManual;
+        usuario.bloqueadoHasta = estadoSeguridad.bloqueadoHasta;
+        renderizarUsuarios();
+        mostrarToast('La cuenta fue bloqueada y sus sesiones fueron invalidadas.', 'exito');
       }
-      await cargarUsuarios();
       await cargarSeguridad();
     } catch (error) {
       mostrarToast(error.message, 'error');
+    } finally {
+      boton.disabled = false;
     }
   });
 

@@ -59,6 +59,31 @@ function agregarBurbuja(texto, tipo, meta = null) {
   return wrapper;
 }
 
+function agregarRespuestaAsistente(texto, meta, tablas = []) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'burbuja-wrapper asistente';
+
+  const burbuja = document.createElement('div');
+  burbuja.className = 'burbuja asistente';
+  burbuja.textContent = texto || '(Sin respuesta)';
+  wrapper.appendChild(burbuja);
+
+  const tablasEl = crearTablasAsistente(tablas);
+  if (tablasEl) {
+    wrapper.appendChild(tablasEl);
+  }
+
+  if (meta) {
+    const metaEl = document.createElement('div');
+    metaEl.className = 'burbuja-meta';
+    metaEl.textContent = meta;
+    wrapper.appendChild(metaEl);
+  }
+
+  mensajesEl.appendChild(wrapper);
+  mensajesEl.scrollTop = mensajesEl.scrollHeight;
+}
+
 function agregarEscribiendo() {
   const wrapper = document.createElement('div');
   wrapper.className = 'burbuja-wrapper asistente';
@@ -109,7 +134,7 @@ async function enviarMensaje() {
     quitarEscribiendo();
 
     const meta = `Tipo: ${respuesta.tipoConsulta || '—'} · ${respuesta.productosEnContexto} productos en contexto · ${respuesta.tiempoMs} ms`;
-    agregarBurbuja(respuesta.respuesta || '(Sin respuesta)', 'asistente', meta);
+    agregarRespuestaAsistente(respuesta.respuesta || '(Sin respuesta)', meta, respuesta.tablas);
 
   } catch (err) {
     quitarEscribiendo();

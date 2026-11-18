@@ -2,6 +2,7 @@ package com.luany.inventory.service;
 
 import com.luany.inventory.model.*;
 import com.luany.inventory.model.ReportesResponse.*;
+import com.luany.inventory.model.RespuestaAsistente.TablaAsistente;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -68,37 +69,42 @@ public class AsistenteService {
     public RespuestaAsistente consultar(String pregunta, boolean administrador) {
         long inicio = System.currentTimeMillis();
         Set<String> modulos = detectarModulos(pregunta);
+        boolean consultaConModulo = !modulos.isEmpty();
+        if (modulos.isEmpty()) {
+            modulos.add("PRODUCTOS");
+        }
         Periodo periodo = detectarPeriodo(pregunta);
         boolean comparacion = esComparacion(pregunta);
         StringBuilder contexto = new StringBuilder();
         Set<Long> productosIncluidos = new LinkedHashSet<>();
+        List<TablaAsistente> tablas = new ArrayList<>();
 
         if (modulos.contains("PRODUCTOS")) {
             agregarProductos(contexto, productoService.listarParaAsistente(MAX_PRODUCTOS),
-                    productosIncluidos);
+                    productosIncluidos, tablas, consultaConModulo);
         }
         if (modulos.contains("ALERTAS")) {
             agregarAlertas(contexto, productoService.productosConStockBajoParaAsistente(MAX_ALERTAS),
-                    productosIncluidos);
+                    productosIncluidos, tablas, pregunta);
         }
         if (modulos.contains("ROTACION")) {
-            agregarRotacion(contexto, periodo, productosIncluidos);
+            agregarRotacion(contexto, periodo, productosIncluidos, tablas);
         }
         if (modulos.contains("MOVIMIENTOS")) {
             agregarMovimientos(contexto, periodo, detectarTipoMovimiento(pregunta), comparacion,
-                    productosIncluidos);
+                    productosIncluidos, tablas);
         }
         if (modulos.contains("PROVEEDORES")) {
-            agregarProveedores(contexto, productosIncluidos);
+            agregarProveedores(contexto, productosIncluidos, tablas);
         }
         if (modulos.contains("PEDIDOS")) {
-            agregarPedidos(contexto, periodo, productosIncluidos);
+            agregarPedidos(contexto, periodo, productosIncluidos, tablas);
         }
         if (modulos.contains("CLIENTES")) {
-            agregarClientes(contexto, periodo, detectarNombreCliente(pregunta));
+            agregarClientes(contexto, periodo, detectarNombreCliente(pregunta), tablas);
         }
         if (modulos.contains("REPORTES")) {
-            agregarReportes(contexto, periodo, comparacion, productosIncluidos);
+            agregarReportes(contexto, periodo, comparacion, productosIncluidos, tablas);
         }
         if (modulos.contains("USUARIOS")) {
             if (administrador) {
@@ -120,11 +126,12 @@ public class AsistenteService {
                 + "\nPREGUNTA DEL USUARIO: " + pregunta;
         String respuesta = geminiClient.generar(PROMPT_SISTEMA, prompt);
         return new RespuestaAsistente(nombreTipo, respuesta, productosIncluidos.size(),
-                System.currentTimeMillis() - inicio);
+                System.currentTimeMillis() - inicio, tablas);
     }
 
     private void agregarRotacion(
-            StringBuilder contexto, Periodo periodo, Set<Long> productosIncluidos) {
+            StringBuilder contexto, Periodo periodo, Set<Long> productosIncluidos,
+            List<TablaAsistente> tablas) {
         List<Producto> productos = productoService.listarParaAsistente(MAX_PRODUCTOS);
         Map<Long, Long> ventas = movimientoService.ventasPorProducto(periodo.desde(), periodo.hasta());
         contexto.append("ROTACIÓN POR VENTAS (máximo ").append(MAX_PRODUCTOS)
@@ -132,6 +139,8 @@ public class AsistenteService {
                 .append(periodo.hasta()).append("):\n");
         if (productos.isEmpty()) {
             contexto.append("- No hay productos registrados.\n");
+            tablas.add(tabla("ROTACION", "Productos con mayor rotación", 0, List.of(),
+                    List.of("Producto", "Unidades vendidas", "Stock actual", "Stock máximo", "Estado")));
             return;
         }
 
@@ -151,6 +160,15 @@ public class AsistenteService {
                         producto -> ventas.getOrDefault(producto.getId(), 0L)))
                 .limit(10)
                 .toList();
+        tablas.add(tabla("ROTACION", "Productos con mayor rotación", masVendidos.size(), masVendidos.stream()
+                .map(producto -> List.<Object>of(
+                        producto.getNombre(),
+                        ventas.getOrDefault(producto.getId(), 0L),
+                        datoTabla(producto.getStockActual()),
+                        datoTabla(producto.getStockMaximo()),
+                        productoService.estadoStock(producto)))
+                .toList(),
+                List.of("Producto", "Unidades vendidas", "Stock actual", "Stock máximo", "Estado")));
 
         contexto.append("- Más vendidos:\n");
         agregarLineasRotacion(contexto, masVendidos, ventas, productosIncluidos);
@@ -186,7 +204,7 @@ public class AsistenteService {
         boolean sinVentas = contiene(p, "no se han vendido", "no se vendieron", "sin ventas",
                 "nunca se vendio", "no tiene ventas", "no tienen ventas");
         boolean rotacion = contiene(p, "rotacion", "rota", "se mueve") || sinVentas;
-        boolean alertas = contiene(p, "stock bajo", "poco stock", "agotad", "se acaba", "minimo",
+        boolean alertas = contiene(p, "stock bajo", "poco stock", "agotad", "sin stock", "se acaba", "minimo",
                 "alerta", "falta", "reponer", "reposicion", "necesita reponer");
         boolean clientes = contiene(p, "cliente", "nota de venta", "notas de venta");
         boolean proveedores = contiene(p, "proveedor", "ruc", "correo del proveedor", "telefono del proveedor");
@@ -227,17 +245,19 @@ public class AsistenteService {
         if (usuarios) {
             modulos.add("USUARIOS");
         }
-        if (modulos.isEmpty()) {
-            modulos.add("PRODUCTOS");
-        }
         return modulos;
     }
 
     private void agregarProductos(StringBuilder contexto, List<Producto> productos,
-                                  Set<Long> productosIncluidos) {
+                                  Set<Long> productosIncluidos, List<TablaAsistente> tablas,
+                                  boolean consultaConModulo) {
         contexto.append("PRODUCTOS (máximo ").append(MAX_PRODUCTOS).append(" registros):\n");
         if (productos.isEmpty()) {
             contexto.append("- No hay productos registrados.\n");
+            if (consultaConModulo) {
+                tablas.add(tabla("PRODUCTOS", "Productos consultados", 0, List.of(),
+                        List.of("Producto", "Stock actual", "Stock mínimo", "Stock máximo", "Estado")));
+            }
             return;
         }
         for (Producto producto : productos) {
@@ -251,30 +271,69 @@ public class AsistenteService {
                     .append(" | máximo: ").append(producto.getStockMaximo())
                     .append(" | estado: ").append(productoService.estadoStock(producto)).append('\n');
         }
+        if (consultaConModulo) {
+            tablas.add(tabla("PRODUCTOS", "Productos consultados", productos.size(), productos.stream()
+                    .map(producto -> List.<Object>of(
+                            producto.getNombre(),
+                            datoTabla(producto.getStockActual()),
+                            datoTabla(producto.getStockMinimo()),
+                            datoTabla(producto.getStockMaximo()),
+                            productoService.estadoStock(producto)))
+                    .toList(),
+                    List.of("Producto", "Stock actual", "Stock mínimo", "Stock máximo", "Estado")));
+        }
     }
 
     private void agregarAlertas(StringBuilder contexto, List<Producto> alertas,
-                                Set<Long> productosIncluidos) {
+                                Set<Long> productosIncluidos, List<TablaAsistente> tablas,
+                                String pregunta) {
         contexto.append("ALERTAS Y REPOSICIÓN (máximo ").append(MAX_ALERTAS).append(" registros):\n");
         if (alertas.isEmpty()) {
             contexto.append("- No hay productos con stock bajo o agotados.\n");
-            return;
+        } else {
+            for (Producto producto : alertas) {
+                productosIncluidos.add(producto.getId());
+                int sugerido = Math.max(producto.getStockMaximo() - producto.getStockActual(), 0);
+                contexto.append("- ").append(producto.getNombre())
+                        .append(" | estado: ").append(productoService.estadoStock(producto))
+                        .append(" | stock: ").append(producto.getStockActual())
+                        .append(" | mínimo: ").append(producto.getStockMinimo())
+                        .append(" | proveedor: ").append(nombreProveedor(producto))
+                        .append(" | unidades sugeridas: ").append(sugerido).append('\n');
+            }
         }
-        for (Producto producto : alertas) {
-            productosIncluidos.add(producto.getId());
-            int sugerido = Math.max(producto.getStockMaximo() - producto.getStockActual(), 0);
-            contexto.append("- ").append(producto.getNombre())
-                    .append(" | estado: ").append(productoService.estadoStock(producto))
-                    .append(" | stock: ").append(producto.getStockActual())
-                    .append(" | mínimo: ").append(producto.getStockMinimo())
-                    .append(" | proveedor: ").append(nombreProveedor(producto))
-                    .append(" | unidades sugeridas: ").append(sugerido).append('\n');
+        String normalizada = normalizar(pregunta);
+        List<Producto> filasTabla = alertas;
+        String titulo = "Productos que necesitan reposición";
+        if (contiene(normalizada, "agotad", "sin stock", "cero stock")) {
+            filasTabla = alertas.stream().filter(producto -> producto.getStockActual() != null
+                    && producto.getStockActual() == 0).toList();
+            titulo = "Productos sin stock";
+        } else if (contiene(normalizada, "stock bajo", "poco stock")) {
+            filasTabla = alertas.stream().filter(producto -> producto.getStockActual() != null
+                    && producto.getStockActual() > 0
+                    && producto.getStockActual() <= producto.getStockMinimo()).toList();
+            titulo = "Productos con stock bajo";
         }
+        String tituloTabla = titulo;
+        String tipo = titulo.equals("Productos sin stock") ? "PRODUCTOS_SIN_STOCK"
+                : titulo.equals("Productos con stock bajo") ? "STOCK_BAJO" : "REPOSICION";
+        tablas.add(tabla(tipo, tituloTabla, filasTabla.size(), filasTabla.stream()
+                .map(producto -> List.<Object>of(
+                        producto.getNombre(),
+                        productoService.estadoStock(producto),
+                        datoTabla(producto.getStockActual()),
+                        datoTabla(producto.getStockMinimo()),
+                        Math.max(producto.getStockMaximo() - producto.getStockActual(), 0),
+                        nombreProveedor(producto)))
+                .toList(),
+                List.of("Producto", "Estado", "Stock actual", "Stock mínimo",
+                        "Unidades sugeridas", "Proveedor")));
     }
 
     private void agregarMovimientos(
             StringBuilder contexto, Periodo periodo, TipoMovimiento tipo, boolean comparacion,
-            Set<Long> productosIncluidos) {
+            Set<Long> productosIncluidos, List<TablaAsistente> tablas) {
         MovimientosPagina pagina = reportesService.movimientos(
                 periodo.desde(), periodo.hasta(), null, tipo, 0, MAX_MOVIMIENTOS);
         contexto.append("MOVIMIENTOS (máximo ").append(MAX_MOVIMIENTOS)
@@ -282,6 +341,12 @@ public class AsistenteService {
         contexto.append("- Tipos registrados: ENTRADA, SALIDA y VENTA; el sistema no tiene un tipo "
                 + "de movimiento separado para devoluciones.\n");
         agregarLineasMovimientos(contexto, pagina, "periodo consultado", productosIncluidos);
+        tablas.add(tabla("MOVIMIENTOS", "Movimientos registrados", pagina.totalElementos(),
+                pagina.movimientos().stream().map(movimiento -> List.<Object>of(
+                        movimiento.fecha(), movimiento.tipo(), movimiento.productoNombre(),
+                        datoTabla(movimiento.cantidad()), datoTabla(movimiento.stockAnterior()),
+                        datoTabla(movimiento.stockNuevo()))).toList(),
+                List.of("Fecha y hora", "Tipo", "Producto", "Cantidad", "Stock anterior", "Stock nuevo")));
         if (comparacion) {
             Periodo anterior = periodoAnterior(periodo);
             MovimientosPagina paginaAnterior = reportesService.movimientos(
@@ -289,6 +354,15 @@ public class AsistenteService {
             contexto.append("MOVIMIENTOS EN EL PERIODO ANTERIOR (")
                     .append(anterior.desde()).append(" a ").append(anterior.hasta()).append("):\n");
             agregarLineasMovimientos(contexto, paginaAnterior, "periodo anterior", productosIncluidos);
+            tablas.add(tabla("MOVIMIENTOS", "Movimientos del periodo anterior",
+                    paginaAnterior.totalElementos(), paginaAnterior.movimientos().stream()
+                            .map(movimiento -> List.<Object>of(
+                                    movimiento.fecha(), movimiento.tipo(), movimiento.productoNombre(),
+                                    datoTabla(movimiento.cantidad()), datoTabla(movimiento.stockAnterior()),
+                                    datoTabla(movimiento.stockNuevo())))
+                            .toList(),
+                    List.of("Fecha y hora", "Tipo", "Producto", "Cantidad",
+                            "Stock anterior", "Stock nuevo")));
         }
     }
 
@@ -309,7 +383,8 @@ public class AsistenteService {
         });
     }
 
-    private void agregarProveedores(StringBuilder contexto, Set<Long> productosIncluidos) {
+    private void agregarProveedores(
+            StringBuilder contexto, Set<Long> productosIncluidos, List<TablaAsistente> tablas) {
         List<Proveedor> proveedores = proveedorService.listarParaAsistente(MAX_PROVEEDORES);
         List<Producto> productos = productoService.listarParaAsistente(MAX_PRODUCTOS);
         Map<Long, List<String>> productosPorProveedor = productos.stream()
@@ -319,6 +394,8 @@ public class AsistenteService {
         contexto.append("PROVEEDORES (máximo ").append(MAX_PROVEEDORES).append(" registros):\n");
         if (proveedores.isEmpty()) {
             contexto.append("- No hay proveedores registrados.\n");
+            tablas.add(tabla("PROVEEDORES", "Proveedores registrados", 0, List.of(),
+                    List.of("Proveedor", "RUC", "Correo", "Teléfono", "Estado", "Productos asociados")));
             return;
         }
         for (Proveedor proveedor : proveedores) {
@@ -332,10 +409,21 @@ public class AsistenteService {
                     .append('\n');
         }
         productos.forEach(producto -> productosIncluidos.add(producto.getId()));
+        tablas.add(tabla("PROVEEDORES", "Proveedores registrados", proveedores.size(), proveedores.stream()
+                .map(proveedor -> List.<Object>of(
+                        proveedor.getNombre(),
+                        datoTabla(proveedor.getRuc()),
+                        datoTabla(proveedor.getCorreo()),
+                        datoTabla(proveedor.getTelefono()),
+                        datoTabla(proveedor.getEstado()),
+                        String.join(", ", productosPorProveedor.getOrDefault(proveedor.getId(), List.of()))))
+                .toList(),
+                List.of("Proveedor", "RUC", "Correo", "Teléfono", "Estado", "Productos asociados")));
     }
 
     private void agregarPedidos(
-            StringBuilder contexto, Periodo periodo, Set<Long> productosIncluidos) {
+            StringBuilder contexto, Periodo periodo, Set<Long> productosIncluidos,
+            List<TablaAsistente> tablas) {
         List<PedidoDetalleResponse> pedidos = pedidoService.listarParaAsistente(
                 periodo.desde(), periodo.hasta(), MAX_PEDIDOS);
         contexto.append("PEDIDOS Y RECEPCIONES (máximo ").append(MAX_PEDIDOS).append(" registros):\n");
@@ -367,9 +455,22 @@ public class AsistenteService {
                 contexto.append('\n');
             }
         }
+        tablas.add(tabla("PEDIDOS", "Pedidos y abastecimiento", pedidos.size(), pedidos.stream()
+                .map(pedido -> List.<Object>of(
+                        pedido.fechaPedido(),
+                        pedido.proveedorNombre(),
+                        pedido.estado(),
+                        pedido.productos().stream()
+                                .map(item -> item.productoNombre() + " (" + item.cantidadPedida() + ")")
+                                .collect(Collectors.joining(", ")),
+                        pedido.total(),
+                        pedido.recepciones().size()))
+                .toList(),
+                List.of("Fecha", "Proveedor", "Estado", "Productos y cantidades", "Total", "Recepciones")));
     }
 
-    private void agregarClientes(StringBuilder contexto, Periodo periodo, String nombreCliente) {
+    private void agregarClientes(
+            StringBuilder contexto, Periodo periodo, String nombreCliente, List<TablaAsistente> tablas) {
         List<Cliente> clientes = clienteService.listarParaAsistente(nombreCliente, MAX_CLIENTES);
         List<NotaVentaResumenResponse> ventas = notaVentaService.listarParaAsistente(
                 nombreCliente, periodo.desde(), periodo.hasta(), MAX_VENTAS);
@@ -392,6 +493,12 @@ public class AsistenteService {
                     .append(" | total: ").append(venta.total())
                     .append(" | estado: ").append(venta.estado()).append('\n'));
         }
+        tablas.add(tabla("VENTAS_CLIENTES", "Ventas registradas", ventas.size(), ventas.stream()
+                .map(venta -> List.<Object>of(
+                        venta.numeroNota(), venta.fechaEmision(), venta.clienteNombre(),
+                        venta.total(), venta.estado()))
+                .toList(),
+                List.of("Nota", "Fecha y hora", "Cliente", "Total", "Estado")));
     }
 
     private String detectarNombreCliente(String pregunta) {
@@ -400,7 +507,8 @@ public class AsistenteService {
     }
 
     private void agregarReportes(
-            StringBuilder contexto, Periodo periodo, boolean comparacion, Set<Long> productosIncluidos) {
+            StringBuilder contexto, Periodo periodo, boolean comparacion, Set<Long> productosIncluidos,
+            List<TablaAsistente> tablas) {
         VentasPeriodo ventas = reportesService.ventas(periodo.desde(), periodo.hasta());
         ProductosVendidos ranking = reportesService.productosVendidos(
                 periodo.desde(), periodo.hasta(), MAX_PRODUCTOS_VENDIDOS);
@@ -410,16 +518,25 @@ public class AsistenteService {
                 .append(" | notas: ").append(ventas.cantidadNotas()).append('\n');
         if (ventas.ventasPorDia().isEmpty()) {
             contexto.append("- No hay ventas en el periodo consultado.\n");
+            tablas.add(tabla("VENTAS", "Ventas e ingresos por día", 0, List.of(),
+                    List.of("Fecha", "Ingresos", "Notas")));
         } else {
-            ventas.ventasPorDia().stream()
+            List<VentaDia> ventasVisibles = ventas.ventasPorDia().stream()
                     .skip(Math.max(ventas.ventasPorDia().size() - 30, 0))
-                    .forEach(dia -> contexto.append("- ").append(dia.fecha())
+                    .toList();
+            ventasVisibles.forEach(dia -> contexto.append("- ").append(dia.fecha())
                             .append(": ").append(dia.importe())
                             .append(" en ").append(dia.cantidadNotas()).append(" notas\n"));
+            tablas.add(tabla("VENTAS", "Ventas e ingresos por día", ventas.ventasPorDia().size(),
+                    ventasVisibles.stream().map(dia -> List.<Object>of(
+                            dia.fecha(), dia.importe(), dia.cantidadNotas())).toList(),
+                    List.of("Fecha", "Ingresos", "Notas")));
         }
         contexto.append("PRODUCTOS MÁS VENDIDOS (máximo ").append(MAX_PRODUCTOS_VENDIDOS).append("):\n");
         if (ranking.productos().isEmpty()) {
             contexto.append("- No hay unidades vendidas en el periodo consultado.\n");
+            tablas.add(tabla("PRODUCTOS_MAS_VENDIDOS", "Productos más vendidos", 0, List.of(),
+                    List.of("Producto", "Unidades vendidas")));
         } else {
             ranking.productos().forEach(producto -> {
                 productosIncluidos.add(producto.productoId());
@@ -447,6 +564,12 @@ public class AsistenteService {
                         .map(producto -> producto.nombre() + " (" + producto.unidadesVendidas() + ")")
                         .collect(Collectors.joining(", ")))
                         .append('\n');
+                tablas.add(tabla("PRODUCTOS_MAS_VENDIDOS", "Productos más vendidos",
+                        ranking.productos().size(), ranking.productos().stream()
+                                .map(producto -> List.<Object>of(
+                                        producto.nombre(), producto.unidadesVendidas()))
+                                .toList(),
+                        List.of("Producto", "Unidades vendidas")));
             }
         }
     }
@@ -544,6 +667,18 @@ public class AsistenteService {
 
     private String valor(String valor) {
         return valor == null || valor.isBlank() ? "no registrado" : valor;
+    }
+
+    private TablaAsistente tabla(
+            String tipo, String titulo, long total, List<List<Object>> filas, List<String> columnas) {
+        List<List<Object>> filasSeguras = filas.stream()
+                .map(fila -> fila.stream().map(this::datoTabla).toList())
+                .toList();
+        return new TablaAsistente(tipo, titulo, total, filasSeguras.size(), columnas, filasSeguras);
+    }
+
+    private Object datoTabla(Object valor) {
+        return valor == null ? "—" : valor;
     }
 
     private String normalizar(String texto) {
