@@ -50,6 +50,7 @@ public class AsistenteService {
     private static final int MAX_VENTAS = 30;
     private static final int MAX_USUARIOS = 50;
     private static final int MAX_PRODUCTOS_VENDIDOS = 20;
+    private static final int MAX_OPCIONES_PRODUCTO = 5;
     private static final Pattern FECHA_ISO = Pattern.compile("\\b(\\d{4}-\\d{1,2}-\\d{1,2})\\b");
     private static final Pattern FECHA_LOCAL = Pattern.compile("\\b(\\d{1,2}/\\d{1,2}/\\d{4})\\b");
     private static final Pattern ULTIMOS_DIAS = Pattern.compile("ultimos?\\s+(\\d{1,3})\\s+dias?");
@@ -76,6 +77,11 @@ public class AsistenteService {
     private final Clock clock;
 
     public RespuestaAsistente consultar(String pregunta, boolean administrador) {
+        return consultar(pregunta, administrador, null, false);
+    }
+
+    public RespuestaAsistente consultar(
+            String pregunta, boolean administrador, Long productoIdConfirmado, boolean cancelarConfirmacion) {
         long inicio = System.currentTimeMillis();
         Set<String> modulos = detectarModulos(pregunta);
         boolean consultaConModulo = !modulos.isEmpty();
@@ -86,6 +92,33 @@ public class AsistenteService {
         boolean comparacion = esComparacion(pregunta);
         FiltroProductoMovimiento filtroProductoMovimiento = modulos.contains("MOVIMIENTOS")
                 ? detectarProductoMovimiento(pregunta) : FiltroProductoMovimiento.sinFiltro();
+        if (cancelarConfirmacion) {
+            return new RespuestaAsistente(String.join(", ", modulos),
+                    "Entendido. No consultaré movimientos de ningún producto.", 0,
+                    System.currentTimeMillis() - inicio);
+        }
+        if (productoIdConfirmado != null) {
+            if (!modulos.contains("MOVIMIENTOS")
+                    || filtroProductoMovimiento.opciones().stream()
+                            .noneMatch(producto -> productoIdConfirmado.equals(producto.getId()))) {
+                throw new IllegalArgumentException("El producto confirmado no corresponde a esta sugerencia");
+            }
+            Producto confirmado = filtroProductoMovimiento.opciones().stream()
+                    .filter(producto -> productoIdConfirmado.equals(producto.getId()))
+                    .findFirst()
+                    .orElseThrow();
+            filtroProductoMovimiento = FiltroProductoMovimiento.conProducto(confirmado);
+        } else if (!filtroProductoMovimiento.opciones().isEmpty()) {
+            List<RespuestaAsistente.OpcionProducto> opciones = filtroProductoMovimiento.opciones().stream()
+                    .map(producto -> new RespuestaAsistente.OpcionProducto(
+                            producto.getId(), producto.getNombre()))
+                    .toList();
+            String respuesta = opciones.size() == 1
+                    ? "¿Te refieres a " + opciones.get(0).nombre() + "?"
+                    : "Encontré varios productos con nombres similares. Selecciona cuál quieres consultar.";
+            return new RespuestaAsistente("MOVIMIENTOS", respuesta, 0,
+                    System.currentTimeMillis() - inicio, List.of(), opciones);
+        }
         StringBuilder contexto = new StringBuilder();
         Set<Long> productosIncluidos = new LinkedHashSet<>();
         List<TablaAsistente> tablas = new ArrayList<>();
@@ -587,7 +620,7 @@ public class AsistenteService {
             if (mejoresCoincidencias.size() == 1) {
                 return FiltroProductoMovimiento.conProducto(mejoresCoincidencias.get(0));
             }
-            return FiltroProductoMovimiento.coincidenciaAmbigua();
+            return FiltroProductoMovimiento.sugerencias(null, mejoresCoincidencias);
         }
 
         Matcher nombreSolicitado = PRODUCTO_EN_CONSULTA_MOVIMIENTOS
@@ -598,10 +631,61 @@ public class AsistenteService {
                     .replaceAll("\\s+", " ");
             if (!nombre.isBlank() && !nombre.equals("todos los productos")
                     && !nombre.equals("todas las entradas") && !nombre.equals("todas las salidas")) {
+                List<CoincidenciaProducto> sugerencias = productos.stream()
+                        .map(producto -> new CoincidenciaProducto(producto,
+                                distanciaLevenshtein(normalizarNombre(nombre),
+                                        normalizarNombre(producto.getNombre()))))
+                        .filter(coincidencia -> distanciaConfiable(
+                                normalizarNombre(nombre), normalizarNombre(coincidencia.producto().getNombre()),
+                                coincidencia.distancia()))
+                        .sorted(Comparator.comparingInt(CoincidenciaProducto::distancia))
+                        .toList();
+                if (!sugerencias.isEmpty()) {
+                    int mejorDistancia = sugerencias.get(0).distancia();
+                    List<Producto> mejores = sugerencias.stream()
+                            .filter(coincidencia -> coincidencia.distancia() <= mejorDistancia + 1)
+                            .limit(MAX_OPCIONES_PRODUCTO)
+                            .map(CoincidenciaProducto::producto)
+                            .toList();
+                    return FiltroProductoMovimiento.sugerencias(nombre, mejores);
+                }
                 return FiltroProductoMovimiento.noEncontrado(nombre);
             }
         }
         return FiltroProductoMovimiento.sinFiltro();
+    }
+
+    private String normalizarNombre(String nombre) {
+        return normalizar(nombre).replaceAll("[^\\p{L}\\p{N}]+", " ").trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private boolean distanciaConfiable(String solicitado, String registrado, int distancia) {
+        int longitud = Math.max(solicitado.length(), registrado.length());
+        if (Math.min(solicitado.length(), registrado.length()) < 4) {
+            return false;
+        }
+        int distanciaMaxima = longitud <= 7 ? 1 : Math.min(2, longitud / 4);
+        return distancia <= distanciaMaxima;
+    }
+
+    private int distanciaLevenshtein(String primero, String segundo) {
+        int[] anterior = new int[segundo.length() + 1];
+        for (int indice = 0; indice <= segundo.length(); indice++) {
+            anterior[indice] = indice;
+        }
+        for (int fila = 1; fila <= primero.length(); fila++) {
+            int[] actual = new int[segundo.length() + 1];
+            actual[0] = fila;
+            for (int columna = 1; columna <= segundo.length(); columna++) {
+                int costo = primero.charAt(fila - 1) == segundo.charAt(columna - 1) ? 0 : 1;
+                actual[columna] = Math.min(
+                        Math.min(actual[columna - 1] + 1, anterior[columna] + 1),
+                        anterior[columna - 1] + costo);
+            }
+            anterior = actual;
+        }
+        return anterior[segundo.length()];
     }
 
     private boolean contieneNombreCompleto(String preguntaNormalizada, String nombreNormalizado) {
@@ -813,22 +897,26 @@ public class AsistenteService {
     private record Periodo(LocalDate desde, LocalDate hasta) {
     }
 
+    private record CoincidenciaProducto(Producto producto, int distancia) {
+    }
+
     private record FiltroProductoMovimiento(
-            boolean solicitado, Producto producto, boolean ambiguo, String nombreSolicitado) {
+            boolean solicitado, Producto producto, boolean ambiguo, String nombreSolicitado,
+            List<Producto> opciones) {
         private static FiltroProductoMovimiento sinFiltro() {
-            return new FiltroProductoMovimiento(false, null, false, null);
+            return new FiltroProductoMovimiento(false, null, false, null, List.of());
         }
 
         private static FiltroProductoMovimiento conProducto(Producto producto) {
-            return new FiltroProductoMovimiento(true, producto, false, producto.getNombre());
+            return new FiltroProductoMovimiento(true, producto, false, producto.getNombre(), List.of());
         }
 
         private static FiltroProductoMovimiento noEncontrado(String nombre) {
-            return new FiltroProductoMovimiento(true, null, false, nombre);
+            return new FiltroProductoMovimiento(true, null, false, nombre, List.of());
         }
 
-        private static FiltroProductoMovimiento coincidenciaAmbigua() {
-            return new FiltroProductoMovimiento(true, null, true, null);
+        private static FiltroProductoMovimiento sugerencias(String nombre, List<Producto> opciones) {
+            return new FiltroProductoMovimiento(true, null, true, nombre, List.copyOf(opciones));
         }
     }
 }
