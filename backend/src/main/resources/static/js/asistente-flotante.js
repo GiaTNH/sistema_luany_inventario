@@ -10,6 +10,7 @@
   ];
 
   let esperando = false;
+  let sugerenciaPendiente = null;
   let historial = cargarHistorial();
 
   const widget = document.createElement('section');
@@ -98,7 +99,7 @@
     }
   }
 
-  function agregarMensaje(texto, tipo, meta = '', tablas = []) {
+  function agregarMensaje(texto, tipo, meta = '', tablas = [], opcionesProducto = []) {
     const mensaje = document.createElement('article');
     mensaje.className = `ai-floating-message ai-floating-message-${tipo}`;
     if (texto) {
@@ -113,6 +114,34 @@
       detalle.textContent = meta;
       mensaje.appendChild(detalle);
     }
+    if (tipo === 'asistente' && opcionesProducto.length) {
+      const sugerencia = sugerenciaPendiente;
+      const acciones = document.createElement('div');
+      acciones.className = 'ai-floating-product-options';
+      opcionesProducto.forEach((opcion) => {
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'ai-floating-suggestion';
+        boton.textContent = opcionesProducto.length === 1 ? 'Sí, consultar' : opcion.nombre;
+        boton.addEventListener('click', () => enviarPregunta({
+          texto: opcionesProducto.length === 1 ? 'Sí, consultar' : `Consultar ${opcion.nombre}`,
+          productoIdConfirmado: opcion.id,
+          sugerencia,
+        }));
+        acciones.appendChild(boton);
+      });
+      const cancelar = document.createElement('button');
+      cancelar.type = 'button';
+      cancelar.className = 'ai-floating-suggestion';
+      cancelar.textContent = 'No, cancelar';
+      cancelar.addEventListener('click', () => enviarPregunta({
+        texto: 'No, cancelar',
+        cancelarConfirmacion: true,
+        sugerencia,
+      }));
+      acciones.appendChild(cancelar);
+      mensaje.appendChild(acciones);
+    }
     messages.appendChild(mensaje);
     messages.scrollTop = messages.scrollHeight;
   }
@@ -123,7 +152,13 @@
       const texto = item.tipo === 'asistente' && tablas.length
         ? `Encontré información en ${tablas.length} tablas. Te muestro los resultados.`
         : item.texto;
-      agregarMensaje(texto, item.tipo, item.meta || '', tablas);
+      if (item.tipo === 'asistente' && item.opcionesProducto?.length) {
+        sugerenciaPendiente = {
+          pregunta: item.preguntaOriginal,
+          opciones: item.opcionesProducto,
+        };
+      }
+      agregarMensaje(texto, item.tipo, item.meta || '', tablas, item.opcionesProducto || []);
     });
   }
 
@@ -162,9 +197,26 @@
     counter.classList.toggle('ai-floating-counter-limit', input.value.length >= 480);
   }
 
-  async function enviarPregunta() {
+  function interpretarConfirmacion(texto, opciones) {
+    const normalizado = texto.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+    if (/^(no|cancelar|ninguno|ninguna)\b/.test(normalizado)) {
+      return { cancelarConfirmacion: true };
+    }
+    if (/^(si|claro|correcto|ese|esa)\b/.test(normalizado) && opciones.length === 1) {
+      return { productoIdConfirmado: opciones[0].id };
+    }
+    const indice = Number(normalizado);
+    if (Number.isInteger(indice) && indice > 0 && indice <= opciones.length) {
+      return { productoIdConfirmado: opciones[indice - 1].id };
+    }
+    const coincidencia = opciones.find((opcion) => opcion.nombre.normalize('NFD')
+      .replace(/\p{M}/gu, '').toLowerCase() === normalizado);
+    return coincidencia ? { productoIdConfirmado: coincidencia.id } : null;
+  }
+
+  async function enviarPregunta(accion = null) {
     if (esperando) return;
-    const pregunta = input.value.trim();
+    const pregunta = accion ? accion.texto : input.value.trim();
     if (!pregunta) {
       input.focus();
       return;
@@ -172,6 +224,22 @@
     if (pregunta.length > 500) {
       status.textContent = 'La consulta no puede superar los 500 caracteres.';
       return;
+    }
+
+    let cuerpo = { pregunta };
+    if (accion && accion.sugerencia) {
+      cuerpo = {
+        pregunta: accion.sugerencia.pregunta,
+        productoIdConfirmado: accion.productoIdConfirmado,
+        cancelarConfirmacion: accion.cancelarConfirmacion || false,
+      };
+      if (sugerenciaPendiente === accion.sugerencia) sugerenciaPendiente = null;
+    } else if (sugerenciaPendiente) {
+      const confirmacion = interpretarConfirmacion(pregunta, sugerenciaPendiente.opciones);
+      if (confirmacion) {
+        cuerpo = { pregunta: sugerenciaPendiente.pregunta, ...confirmacion };
+      }
+      sugerenciaPendiente = null;
     }
 
     historial.push({ tipo: 'usuario', texto: pregunta });
@@ -192,12 +260,15 @@
     messages.scrollTop = messages.scrollHeight;
 
     try {
-      const respuesta = await apiPost('/api/asistente/consulta', { pregunta });
+      const respuesta = await apiPost('/api/asistente/consulta', cuerpo);
       const meta = `Tipo: ${respuesta.tipoConsulta || '—'} · ${respuesta.productosEnContexto} productos · ${respuesta.tiempoMs} ms`;
       const texto = respuesta.respuesta || '(Sin respuesta)';
       const tablas = Array.isArray(respuesta.tablas) ? respuesta.tablas : [];
-      historial.push({ tipo: 'asistente', texto, meta, tablas });
-      agregarMensaje(texto, 'asistente', meta, tablas);
+      const opcionesProducto = Array.isArray(respuesta.opcionesProducto) ? respuesta.opcionesProducto : [];
+      if (opcionesProducto.length) sugerenciaPendiente = { pregunta, opciones: opcionesProducto };
+      historial.push({ tipo: 'asistente', texto, meta, tablas,
+        preguntaOriginal: pregunta, opcionesProducto });
+      agregarMensaje(texto, 'asistente', meta, tablas, opcionesProducto);
       guardarHistorial();
       status.textContent = '';
     } catch (error) {

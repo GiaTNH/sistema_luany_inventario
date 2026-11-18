@@ -167,6 +167,7 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
     apiPost: async (ruta, cuerpo) => {
       llamadas.push({ ruta, cuerpo });
       if (respuestaApi instanceof Error) throw respuestaApi;
+      if (typeof respuestaApi === 'function') return respuestaApi(ruta, cuerpo);
       return respuestaApi;
     },
     console,
@@ -284,6 +285,54 @@ test('el widget envía preguntas, presenta respuesta y restaura el historial en 
 
   const otraPantalla = crearEntornoWidget(entorno.valoresSesion.get('luany-asistente-historial:7'));
   assert.equal(otraPantalla.elementosWidget.get('.ai-floating-messages').children.length, 2);
+});
+
+test('el widget confirma una sugerencia enviando el ID del producto y la pregunta original', async () => {
+  const entorno = crearEntornoWidget('[]', async (ruta, cuerpo) => cuerpo.productoIdConfirmado
+    ? { tipoConsulta: 'MOVIMIENTOS', productosEnContexto: 1, tiempoMs: 8, respuesta: 'Movimientos consultados.' }
+    : {
+      tipoConsulta: 'MOVIMIENTOS',
+      productosEnContexto: 0,
+      tiempoMs: 4,
+      respuesta: '¿Te refieres a Biberón?',
+      opcionesProducto: [{ id: 21, nombre: 'Biberón' }],
+    });
+  const input = entorno.elementosWidget.get('#luany-asistente-input');
+  input.value = '¿Qué movimientos ha tenido bibern?';
+
+  await entorno.elementosWidget.get('.ai-floating-form').emitir('submit', { preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+  const mensajeSugerencia = entorno.elementosWidget.get('.ai-floating-messages').children[1];
+  await mensajeSugerencia.children.at(-1).children[0].emitir('click');
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(JSON.parse(JSON.stringify(entorno.llamadas[1].cuerpo)), {
+    pregunta: '¿Qué movimientos ha tenido bibern?',
+    productoIdConfirmado: 21,
+    cancelarConfirmacion: false,
+  });
+});
+
+test('el widget cancela una sugerencia sin enviar una consulta de movimientos', async () => {
+  const entorno = crearEntornoWidget('[]', async (ruta, cuerpo) => ({
+    tipoConsulta: 'MOVIMIENTOS',
+    productosEnContexto: 0,
+    tiempoMs: 4,
+    respuesta: cuerpo.cancelarConfirmacion ? 'Entendido.' : '¿Te refieres a Biberón?',
+    opcionesProducto: cuerpo.cancelarConfirmacion ? [] : [{ id: 21, nombre: 'Biberón' }],
+  }));
+  const input = entorno.elementosWidget.get('#luany-asistente-input');
+  input.value = '¿Qué movimientos ha tenido bibern?';
+  await entorno.elementosWidget.get('.ai-floating-form').emitir('submit', { preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+  const mensajeSugerencia = entorno.elementosWidget.get('.ai-floating-messages').children[1];
+  await mensajeSugerencia.children.at(-1).children[1].emitir('click');
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(JSON.parse(JSON.stringify(entorno.llamadas[1].cuerpo)), {
+    pregunta: '¿Qué movimientos ha tenido bibern?',
+    cancelarConfirmacion: true,
+  });
 });
 
 test('el widget evita repetir respuestas tabulares guardadas antes de la corrección', () => {

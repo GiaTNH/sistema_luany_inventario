@@ -63,4 +63,21 @@ class AsistenteControllerSecurityTests {
         verify(asistenteService).consultar("Lista los usuarios", false);
         verify(asistenteService).consultar("Lista los usuarios", true);
     }
+
+    @Test
+    void transmiteElIdConfirmadoDelProductoAlServicio() throws Exception {
+        when(asistenteService.consultar("¿Qué movimientos ha tenido bibern?", false, 21L, false))
+                .thenReturn(new RespuestaAsistente("MOVIMIENTOS", "Movimientos consultados.", 1, 2));
+
+        mockMvc.perform(post("/api/asistente/consulta")
+                        .with(user("empleado").roles("EMPLEADO"))
+                        .with(csrf())
+                        .contentType("application/json")
+                        .content("{\"pregunta\":\"¿Qué movimientos ha tenido bibern?\","
+                                + "\"productoIdConfirmado\":21}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.respuesta").value("Movimientos consultados."));
+
+        verify(asistenteService).consultar("¿Qué movimientos ha tenido bibern?", false, 21L, false);
+    }
 }

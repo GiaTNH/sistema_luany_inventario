@@ -8,6 +8,7 @@ const contadorEl   = document.getElementById('chat-contador');
 const mensajesEl   = document.getElementById('chat-mensajes');
 
 let esperando = false;
+let sugerenciaPendiente = null;
 
 // ---------- Contador de caracteres ----------
 
@@ -59,7 +60,7 @@ function agregarBurbuja(texto, tipo, meta = null) {
   return wrapper;
 }
 
-function agregarRespuestaAsistente(texto, meta, tablas = []) {
+function agregarRespuestaAsistente(texto, meta, tablas = [], opcionesProducto = []) {
   const wrapper = document.createElement('div');
   wrapper.className = 'burbuja-wrapper asistente';
 
@@ -80,8 +81,52 @@ function agregarRespuestaAsistente(texto, meta, tablas = []) {
     wrapper.appendChild(metaEl);
   }
 
+  agregarOpcionesProducto(wrapper, opcionesProducto);
   mensajesEl.appendChild(wrapper);
   mensajesEl.scrollTop = mensajesEl.scrollHeight;
+}
+
+function agregarOpcionesProducto(wrapper, opciones) {
+  if (!opciones.length) return;
+  const sugerencia = sugerenciaPendiente;
+  const acciones = document.createElement('div');
+  acciones.className = 'asistente-opciones-producto';
+  opciones.forEach((opcion) => {
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.textContent = opciones.length === 1 ? 'Sí, consultar' : opcion.nombre;
+    boton.addEventListener('click', () => enviarMensaje({
+      texto: opciones.length === 1 ? 'Sí, consultar' : `Consultar ${opcion.nombre}`,
+      productoIdConfirmado: opcion.id,
+      sugerencia,
+    }));
+    acciones.appendChild(boton);
+  });
+  const cancelar = document.createElement('button');
+  cancelar.type = 'button';
+  cancelar.textContent = 'No, cancelar';
+  cancelar.addEventListener('click', () => enviarMensaje({
+    texto: 'No, cancelar',
+    cancelarConfirmacion: true,
+    sugerencia,
+  }));
+  acciones.appendChild(cancelar);
+  wrapper.appendChild(acciones);
+}
+
+function interpretarConfirmacion(texto, opciones) {
+  const normalizado = texto.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+  if (/^(no|cancelar|ninguno|ninguna)\b/.test(normalizado)) return { cancelarConfirmacion: true };
+  if (/^(si|claro|correcto|ese|esa)\b/.test(normalizado) && opciones.length === 1) {
+    return { productoIdConfirmado: opciones[0].id };
+  }
+  const indice = Number(normalizado);
+  if (Number.isInteger(indice) && indice > 0 && indice <= opciones.length) {
+    return { productoIdConfirmado: opciones[indice - 1].id };
+  }
+  const coincidencia = opciones.find((opcion) => opcion.nombre.normalize('NFD')
+    .replace(/\p{M}/gu, '').toLowerCase() === normalizado);
+  return coincidencia ? { productoIdConfirmado: coincidencia.id } : null;
 }
 
 function agregarEscribiendo() {
@@ -103,17 +148,32 @@ function quitarEscribiendo() {
 
 // ---------- Enviar mensaje ----------
 
-async function enviarMensaje() {
+async function enviarMensaje(accion = null) {
   if (esperando) return;
 
-  const pregunta = inputChat.value.trim();
+  const pregunta = accion ? accion.texto : inputChat.value.trim();
   if (!pregunta) return;
   if (pregunta.length > 500) {
     mostrarToast('La consulta no puede superar los 500 caracteres.', 'error');
     return;
   }
 
-  // Mostrar burbuja del usuario
+  let cuerpo = { pregunta };
+  if (accion && accion.sugerencia) {
+    cuerpo = {
+      pregunta: accion.sugerencia.pregunta,
+      productoIdConfirmado: accion.productoIdConfirmado,
+      cancelarConfirmacion: accion.cancelarConfirmacion || false,
+    };
+    if (sugerenciaPendiente === accion.sugerencia) sugerenciaPendiente = null;
+  } else if (sugerenciaPendiente) {
+    const confirmacion = interpretarConfirmacion(pregunta, sugerenciaPendiente.opciones);
+    if (confirmacion) {
+      cuerpo = { pregunta: sugerenciaPendiente.pregunta, ...confirmacion };
+    }
+    sugerenciaPendiente = null;
+  }
+
   agregarBurbuja(pregunta, 'usuario');
 
   // Limpiar input
@@ -130,11 +190,14 @@ async function enviarMensaje() {
   agregarEscribiendo();
 
   try {
-    const respuesta = await apiPost('/api/asistente/consulta', { pregunta });
+    const respuesta = await apiPost('/api/asistente/consulta', cuerpo);
     quitarEscribiendo();
 
     const meta = `Tipo: ${respuesta.tipoConsulta || '—'} · ${respuesta.productosEnContexto} productos en contexto · ${respuesta.tiempoMs} ms`;
-    agregarRespuestaAsistente(respuesta.respuesta || '(Sin respuesta)', meta, respuesta.tablas);
+    const opcionesProducto = Array.isArray(respuesta.opcionesProducto) ? respuesta.opcionesProducto : [];
+    if (opcionesProducto.length) sugerenciaPendiente = { pregunta, opciones: opcionesProducto };
+    agregarRespuestaAsistente(respuesta.respuesta || '(Sin respuesta)', meta,
+      respuesta.tablas, opcionesProducto);
 
   } catch (err) {
     quitarEscribiendo();

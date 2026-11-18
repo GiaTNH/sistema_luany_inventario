@@ -146,6 +146,88 @@ class AsistenteServiceTests {
     }
 
     @Test
+    void sugiereBiberonAnteUnErrorDeEscrituraSinConsultarMovimientos() {
+        Producto biberon = producto(21L, "Biberón", 3, 1, 8);
+        when(productoService.listar()).thenReturn(List.of(biberon));
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido bibern?", false);
+
+        assertEquals("¿Te refieres a Biberón?", respuesta.respuesta());
+        assertEquals(List.of(new RespuestaAsistente.OpcionProducto(21L, "Biberón")),
+                respuesta.opcionesProducto());
+        assertTrue(respuesta.tablas().isEmpty());
+        verify(reportesService, never()).movimientos(
+                any(), any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void reconoceBiberonAlNormalizarTildesAntesDeFiltrarPorId() {
+        Producto biberon = producto(21L, "Biberón", 3, 1, 8);
+
+        consultarMovimientos(
+                "¿Qué movimientos ha tenido bibéron?", List.of(biberon), 21L, null,
+                List.of(movimiento(4L, 21L, "Biberón", "SALIDA")));
+    }
+
+    @Test
+    void sugiereRoponAnteUnaOmisiónDeLetras() {
+        Producto ropon = producto(12L, "Ropón", 3, 1, 8);
+        when(productoService.listar()).thenReturn(List.of(ropon));
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido ropn?", false);
+
+        assertEquals("¿Te refieres a Ropón?", respuesta.respuesta());
+        assertEquals(12L, respuesta.opcionesProducto().get(0).id());
+        verify(reportesService, never()).movimientos(
+                any(), any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void confirmaSugerenciaYConsultaConElIdRealDelProducto() {
+        Producto biberon = producto(21L, "Biberón", 3, 1, 8);
+        LocalDate hoy = LocalDate.now(clock);
+        when(productoService.listar()).thenReturn(List.of(biberon));
+        when(reportesService.movimientos(any(), any(), eq(21L), eq(null), eq(0), eq(50)))
+                .thenReturn(new MovimientosPagina(hoy.minusDays(29), hoy, 0, 50, 0, 0, List.of()));
+        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido bibern?", false, 21L, false);
+
+        verify(reportesService).movimientos(any(), any(), eq(21L), eq(null), eq(0), eq(50));
+        assertEquals("No encontré registros en la tabla de movimientos de biberón.",
+                respuesta.respuesta());
+        assertTrue(respuesta.opcionesProducto().isEmpty());
+    }
+
+    @Test
+    void cancelarSugerenciaNoConsultaMovimientos() {
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido bibern?", false, null, true);
+
+        assertEquals("Entendido. No consultaré movimientos de ningún producto.", respuesta.respuesta());
+        verify(reportesService, never()).movimientos(
+                any(), any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void muestraOpcionesCuandoDosProductosTienenLaMismaSimilitud() {
+        Producto ropon = producto(12L, "Ropon", 3, 1, 8);
+        Producto ropin = producto(13L, "Ropin", 3, 1, 8);
+        when(productoService.listar()).thenReturn(List.of(ropon, ropin));
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido ropn?", false);
+
+        assertEquals(2, respuesta.opcionesProducto().size());
+        assertTrue(respuesta.respuesta().contains("Selecciona"));
+        verify(reportesService, never()).movimientos(
+                any(), any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
     void losMovimientosDeTodosLosProductosNoAplicanFiltroDeProducto() {
         List<MovimientoItem> movimientos = List.of(
                 movimiento(5L, 12L, "Ropon", "ENTRADA"),
@@ -196,11 +278,10 @@ class AsistenteServiceTests {
     }
 
     @Test
-    void nombresRegistradosAmbiguosSolicitanElNombreCompletoSinMezclarResultados() {
+    void nombresRegistradosAmbiguosMuestranOpcionesSinMezclarResultados() {
         Producto roponConTilde = producto(12L, "Ropón", 3, 1, 8);
         Producto roponSinTilde = producto(13L, "Ropon", 3, 1, 8);
         when(productoService.listar()).thenReturn(List.of(roponConTilde, roponSinTilde));
-        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
 
         RespuestaAsistente respuesta = asistenteService.consultar(
                 "¿Qué movimientos ha tenido ropon?", false);
@@ -208,7 +289,8 @@ class AsistenteServiceTests {
         verify(reportesService, never()).movimientos(
                 any(), any(), any(), any(), anyInt(), anyInt());
         assertTrue(respuesta.respuesta().contains("varios productos"));
-        assertEquals(0, respuesta.tablas().get(0).total());
+        assertEquals(2, respuesta.opcionesProducto().size());
+        assertTrue(respuesta.tablas().isEmpty());
     }
 
     @Test

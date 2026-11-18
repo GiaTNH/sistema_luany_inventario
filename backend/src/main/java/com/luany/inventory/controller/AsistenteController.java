@@ -21,6 +21,10 @@ public class AsistenteController {
             Authentication authentication) {
         boolean administrador = authentication.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
-        return asistenteService.consultar(request.getPregunta(), administrador);
+        if (request.getProductoIdConfirmado() == null && !request.isCancelarConfirmacion()) {
+            return asistenteService.consultar(request.getPregunta(), administrador);
+        }
+        return asistenteService.consultar(request.getPregunta(), administrador,
+                request.getProductoIdConfirmado(), request.isCancelarConfirmacion());
     }
 }
