@@ -13,6 +13,7 @@ import java.time.YearMonth;
 import java.time.temporal.TemporalAdjusters;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -64,6 +65,14 @@ public class AsistenteService {
                     + "(?=\\s+(?:del?|desde|hasta|entre|en|durante|este|esta|mes|hoy|ayer)\\b|[?,.!]|$)");
     private static final Pattern CONSULTA_TODOS_PRODUCTOS = Pattern.compile(
             "\\b(?:todos?\\s+los\\s+productos|cada\\s+producto|todos?\\s+los\\s+articulos)\\b");
+    private static final Set<String> PALABRAS_COMUNES_PRODUCTO = Set.of(
+            "que", "cual", "cuales", "cuanto", "cuantos", "cuanta", "cuantas", "hay", "hat",
+            "tiene", "tienen", "stock", "existencia", "cantidad", "unidades", "producto",
+            "productos", "articulo", "articulos", "el", "la", "los", "las", "un", "una",
+            "de", "del", "al", "para", "por", "con", "entrada", "entradas", "salida", "salidas",
+            "movimiento", "movimientos", "ultimo", "ultimos", "actual", "ahora",
+            "disponible", "disponibles", "me", "dime",
+            "indica", "muestra", "mostrar", "consulta", "consultar", "es", "esta", "estan");
 
     private final ProductoService productoService;
     private final ProveedorService proveedorService;
@@ -90,15 +99,21 @@ public class AsistenteService {
         }
         Periodo periodo = detectarPeriodo(pregunta);
         boolean comparacion = esComparacion(pregunta);
-        FiltroProductoMovimiento filtroProductoMovimiento = modulos.contains("MOVIMIENTOS")
-                ? detectarProductoMovimiento(pregunta) : FiltroProductoMovimiento.sinFiltro();
+        boolean consultaStockProducto = modulos.size() == 1
+                && modulos.contains("PRODUCTOS")
+                && esConsultaStockProducto(pregunta);
+        FiltroProductoMovimiento filtroProductoMovimiento =
+                modulos.contains("MOVIMIENTOS") || (modulos.contains("PRODUCTOS") && consultaStockProducto)
+                        ? detectarProductoSolicitado(pregunta, modulos.contains("MOVIMIENTOS"))
+                        : FiltroProductoMovimiento.sinFiltro();
         if (cancelarConfirmacion) {
             return new RespuestaAsistente(String.join(", ", modulos),
-                    "Entendido. No consultaré movimientos de ningún producto.", 0,
+                    "Entendido. No consultaré información de ningún producto.", 0,
                     System.currentTimeMillis() - inicio);
         }
         if (productoIdConfirmado != null) {
-            if (!modulos.contains("MOVIMIENTOS")
+            if ((!modulos.contains("MOVIMIENTOS")
+                    && !(modulos.contains("PRODUCTOS") && consultaStockProducto))
                     || filtroProductoMovimiento.opciones().stream()
                             .noneMatch(producto -> productoIdConfirmado.equals(producto.getId()))) {
                 throw new IllegalArgumentException("El producto confirmado no corresponde a esta sugerencia");
@@ -116,8 +131,13 @@ public class AsistenteService {
             String respuesta = opciones.size() == 1
                     ? "¿Te refieres a " + opciones.get(0).nombre() + "?"
                     : "Encontré varios productos con nombres similares. Selecciona cuál quieres consultar.";
-            return new RespuestaAsistente("MOVIMIENTOS", respuesta, 0,
+            return new RespuestaAsistente(
+                    consultaStockProducto ? "PRODUCTOS" : "MOVIMIENTOS", respuesta, 0,
                     System.currentTimeMillis() - inicio, List.of(), opciones);
+        }
+        if (modulos.contains("PRODUCTOS") && consultaStockProducto
+                && filtroProductoMovimiento.solicitado()) {
+            return respuestaStockProducto(filtroProductoMovimiento, inicio);
         }
         StringBuilder contexto = new StringBuilder();
         Set<Long> productosIncluidos = new LinkedHashSet<>();
@@ -281,6 +301,7 @@ public class AsistenteService {
         boolean usuarios = contiene(p, "usuario", "usuarios", "empleado", "empleados", "personal", "rol de");
         boolean reportesExplicitos = contiene(p, "reporte", "estadistica", "estadisticas", "comparar",
                 "comparacion", "compara");
+        boolean consultaStock = esConsultaStockProducto(p);
         boolean datosProducto = contiene(p, "precio", "categoria", "stock actual", "stock minimo",
                 "stock maximo", "inventario", "existencia", "codigo de producto");
         boolean listaProductos = contiene(p, "producto", "articulo")
@@ -288,7 +309,7 @@ public class AsistenteService {
                 && !ventas && !reportesExplicitos
                 && !CONSULTA_TODOS_PRODUCTOS.matcher(p).find();
 
-        if (datosProducto || listaProductos) {
+        if (datosProducto || listaProductos || consultaStock) {
             modulos.add("PRODUCTOS");
         }
         if (alertas) {
@@ -316,6 +337,49 @@ public class AsistenteService {
             modulos.add("USUARIOS");
         }
         return modulos;
+    }
+
+    private boolean esConsultaStockProducto(String pregunta) {
+        String normalizada = normalizar(pregunta);
+        if (contiene(normalizada, "stock bajo", "poco stock", "sin stock", "agotado",
+                "alerta", "reponer", "reposicion")
+                || CONSULTA_TODOS_PRODUCTOS.matcher(normalizada).find()
+                || contiene(normalizada, "productos", "articulos")) {
+            return false;
+        }
+        boolean cantidad = contiene(normalizada, "cuanto", "cuanta", "cantidad", "unidades");
+        boolean stock = contiene(normalizada, "stock", "existencia");
+        boolean nombreSolicitado = Arrays.stream(normalizarNombre(normalizada).split(" "))
+                .map(this::singularizar)
+                .anyMatch(termino -> !termino.isBlank()
+                        && !PALABRAS_COMUNES_PRODUCTO.contains(termino));
+        return (cantidad && (nombreSolicitado
+                    || contiene(normalizada, "hay", "hat", "tiene", "tienen", "disponible")))
+                || (stock && nombreSolicitado);
+    }
+
+    private RespuestaAsistente respuestaStockProducto(FiltroProductoMovimiento filtro, long inicio) {
+        if (filtro.producto() == null) {
+            return new RespuestaAsistente("PRODUCTOS",
+                    "No encontré un producto que coincida con “" + filtro.nombreSolicitado()
+                            + "”. No hay stock para mostrar.",
+                    0, System.currentTimeMillis() - inicio,
+                    List.of(tabla("PRODUCTOS", "Stock del producto solicitado", 0, List.of(),
+                            List.of("Producto", "Stock actual", "Stock mínimo", "Stock máximo", "Estado"))));
+        }
+
+        Producto producto = filtro.producto();
+        int stock = producto.getStockActual();
+        String estado = productoService.estadoStock(producto);
+        List<TablaAsistente> tablas = List.of(tabla("PRODUCTOS", "Stock de " + producto.getNombre(), 1,
+                List.of(List.of(
+                        producto.getNombre(), stock, producto.getStockMinimo(),
+                        producto.getStockMaximo(), estado)),
+                List.of("Producto", "Stock actual", "Stock mínimo", "Stock máximo", "Estado")));
+        String cantidad = stock == 1 ? "1 unidad" : stock + " unidades";
+        return new RespuestaAsistente("PRODUCTOS",
+                producto.getNombre() + " tiene " + cantidad + " en stock (" + estado + ").",
+                1, System.currentTimeMillis() - inicio, tablas);
     }
 
     private void agregarProductos(StringBuilder contexto, List<Producto> productos,
@@ -599,7 +663,7 @@ public class AsistenteService {
         return nombre.find() ? nombre.group(1).trim() : null;
     }
 
-    private FiltroProductoMovimiento detectarProductoMovimiento(String pregunta) {
+    private FiltroProductoMovimiento detectarProductoSolicitado(String pregunta, boolean consultaMovimientos) {
         String preguntaNormalizada = normalizar(pregunta).replaceAll("\\s+", " ").trim();
         if (CONSULTA_TODOS_PRODUCTOS.matcher(preguntaNormalizada).find()) {
             return FiltroProductoMovimiento.sinFiltro();
@@ -608,56 +672,94 @@ public class AsistenteService {
         List<Producto> productos = productoService.listar();
         List<Producto> coincidencias = productos.stream()
                 .filter(producto -> contieneNombreCompleto(
-                        preguntaNormalizada, normalizar(producto.getNombre())))
+                        preguntaNormalizada, normalizarNombre(producto.getNombre())))
                 .toList();
         if (!coincidencias.isEmpty()) {
             int longitudMaxima = coincidencias.stream()
-                    .mapToInt(producto -> normalizar(producto.getNombre()).length())
+                    .mapToInt(producto -> normalizarNombre(producto.getNombre()).length())
                     .max().orElse(0);
-            List<Producto> mejoresCoincidencias = coincidencias.stream()
-                    .filter(producto -> normalizar(producto.getNombre()).length() == longitudMaxima)
+            List<Producto> mejores = coincidencias.stream()
+                    .filter(producto -> normalizarNombre(producto.getNombre()).length() == longitudMaxima)
                     .toList();
-            if (mejoresCoincidencias.size() == 1) {
-                return FiltroProductoMovimiento.conProducto(mejoresCoincidencias.get(0));
+            if (mejores.size() == 1) {
+                return FiltroProductoMovimiento.conProducto(mejores.get(0));
             }
-            return FiltroProductoMovimiento.sugerencias(null, mejoresCoincidencias);
+            return FiltroProductoMovimiento.sugerencias(null, mejores);
         }
 
-        Matcher nombreSolicitado = PRODUCTO_EN_CONSULTA_MOVIMIENTOS
-                .matcher(preguntaNormalizada);
-        if (nombreSolicitado.find()) {
-            String nombre = nombreSolicitado.group(1).trim()
+        String nombre;
+        Matcher nombreSolicitado = PRODUCTO_EN_CONSULTA_MOVIMIENTOS.matcher(preguntaNormalizada);
+        if (consultaMovimientos && nombreSolicitado.find()) {
+            nombre = nombreSolicitado.group(1).trim()
                     .replaceFirst("^(?:producto|articulo)\\s+", "")
+                    .replaceAll("\\b\\d{1,4}(?:[/.-]\\d{1,2}){0,2}\\b", " ")
                     .replaceAll("\\s+", " ");
-            if (!nombre.isBlank() && !nombre.equals("todos los productos")
-                    && !nombre.equals("todas las entradas") && !nombre.equals("todas las salidas")) {
-                List<CoincidenciaProducto> sugerencias = productos.stream()
-                        .map(producto -> new CoincidenciaProducto(producto,
-                                distanciaLevenshtein(normalizarNombre(nombre),
-                                        normalizarNombre(producto.getNombre()))))
-                        .filter(coincidencia -> distanciaConfiable(
-                                normalizarNombre(nombre), normalizarNombre(coincidencia.producto().getNombre()),
-                                coincidencia.distancia()))
-                        .sorted(Comparator.comparingInt(CoincidenciaProducto::distancia))
-                        .toList();
-                if (!sugerencias.isEmpty()) {
-                    int mejorDistancia = sugerencias.get(0).distancia();
-                    List<Producto> mejores = sugerencias.stream()
-                            .filter(coincidencia -> coincidencia.distancia() <= mejorDistancia + 1)
-                            .limit(MAX_OPCIONES_PRODUCTO)
-                            .map(CoincidenciaProducto::producto)
-                            .toList();
-                    return FiltroProductoMovimiento.sugerencias(nombre, mejores);
-                }
-                return FiltroProductoMovimiento.noEncontrado(nombre);
-            }
+        } else {
+            nombre = preguntaNormalizada;
         }
-        return FiltroProductoMovimiento.sinFiltro();
+
+        String nombreNormalizado = normalizarNombre(nombre)
+                .replaceAll("\\b\\d{1,4}(?:[/.-]\\d{1,2}){0,2}\\b", " ");
+        List<String> terminos = Arrays.stream(nombreNormalizado.split(" "))
+                .map(this::singularizar)
+                .filter(termino -> !termino.isBlank())
+                .filter(termino -> !PALABRAS_COMUNES_PRODUCTO.contains(termino))
+                .toList();
+        if (terminos.isEmpty()) {
+            return consultaMovimientos ? FiltroProductoMovimiento.sinFiltro()
+                    : FiltroProductoMovimiento.noEncontrado("producto solicitado");
+        }
+
+        List<CoincidenciaProducto> sugerencias = productos.stream()
+                .map(producto -> new CoincidenciaProducto(producto,
+                        distanciaProducto(terminos, producto)))
+                .filter(coincidencia -> coincidencia.distancia() >= 0)
+                .sorted(Comparator.comparingInt(CoincidenciaProducto::distancia))
+                .toList();
+        if (!sugerencias.isEmpty()) {
+            int mejorDistancia = sugerencias.get(0).distancia();
+            List<Producto> mejores = sugerencias.stream()
+                    .filter(coincidencia -> coincidencia.distancia() <= mejorDistancia + 1)
+                    .limit(MAX_OPCIONES_PRODUCTO)
+                    .map(CoincidenciaProducto::producto)
+                    .toList();
+            if (mejorDistancia == 0 && mejores.size() == 1) {
+                return FiltroProductoMovimiento.conProducto(mejores.get(0));
+            }
+            return FiltroProductoMovimiento.sugerencias(nombre, mejores);
+        }
+        return FiltroProductoMovimiento.noEncontrado(nombre);
     }
 
     private String normalizarNombre(String nombre) {
         return normalizar(nombre).replaceAll("[^\\p{L}\\p{N}]+", " ").trim()
                 .replaceAll("\\s+", " ");
+    }
+
+    private String singularizar(String palabra) {
+        if (palabra.length() > 5 && palabra.endsWith("es")) {
+            return palabra.substring(0, palabra.length() - 2);
+        }
+        if (palabra.length() > 4 && palabra.endsWith("s")) {
+            return palabra.substring(0, palabra.length() - 1);
+        }
+        return palabra;
+    }
+
+    private int distanciaProducto(List<String> terminos, Producto producto) {
+        List<String> palabrasProducto = Arrays.stream(normalizarNombre(producto.getNombre()).split(" "))
+                .map(this::singularizar)
+                .toList();
+        int mejor = Integer.MAX_VALUE;
+        for (String termino : terminos) {
+            for (String palabraProducto : palabrasProducto) {
+                int distancia = distanciaLevenshtein(termino, palabraProducto);
+                if (distanciaConfiable(termino, palabraProducto, distancia)) {
+                    mejor = Math.min(mejor, distancia);
+                }
+            }
+        }
+        return mejor == Integer.MAX_VALUE ? -1 : mejor;
     }
 
     private boolean distanciaConfiable(String solicitado, String registrado, int distancia) {
