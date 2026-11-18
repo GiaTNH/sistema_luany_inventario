@@ -53,9 +53,16 @@ public class AsistenteService {
     private static final Pattern FECHA_ISO = Pattern.compile("\\b(\\d{4}-\\d{1,2}-\\d{1,2})\\b");
     private static final Pattern FECHA_LOCAL = Pattern.compile("\\b(\\d{1,2}/\\d{1,2}/\\d{4})\\b");
     private static final Pattern ULTIMOS_DIAS = Pattern.compile("ultimos?\\s+(\\d{1,3})\\s+dias?");
+    private static final Pattern PRODUCTO_EN_CONSULTA_MOVIMIENTOS = Pattern.compile(
+            "(?:movimientos?|entradas?|salidas?)\\s+(?:ha\\s+tenido\\s+|tuvo\\s+|del?\\s+|para\\s+|sobre\\s+)"
+                    + "(?:el\\s+|la\\s+|los\\s+|las\\s+)?([\\p{L}\\p{N}][\\p{L}\\p{N}\\s._-]*?)"
+                    + "(?=\\s+(?:del?\\s+\\d|desde\\s+\\d|entre\\s+\\d|ultimos?\\s+\\d+\\s+dias?|"
+                    + "hoy|ayer|esta semana|este mes|durante)\\b|[?,.!]|$)");
     private static final Pattern NOMBRE_CLIENTE = Pattern.compile(
             "(?iu)cliente\\s+(?:llamad[oa]\\s+)?([\\p{L}]+(?:\\s+[\\p{L}]+){0,2})"
                     + "(?=\\s+(?:del?|desde|hasta|entre|en|durante|este|esta|mes|hoy|ayer)\\b|[?,.!]|$)");
+    private static final Pattern CONSULTA_TODOS_PRODUCTOS = Pattern.compile(
+            "\\b(?:todos?\\s+los\\s+productos|cada\\s+producto|todos?\\s+los\\s+articulos)\\b");
 
     private final ProductoService productoService;
     private final ProveedorService proveedorService;
@@ -77,6 +84,8 @@ public class AsistenteService {
         }
         Periodo periodo = detectarPeriodo(pregunta);
         boolean comparacion = esComparacion(pregunta);
+        FiltroProductoMovimiento filtroProductoMovimiento = modulos.contains("MOVIMIENTOS")
+                ? detectarProductoMovimiento(pregunta) : FiltroProductoMovimiento.sinFiltro();
         StringBuilder contexto = new StringBuilder();
         Set<Long> productosIncluidos = new LinkedHashSet<>();
         List<TablaAsistente> tablas = new ArrayList<>();
@@ -94,7 +103,7 @@ public class AsistenteService {
         }
         if (modulos.contains("MOVIMIENTOS")) {
             agregarMovimientos(contexto, periodo, detectarTipoMovimiento(pregunta), comparacion,
-                    productosIncluidos, tablas);
+                    filtroProductoMovimiento, productosIncluidos, tablas);
         }
         if (modulos.contains("PROVEEDORES")) {
             agregarProveedores(contexto, productosIncluidos, tablas);
@@ -127,7 +136,13 @@ public class AsistenteService {
                 + "\nMÓDULOS CONSULTADOS: " + nombreTipo
                 + "\nPREGUNTA DEL USUARIO: " + pregunta;
         String respuestaGemini = geminiClient.generar(PROMPT_SISTEMA, prompt);
-        String respuesta = tablas.isEmpty() ? respuestaGemini : resumenTablas(tablas);
+        String respuesta = filtroProductoMovimiento.solicitado()
+                && filtroProductoMovimiento.producto() == null
+                ? filtroProductoMovimiento.ambiguo()
+                    ? "Hay varios productos con nombres similares. Especifica el nombre completo para filtrar sus movimientos."
+                    : "No encontré un producto que coincida con “"
+                        + filtroProductoMovimiento.nombreSolicitado() + "”. No hay movimientos para mostrar."
+                : tablas.isEmpty() ? respuestaGemini : resumenTablas(tablas);
         return new RespuestaAsistente(nombreTipo, respuesta, productosIncluidos.size(),
                 System.currentTimeMillis() - inicio, tablas);
     }
@@ -237,7 +252,8 @@ public class AsistenteService {
                 "stock maximo", "inventario", "existencia", "codigo de producto");
         boolean listaProductos = contiene(p, "producto", "articulo")
                 && !alertas && !ranking && !rotacion && !clientes && !proveedores && !pedidos && !usuarios
-                && !ventas && !reportesExplicitos;
+                && !ventas && !reportesExplicitos
+                && !CONSULTA_TODOS_PRODUCTOS.matcher(p).find();
 
         if (datosProducto || listaProductos) {
             modulos.add("PRODUCTOS");
@@ -354,37 +370,60 @@ public class AsistenteService {
 
     private void agregarMovimientos(
             StringBuilder contexto, Periodo periodo, TipoMovimiento tipo, boolean comparacion,
+            FiltroProductoMovimiento filtroProducto,
             Set<Long> productosIncluidos, List<TablaAsistente> tablas) {
+        if (filtroProducto.solicitado() && filtroProducto.producto() == null) {
+            String motivo = filtroProducto.ambiguo()
+                    ? "El nombre coincide con varios productos; se requiere el nombre completo."
+                    : "No existe un producto con el nombre consultado.";
+            contexto.append("MOVIMIENTOS: ").append(motivo).append('\n');
+            agregarTablaMovimientos(tablas,
+                    filtroProducto.ambiguo()
+                            ? "Movimientos del producto solicitado"
+                            : "Movimientos de " + filtroProducto.nombreSolicitado(),
+                    0, List.of());
+            return;
+        }
+
+        Long productoId = filtroProducto.producto() == null ? null : filtroProducto.producto().getId();
+        String titulo = filtroProducto.producto() == null ? "Movimientos registrados"
+                : "Movimientos de " + filtroProducto.producto().getNombre();
         MovimientosPagina pagina = reportesService.movimientos(
-                periodo.desde(), periodo.hasta(), null, tipo, 0, MAX_MOVIMIENTOS);
-        contexto.append("MOVIMIENTOS (máximo ").append(MAX_MOVIMIENTOS)
+                periodo.desde(), periodo.hasta(), productoId, tipo, 0, MAX_MOVIMIENTOS);
+        contexto.append("MOVIMIENTOS");
+        if (filtroProducto.producto() != null) {
+            contexto.append(" DEL PRODUCTO ").append(filtroProducto.producto().getNombre());
+        }
+        contexto.append(" (máximo ").append(MAX_MOVIMIENTOS)
                 .append("; ").append(pagina.totalElementos()).append(" en el periodo):\n");
         contexto.append("- Tipos registrados: ENTRADA, SALIDA y VENTA; el sistema no tiene un tipo "
                 + "de movimiento separado para devoluciones.\n");
         agregarLineasMovimientos(contexto, pagina, "periodo consultado", productosIncluidos);
-        tablas.add(tabla("MOVIMIENTOS", "Movimientos registrados", pagina.totalElementos(),
-                pagina.movimientos().stream().map(movimiento -> List.<Object>of(
-                        movimiento.fecha(), movimiento.tipo(), movimiento.productoNombre(),
-                        datoTabla(movimiento.cantidad()), datoTabla(movimiento.stockAnterior()),
-                        datoTabla(movimiento.stockNuevo()))).toList(),
-                List.of("Fecha y hora", "Tipo", "Producto", "Cantidad", "Stock anterior", "Stock nuevo")));
+        agregarTablaMovimientos(tablas, titulo, pagina.totalElementos(), pagina.movimientos());
         if (comparacion) {
             Periodo anterior = periodoAnterior(periodo);
             MovimientosPagina paginaAnterior = reportesService.movimientos(
-                    anterior.desde(), anterior.hasta(), null, tipo, 0, MAX_MOVIMIENTOS);
+                    anterior.desde(), anterior.hasta(), productoId, tipo, 0, MAX_MOVIMIENTOS);
             contexto.append("MOVIMIENTOS EN EL PERIODO ANTERIOR (")
                     .append(anterior.desde()).append(" a ").append(anterior.hasta()).append("):\n");
             agregarLineasMovimientos(contexto, paginaAnterior, "periodo anterior", productosIncluidos);
-            tablas.add(tabla("MOVIMIENTOS", "Movimientos del periodo anterior",
-                    paginaAnterior.totalElementos(), paginaAnterior.movimientos().stream()
-                            .map(movimiento -> List.<Object>of(
-                                    movimiento.fecha(), movimiento.tipo(), movimiento.productoNombre(),
-                                    datoTabla(movimiento.cantidad()), datoTabla(movimiento.stockAnterior()),
-                                    datoTabla(movimiento.stockNuevo())))
-                            .toList(),
-                    List.of("Fecha y hora", "Tipo", "Producto", "Cantidad",
-                            "Stock anterior", "Stock nuevo")));
+            agregarTablaMovimientos(tablas,
+                    filtroProducto.producto() == null ? "Movimientos del periodo anterior"
+                            : "Movimientos de " + filtroProducto.producto().getNombre()
+                                + " del periodo anterior",
+                    paginaAnterior.totalElementos(), paginaAnterior.movimientos());
         }
+    }
+
+    private void agregarTablaMovimientos(
+            List<TablaAsistente> tablas, String titulo, long total, List<MovimientoItem> movimientos) {
+        tablas.add(tabla("MOVIMIENTOS", titulo, total, movimientos.stream()
+                .map(movimiento -> List.<Object>of(
+                        movimiento.fecha(), movimiento.tipo(), movimiento.productoNombre(),
+                        datoTabla(movimiento.cantidad()), datoTabla(movimiento.stockAnterior()),
+                        datoTabla(movimiento.stockNuevo())))
+                .toList(),
+                List.of("Fecha y hora", "Tipo", "Producto", "Cantidad", "Stock anterior", "Stock nuevo")));
     }
 
     private void agregarLineasMovimientos(
@@ -525,6 +564,53 @@ public class AsistenteService {
     private String detectarNombreCliente(String pregunta) {
         Matcher nombre = NOMBRE_CLIENTE.matcher(pregunta);
         return nombre.find() ? nombre.group(1).trim() : null;
+    }
+
+    private FiltroProductoMovimiento detectarProductoMovimiento(String pregunta) {
+        String preguntaNormalizada = normalizar(pregunta).replaceAll("\\s+", " ").trim();
+        if (CONSULTA_TODOS_PRODUCTOS.matcher(preguntaNormalizada).find()) {
+            return FiltroProductoMovimiento.sinFiltro();
+        }
+
+        List<Producto> productos = productoService.listar();
+        List<Producto> coincidencias = productos.stream()
+                .filter(producto -> contieneNombreCompleto(
+                        preguntaNormalizada, normalizar(producto.getNombre())))
+                .toList();
+        if (!coincidencias.isEmpty()) {
+            int longitudMaxima = coincidencias.stream()
+                    .mapToInt(producto -> normalizar(producto.getNombre()).length())
+                    .max().orElse(0);
+            List<Producto> mejoresCoincidencias = coincidencias.stream()
+                    .filter(producto -> normalizar(producto.getNombre()).length() == longitudMaxima)
+                    .toList();
+            if (mejoresCoincidencias.size() == 1) {
+                return FiltroProductoMovimiento.conProducto(mejoresCoincidencias.get(0));
+            }
+            return FiltroProductoMovimiento.coincidenciaAmbigua();
+        }
+
+        Matcher nombreSolicitado = PRODUCTO_EN_CONSULTA_MOVIMIENTOS
+                .matcher(preguntaNormalizada);
+        if (nombreSolicitado.find()) {
+            String nombre = nombreSolicitado.group(1).trim()
+                    .replaceFirst("^(?:producto|articulo)\\s+", "")
+                    .replaceAll("\\s+", " ");
+            if (!nombre.isBlank() && !nombre.equals("todos los productos")
+                    && !nombre.equals("todas las entradas") && !nombre.equals("todas las salidas")) {
+                return FiltroProductoMovimiento.noEncontrado(nombre);
+            }
+        }
+        return FiltroProductoMovimiento.sinFiltro();
+    }
+
+    private boolean contieneNombreCompleto(String preguntaNormalizada, String nombreNormalizado) {
+        if (nombreNormalizado.isBlank()) {
+            return false;
+        }
+        Pattern nombreCompleto = Pattern.compile("(?<![\\p{L}\\p{N}])"
+                + Pattern.quote(nombreNormalizado) + "(?![\\p{L}\\p{N}])");
+        return nombreCompleto.matcher(preguntaNormalizada).find();
     }
 
     private void agregarReportes(
@@ -725,5 +811,24 @@ public class AsistenteService {
     }
 
     private record Periodo(LocalDate desde, LocalDate hasta) {
+    }
+
+    private record FiltroProductoMovimiento(
+            boolean solicitado, Producto producto, boolean ambiguo, String nombreSolicitado) {
+        private static FiltroProductoMovimiento sinFiltro() {
+            return new FiltroProductoMovimiento(false, null, false, null);
+        }
+
+        private static FiltroProductoMovimiento conProducto(Producto producto) {
+            return new FiltroProductoMovimiento(true, producto, false, producto.getNombre());
+        }
+
+        private static FiltroProductoMovimiento noEncontrado(String nombre) {
+            return new FiltroProductoMovimiento(true, null, false, nombre);
+        }
+
+        private static FiltroProductoMovimiento coincidenciaAmbigua() {
+            return new FiltroProductoMovimiento(true, null, true, null);
+        }
     }
 }
