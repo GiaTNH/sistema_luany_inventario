@@ -114,6 +114,37 @@ const apiPut = (ruta, cuerpo) =>
 /** DELETE */
 const apiDelete = (ruta) => apiFetch(ruta, { method: 'DELETE' });
 
+function renderizarMarkdownAsistente(elemento, texto) {
+  const patron = /\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|_(.+?)_|`([^`]+)`/g;
+  const lineas = String(texto ?? '').split('\n');
+
+  lineas.forEach((linea, indice) => {
+    if (indice > 0) elemento.appendChild(document.createElement('br'));
+
+    let inicio = 0;
+    let coincidencia;
+    while ((coincidencia = patron.exec(linea)) !== null) {
+      if (coincidencia.index > inicio) {
+        elemento.appendChild(document.createTextNode(linea.slice(inicio, coincidencia.index)));
+      }
+
+      const codigo = coincidencia[5] != null;
+      const contenido = coincidencia[1] ?? coincidencia[2] ?? coincidencia[3]
+        ?? coincidencia[4] ?? coincidencia[5];
+      const formato = document.createElement(codigo ? 'code'
+        : coincidencia[1] != null || coincidencia[2] != null ? 'strong' : 'em');
+      formato.textContent = contenido;
+      elemento.appendChild(formato);
+      inicio = patron.lastIndex;
+    }
+
+    if (inicio < linea.length) {
+      elemento.appendChild(document.createTextNode(linea.slice(inicio)));
+    }
+    patron.lastIndex = 0;
+  });
+}
+
 function crearTablasAsistente(tablas) {
   if (!Array.isArray(tablas) || tablas.length === 0) return null;
   const contenedor = document.createElement('div');

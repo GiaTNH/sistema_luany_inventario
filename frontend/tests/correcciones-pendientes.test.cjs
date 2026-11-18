@@ -187,7 +187,7 @@ test('la API marca la notificación fallida sin alterar el cuerpo de la respuest
       ok: true,
       status: 201,
       headers: { get: (nombre) => nombre === 'X-Notification-Status' ? 'not-sent' : null },
-      json: async () => ({ nombreUsuario: 'ana' }),
+      text: async () => JSON.stringify({ nombreUsuario: 'ana' }),
     }),
   });
   vm.runInContext(readStatic('js/api.js'), contexto);
@@ -358,17 +358,17 @@ test('el filtro de rotación aplica días, seis meses y un año al conjunto de v
   const contexto = vm.createContext({ fechaMovimiento: (valor) => new Date(valor) });
   ['fechaInicioPeriodo', 'filtrarVentasPeriodo'].forEach((nombre) =>
     vm.runInContext(extraerFuncion(dashboard, nombre), contexto));
-  const referencia = new Date(2026, 6, 15, 12);
+  const referencia = new Date(Date.UTC(2026, 6, 15, 12));
   contexto.referencia = referencia;
 
   const inicio7 = vm.runInContext("fechaInicioPeriodo('7', referencia)", contexto);
   const inicio30 = vm.runInContext("fechaInicioPeriodo('30', referencia)", contexto);
   const inicio6m = vm.runInContext("fechaInicioPeriodo('6m', referencia)", contexto);
   const inicio1y = vm.runInContext("fechaInicioPeriodo('1y', referencia)", contexto);
-  assert.deepEqual([inicio7.getFullYear(), inicio7.getMonth(), inicio7.getDate()], [2026, 6, 9]);
-  assert.deepEqual([inicio30.getFullYear(), inicio30.getMonth(), inicio30.getDate()], [2026, 5, 16]);
-  assert.deepEqual([inicio6m.getFullYear(), inicio6m.getMonth(), inicio6m.getDate()], [2026, 0, 15]);
-  assert.deepEqual([inicio1y.getFullYear(), inicio1y.getMonth(), inicio1y.getDate()], [2025, 6, 15]);
+  assert.deepEqual([inicio7.getUTCFullYear(), inicio7.getUTCMonth(), inicio7.getUTCDate()], [2026, 6, 9]);
+  assert.deepEqual([inicio30.getUTCFullYear(), inicio30.getUTCMonth(), inicio30.getUTCDate()], [2026, 5, 16]);
+  assert.deepEqual([inicio6m.getUTCFullYear(), inicio6m.getUTCMonth(), inicio6m.getUTCDate()], [2026, 0, 15]);
+  assert.deepEqual([inicio1y.getUTCFullYear(), inicio1y.getUTCMonth(), inicio1y.getUTCDate()], [2025, 6, 15]);
 
   const movimientos = [
     { id: 1, tipo: 'VENTA', fecha: '2026-07-01T10:00:00', producto: { id: 1 } },

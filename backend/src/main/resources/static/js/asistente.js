@@ -65,7 +65,7 @@ function agregarRespuestaAsistente(texto, meta, tablas = []) {
 
   const burbuja = document.createElement('div');
   burbuja.className = 'burbuja asistente';
-  burbuja.textContent = texto || '(Sin respuesta)';
+  renderizarMarkdownAsistente(burbuja, texto || '(Sin respuesta)');
   wrapper.appendChild(burbuja);
 
   const tablasEl = crearTablasAsistente(tablas);
