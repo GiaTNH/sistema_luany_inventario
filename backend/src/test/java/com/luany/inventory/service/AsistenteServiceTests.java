@@ -185,6 +185,110 @@ class AsistenteServiceTests {
     }
 
     @Test
+    void consultaStockDeSonajeroAunqueLaPreguntaUsePlural() {
+        Producto sonajero = producto(31L, "Sonajero infantil", 7, 2, 15);
+        when(productoService.listar()).thenReturn(List.of(sonajero));
+        when(productoService.estadoStock(sonajero)).thenReturn("NORMAL");
+
+        RespuestaAsistente respuesta = asistenteService.consultar("¿Cuántos sonajeros hay?", false);
+
+        assertEquals("Sonajero infantil tiene 7 unidades en stock (NORMAL).", respuesta.respuesta());
+        assertEquals(1, respuesta.tablas().get(0).total());
+        assertEquals("Sonajero infantil", respuesta.tablas().get(0).filas().get(0).get(0));
+        assertEquals(7, respuesta.tablas().get(0).filas().get(0).get(1));
+        verify(geminiClient, never()).generar(any(), any());
+    }
+
+    @Test
+    void pideConfirmacionParaSojanerosHatYAlConfirmarDevuelveStockPorId() {
+        Producto sonajero = producto(31L, "Sonajero infantil", 7, 2, 15);
+        when(productoService.listar()).thenReturn(List.of(sonajero));
+        when(productoService.estadoStock(sonajero)).thenReturn("NORMAL");
+
+        RespuestaAsistente sugerencia = asistenteService.consultar("cuantos sojaneros hat", false);
+
+        assertEquals("¿Te refieres a Sonajero infantil?", sugerencia.respuesta());
+        assertEquals(List.of(new RespuestaAsistente.OpcionProducto(31L, "Sonajero infantil")),
+                sugerencia.opcionesProducto());
+        assertTrue(sugerencia.tablas().isEmpty());
+        verify(geminiClient, never()).generar(any(), any());
+
+        RespuestaAsistente confirmada = asistenteService.consultar(
+                "cuantos sojaneros hat", false, 31L, false);
+
+        assertEquals("Sonajero infantil tiene 7 unidades en stock (NORMAL).", confirmada.respuesta());
+        assertEquals("Stock de Sonajero infantil", confirmada.tablas().get(0).titulo());
+        assertEquals(1, confirmada.productosEnContexto());
+    }
+
+    @Test
+    void detectaSojaneroCuandoElNombreVaAntesDeLaPreguntaDeCantidad() {
+        Producto sonajero = producto(31L, "Sonajero infantil", 4, 2, 15);
+        when(productoService.listar()).thenReturn(List.of(sonajero));
+
+        RespuestaAsistente respuesta = asistenteService.consultar("sojanero cuantos hay", false);
+
+        assertEquals("¿Te refieres a Sonajero infantil?", respuesta.respuesta());
+        assertEquals(31L, respuesta.opcionesProducto().get(0).id());
+        assertTrue(respuesta.tablas().isEmpty());
+    }
+
+    @Test
+    void consultaStockDelProductoAgotadoSinInventarUnidades() {
+        Producto sonajero = producto(31L, "Sonajero infantil", 0, 2, 15);
+        when(productoService.listar()).thenReturn(List.of(sonajero));
+        when(productoService.estadoStock(sonajero)).thenReturn("AGOTADO");
+
+        RespuestaAsistente respuesta = asistenteService.consultar("¿Qué stock tiene el sonajero?", false);
+
+        assertEquals("Sonajero infantil tiene 0 unidades en stock (AGOTADO).", respuesta.respuesta());
+        assertEquals(0, respuesta.tablas().get(0).filas().get(0).get(1));
+        verify(geminiClient, never()).generar(any(), any());
+    }
+
+    @Test
+    void corrigeElProductoSojaneroYConfirmaAntesDeConsultarStock() {
+        Producto sonajero = producto(31L, "Sonajero infantil", 4, 2, 15);
+        when(productoService.listar()).thenReturn(List.of(sonajero));
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué stock tiene el sojanero?", false);
+
+        assertEquals("¿Te refieres a Sonajero infantil?", respuesta.respuesta());
+        assertEquals(31L, respuesta.opcionesProducto().get(0).id());
+        assertTrue(respuesta.tablas().isEmpty());
+    }
+
+    @Test
+    void preguntaOpcionesCuandoHayProductosConNombresSimilaresEnStock() {
+        Producto sonajeroInfantil = producto(31L, "Sonajero infantil", 7, 2, 15);
+        Producto sonajeroMusical = producto(32L, "Sonajero musical", 3, 1, 8);
+        when(productoService.listar()).thenReturn(List.of(sonajeroInfantil, sonajeroMusical));
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Cuántos sojaneros hay?", false);
+
+        assertEquals(2, respuesta.opcionesProducto().size());
+        assertTrue(respuesta.respuesta().contains("Selecciona"));
+        assertTrue(respuesta.tablas().isEmpty());
+        verify(geminiClient, never()).generar(any(), any());
+    }
+
+    @Test
+    void productoInexistenteNoMuestraStockDeOtrosProductosNiConsultaGemini() {
+        Producto sonajero = producto(31L, "Sonajero infantil", 7, 2, 15);
+        when(productoService.listar()).thenReturn(List.of(sonajero));
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Cuántos sombreros hay?", false);
+
+        assertTrue(respuesta.respuesta().contains("No encontré un producto"));
+        assertEquals(0, respuesta.tablas().get(0).total());
+        assertTrue(respuesta.tablas().get(0).filas().isEmpty());
+        verify(geminiClient, never()).generar(any(), any());
+    }
+
+    @Test
     void confirmaSugerenciaYConsultaConElIdRealDelProducto() {
         Producto biberon = producto(21L, "Biberón", 3, 1, 8);
         LocalDate hoy = LocalDate.now(clock);
@@ -207,7 +311,7 @@ class AsistenteServiceTests {
         RespuestaAsistente respuesta = asistenteService.consultar(
                 "¿Qué movimientos ha tenido bibern?", false, null, true);
 
-        assertEquals("Entendido. No consultaré movimientos de ningún producto.", respuesta.respuesta());
+        assertEquals("Entendido. No consultaré información de ningún producto.", respuesta.respuesta());
         verify(reportesService, never()).movimientos(
                 any(), any(), any(), any(), anyInt(), anyInt());
     }
