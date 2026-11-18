@@ -103,7 +103,7 @@
     mensaje.className = `ai-floating-message ai-floating-message-${tipo}`;
     if (texto) {
       const burbuja = document.createElement('p');
-      burbuja.textContent = texto;
+      renderizarMarkdownAsistente(burbuja, texto);
       mensaje.appendChild(burbuja);
     }
     const tablasEl = crearTablasAsistente(tablas);
@@ -118,9 +118,13 @@
   }
 
   function renderizarHistorial() {
-    historial.forEach((item) => agregarMensaje(
-      item.texto, item.tipo, item.meta || '', item.tablas || [],
-    ));
+    historial.forEach((item) => {
+      const tablas = item.tablas || [];
+      const texto = item.tipo === 'asistente' && tablas.length
+        ? `Encontré información en ${tablas.length} tablas. Te muestro los resultados.`
+        : item.texto;
+      agregarMensaje(texto, item.tipo, item.meta || '', tablas);
+    });
   }
 
   function abrir() {

@@ -68,6 +68,10 @@ class AsistenteServiceTests {
         assertTrue(respuesta.tipoConsulta().contains("ALERTAS"));
         assertTrue(respuesta.tipoConsulta().contains("REPORTES"));
         assertEquals(1, respuesta.productosEnContexto());
+        assertTrue(respuesta.tablas().size() > 1);
+        assertEquals("Encontré información en " + respuesta.tablas().size()
+                + " tablas. Te muestro los resultados.", respuesta.respuesta());
+        assertFalse(respuesta.respuesta().contains("Vestido Luna"));
         assertTrue(prompt.contains("Vestido Luna"));
         assertTrue(prompt.contains("unidades sugeridas: 13"));
         assertTrue(prompt.contains("125.00"));
@@ -235,6 +239,24 @@ class AsistenteServiceTests {
         assertEquals("PRODUCTOS_SIN_STOCK", sinStock.tablas().get(0).tipo());
         assertEquals(List.of("Falda agotada"), sinStock.tablas().get(0).filas().stream()
                 .map(fila -> fila.get(0)).toList());
+    }
+
+    @Test
+    void respuestaConTablaNoRepiteLosRegistrosAunqueGeminiLosEnumere() {
+        Producto producto = producto(8L, "Blusa Luna", 2, 5, 15);
+        when(productoService.productosConStockBajoParaAsistente(50)).thenReturn(List.of(producto));
+        when(productoService.estadoStock(producto)).thenReturn("BAJO");
+        when(geminiClient.generar(any(), any()))
+                .thenReturn("Encontré Blusa Luna con stock actual 2 y mínimo 5.");
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué productos tienen stock bajo?", false);
+
+        assertEquals(
+                "Encontré 1 registro en la tabla de productos con stock bajo. Te muestro el resultado.",
+                respuesta.respuesta());
+        assertFalse(respuesta.respuesta().contains("Blusa Luna"));
+        assertEquals("Blusa Luna", respuesta.tablas().get(0).filas().get(0).get(0));
     }
 
     @Test

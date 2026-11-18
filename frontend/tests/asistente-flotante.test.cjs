@@ -26,7 +26,7 @@ function crearEntorno(usuario) {
     fetch: async () => ({
       ok: true,
       status: 200,
-      json: async () => usuario,
+      text: async () => JSON.stringify(usuario),
     }),
     sessionStorage: {
       getItem: (clave) => valoresSesion.get(clave) ?? null,
@@ -52,6 +52,8 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
   const valoresSesion = new Map([['luany-asistente-historial:7', historialGuardado]]);
   const elementosWidget = new Map();
   const document = { activeElement: null };
+  document.addEventListener = () => {};
+  document.createTextNode = (texto) => ({ nodeType: 3, textContent: texto });
   let widgetMounted = false;
   let widget;
 
@@ -79,6 +81,9 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
       },
       append(...hijos) {
         hijos.forEach((hijo) => this.appendChild(hijo));
+      },
+      get childElementCount() {
+        return this.children.filter((hijo) => hijo.nodeType !== 3).length;
       },
       setAttribute(nombre, valor) {
         this.atributos ||= new Map();
@@ -139,8 +144,21 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
   document.body = documentBody;
 
   const llamadas = [];
+  const documentMarkdown = {
+    addEventListener() {},
+    createElement: (etiqueta) => elemento(etiqueta),
+    createTextNode: (texto) => ({ nodeType: 3, textContent: texto }),
+  };
+  const utilidadesContexto = vm.createContext({
+    document: documentMarkdown,
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(apiSource, utilidadesContexto);
   const contexto = vm.createContext({
     document,
+    window: { location: { pathname: '/' }, addEventListener() {} },
+    crearTablasAsistente: vm.runInContext('crearTablasAsistente', utilidadesContexto),
+    renderizarMarkdownAsistente: vm.runInContext('renderizarMarkdownAsistente', utilidadesContexto),
     obtenerSesion: () => ({ id: 7 }),
     sessionStorage: {
       getItem: (clave) => valoresSesion.get(clave) ?? null,
@@ -266,6 +284,101 @@ test('el widget envía preguntas, presenta respuesta y restaura el historial en 
 
   const otraPantalla = crearEntornoWidget(entorno.valoresSesion.get('luany-asistente-historial:7'));
   assert.equal(otraPantalla.elementosWidget.get('.ai-floating-messages').children.length, 2);
+});
+
+test('el widget evita repetir respuestas tabulares guardadas antes de la corrección', () => {
+  const historial = JSON.stringify([
+    { tipo: 'usuario', texto: '¿Qué productos tienen stock bajo?' },
+    {
+      tipo: 'asistente',
+      texto: 'Blusa Luna tiene stock bajo.',
+      tablas: [{ titulo: 'Productos con stock bajo', columnas: ['Producto'], filas: [['Blusa Luna']] }],
+    },
+  ]);
+  const entorno = crearEntornoWidget(historial);
+  const respuesta = entorno.elementosWidget.get('.ai-floating-messages').children[1].children[0];
+
+  assert.equal(respuesta.children[0].textContent,
+    'Encontré información en 1 tablas. Te muestro los resultados.');
+});
+
+test('el widget conserva todas las tablas recibidas y renderiza Markdown como elementos seguros', async () => {
+  const respuestaApi = {
+    tipoConsulta: 'STOCK_BAJO',
+    productosEnContexto: 1,
+    tiempoMs: 120,
+    respuesta: '**Encontré 1 registro.** <img src=x onerror=alert(1)>',
+    tablas: [{
+      tipo: 'STOCK_BAJO',
+      titulo: 'Productos con stock bajo',
+      total: 1,
+      mostrados: 1,
+      columnas: ['Producto', 'Stock actual'],
+      filas: [['Blusa Luna', 2]],
+    }, {
+      tipo: 'MOVIMIENTOS',
+      titulo: 'Movimientos registrados',
+      total: 0,
+      mostrados: 0,
+      columnas: ['Fecha y hora'],
+      filas: [],
+    }],
+  };
+  const entorno = crearEntornoWidget('[]', respuestaApi);
+  const input = entorno.elementosWidget.get('#luany-asistente-input');
+  input.value = 'Consulta con varias tablas';
+
+  await entorno.elementosWidget.get('.ai-floating-form').emitir('submit', { preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const mensaje = entorno.elementosWidget.get('.ai-floating-messages').children[1];
+  const burbuja = mensaje.children[0];
+  assert.equal(burbuja.children[0].etiqueta, 'strong');
+  assert.equal(burbuja.children[0].textContent, 'Encontré 1 registro.');
+  assert.equal(burbuja.children[1].textContent, ' <img src=x onerror=alert(1)>');
+  assert.equal(mensaje.children[1].children.length, 2);
+  assert.equal(JSON.parse(entorno.valoresSesion.get('luany-asistente-historial:7'))[1].tablas.length, 2);
+});
+
+test('el renderizador muestra Markdown en negrita, cursiva y código sin interpretar HTML', () => {
+  const nodos = [];
+  function crearElemento(etiqueta) {
+    return {
+      etiqueta,
+      children: [],
+      appendChild(nodo) {
+        this.children.push(nodo);
+      },
+      set textContent(texto) {
+        this.texto = texto;
+      },
+    };
+  }
+  const contexto = vm.createContext({
+    document: {
+      addEventListener() {},
+      createElement: crearElemento,
+      createTextNode: (texto) => ({ nodeType: 3, textContent: texto }),
+    },
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(apiSource, contexto);
+  const contenedor = crearElemento('div');
+  const renderizar = vm.runInContext('renderizarMarkdownAsistente', contexto);
+
+  renderizar(contenedor, '**Negrita** y *cursiva* con `código` <img src=x onerror=alert(1)>');
+  nodos.push(...contenedor.children);
+
+  assert.deepEqual(nodos.filter((nodo) => nodo.etiqueta).map((nodo) => nodo.etiqueta),
+    ['strong', 'em', 'code']);
+  assert.equal(nodos.at(-1).textContent, ' <img src=x onerror=alert(1)>');
+});
+
+test('el asistente principal usa el renderizador Markdown compartido', () => {
+  const source = fs.readFileSync(path.join(staticDirectory, 'js/asistente.js'), 'utf8');
+
+  assert.match(source, /renderizarMarkdownAsistente\(burbuja,/);
+  assert.match(source, /crearTablasAsistente\(tablas\)/);
 });
 
 test('el widget muestra y conserva el error cuando falla la consulta', async () => {
