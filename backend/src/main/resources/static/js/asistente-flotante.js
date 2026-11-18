@@ -98,12 +98,16 @@
     }
   }
 
-  function agregarMensaje(texto, tipo, meta = '') {
+  function agregarMensaje(texto, tipo, meta = '', tablas = []) {
     const mensaje = document.createElement('article');
     mensaje.className = `ai-floating-message ai-floating-message-${tipo}`;
-    const burbuja = document.createElement('p');
-    burbuja.textContent = texto;
-    mensaje.appendChild(burbuja);
+    if (texto) {
+      const burbuja = document.createElement('p');
+      burbuja.textContent = texto;
+      mensaje.appendChild(burbuja);
+    }
+    const tablasEl = crearTablasAsistente(tablas);
+    if (tablasEl) mensaje.appendChild(tablasEl);
     if (meta) {
       const detalle = document.createElement('small');
       detalle.textContent = meta;
@@ -114,7 +118,9 @@
   }
 
   function renderizarHistorial() {
-    historial.forEach((item) => agregarMensaje(item.texto, item.tipo, item.meta || ''));
+    historial.forEach((item) => agregarMensaje(
+      item.texto, item.tipo, item.meta || '', item.tablas || [],
+    ));
   }
 
   function abrir() {
@@ -185,8 +191,9 @@
       const respuesta = await apiPost('/api/asistente/consulta', { pregunta });
       const meta = `Tipo: ${respuesta.tipoConsulta || '—'} · ${respuesta.productosEnContexto} productos · ${respuesta.tiempoMs} ms`;
       const texto = respuesta.respuesta || '(Sin respuesta)';
-      historial.push({ tipo: 'asistente', texto, meta });
-      agregarMensaje(texto, 'asistente', meta);
+      const tablas = Array.isArray(respuesta.tablas) ? respuesta.tablas : [];
+      historial.push({ tipo: 'asistente', texto, meta, tablas });
+      agregarMensaje(texto, 'asistente', meta, tablas);
       guardarHistorial();
       status.textContent = '';
     } catch (error) {

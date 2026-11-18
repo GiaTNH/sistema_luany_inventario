@@ -8,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionInformation;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
@@ -106,7 +107,9 @@ class SeguridadServiceTests {
     @Test
     void bloqueoManualInvalidaSesiones() {
         when(usuarioRepository.buscarPorIdParaActualizar(1L)).thenReturn(Optional.of(usuario));
-        when(sessionRegistry.getAllSessions("ana@luany.com", false)).thenReturn(java.util.List.of());
+        SessionInformation sesion = mock(SessionInformation.class);
+        when(sessionRegistry.getAllSessions("ana@luany.com", false))
+                .thenReturn(java.util.List.of(sesion));
 
         seguridadService.bloquearManual(
                 1L, "Actividad sospechosa confirmada", "admin@luany.com", "192.0.2.30");
@@ -115,5 +118,26 @@ class SeguridadServiceTests {
         verify(usuarioRepository).save(usuario);
         verify(bloqueoRepository).save(any());
         verify(auditoriaRepository).save(any());
+        verify(sesion).expireNow();
+    }
+
+    @Test
+    void desbloqueoManualLimpiaElBloqueoYTambienInvalidaSesiones() {
+        usuario.setBloqueadoManual(true);
+        usuario.setBloqueadoHasta(java.time.LocalDateTime.now().plusMinutes(10));
+        when(usuarioRepository.buscarPorIdParaActualizar(1L)).thenReturn(Optional.of(usuario));
+        SessionInformation sesion = mock(SessionInformation.class);
+        when(sessionRegistry.getAllSessions("ana@luany.com", false))
+                .thenReturn(java.util.List.of(sesion));
+
+        seguridadService.desbloquear(
+                1L, "Revisión concluida", "admin@luany.com", "192.0.2.30");
+
+        assertFalse(usuario.isBloqueadoManual());
+        assertNull(usuario.getBloqueadoHasta());
+        verify(usuarioRepository).save(usuario);
+        verify(bloqueoRepository).save(any());
+        verify(auditoriaRepository).save(any());
+        verify(sesion).expireNow();
     }
 }

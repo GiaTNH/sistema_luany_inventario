@@ -1,6 +1,7 @@
 package com.luany.inventory;
 
 import com.luany.inventory.model.CrearEmpleadoRequest;
+import com.luany.inventory.model.LoginRequest;
 import com.luany.inventory.repository.UsuarioRepository;
 import com.luany.inventory.repository.RecuperacionPasswordTokenRepository;
 import com.luany.inventory.service.AuthService;
@@ -39,6 +40,7 @@ import java.util.HexFormat;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -107,6 +109,53 @@ class InventoryApplicationTests {
     @Test
     void sesionTieneExpiracionDeTreintaMinutos() {
         assertEquals(Duration.ofMinutes(30), sessionTimeout);
+    }
+
+    @Test
+    void bloqueoManualRespondeConEstadoYDesbloqueoPermiteIniciarSesion() throws Exception {
+        Usuario administrador = usuarioActivo("admin-bloqueo@luany.com");
+        administrador.setRol("ADMIN");
+        usuarioRepository.saveAndFlush(administrador);
+        Usuario empleado = usuarioActivo("empleado-bloqueo@luany.com");
+        empleado.setDebeCambiarPassword(false);
+        empleado.setPassword(passwordEncoder.encode("ContrasenaAnterior2026!"));
+        empleado = usuarioRepository.saveAndFlush(empleado);
+
+        mockMvc.perform(post("/api/seguridad/usuarios/{id}/bloquear", empleado.getId())
+                        .with(user(administrador.getEmail()).roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\":\"Revisión administrativa\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bloqueadoManual").value(true))
+                .andExpect(jsonPath("$.deshabilitado").value(false));
+        assertTrue(usuarioRepository.findById(empleado.getId()).orElseThrow().isBloqueadoManual());
+
+        LoginRequest login = new LoginRequest();
+        login.setEmail(empleado.getEmail());
+        login.setPassword("ContrasenaAnterior2026!");
+        assertThrows(ResponseStatusException.class, () -> authService.iniciarSesion(login));
+
+        mockMvc.perform(post("/api/seguridad/usuarios/{id}/desbloquear", empleado.getId())
+                        .with(user(administrador.getEmail()).roles("ADMIN"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\":\"Revisión concluida\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bloqueadoManual").value(false));
+        assertFalse(usuarioRepository.findById(empleado.getId()).orElseThrow().isBloqueadoManual());
+
+        assertEquals(empleado.getEmail(), authService.iniciarSesion(login).email());
+    }
+
+    @Test
+    void empleadoNoPuedeUsarElEndpointDeBloqueoManual() throws Exception {
+        mockMvc.perform(post("/api/seguridad/usuarios/1/bloquear")
+                        .with(user("empleado@luany.com").roles("EMPLEADO"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"motivo\":\"Prueba\"}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

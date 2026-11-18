@@ -9,11 +9,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = AsistenteController.class)
@@ -29,7 +32,11 @@ class AsistenteControllerSecurityTests {
     @Test
     void transmiteElRolAutenticadoAlServicioYExigeSesion() throws Exception {
         when(asistenteService.consultar("Lista los usuarios", false))
-                .thenReturn(new RespuestaAsistente("USUARIOS", "Sin permiso", 0, 1));
+                .thenReturn(new RespuestaAsistente("USUARIOS", "Sin permiso", 0, 1, List.of(
+                        new RespuestaAsistente.TablaAsistente(
+                                "USUARIOS", "Usuarios", 1, 1,
+                                List.of("Nombre", "Rol"),
+                                List.of(List.of("Empleado", "EMPLEADO"))))));
         when(asistenteService.consultar("Lista los usuarios", true))
                 .thenReturn(new RespuestaAsistente("USUARIOS", "Usuarios", 0, 1));
 
@@ -38,7 +45,9 @@ class AsistenteControllerSecurityTests {
                         .with(csrf())
                         .contentType("application/json")
                         .content("{\"pregunta\":\"Lista los usuarios\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tablas[0].tipo").value("USUARIOS"))
+                .andExpect(jsonPath("$.tablas[0].filas[0][0]").value("Empleado"));
         mockMvc.perform(post("/api/asistente/consulta")
                         .with(user("admin").roles("ADMIN"))
                         .with(csrf())

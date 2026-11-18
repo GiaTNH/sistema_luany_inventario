@@ -77,16 +77,19 @@ async function apiFetch(ruta, opciones = {}) {
   // Respuestas sin cuerpo (204)
   if (respuesta.status === 204) return null;
 
-  let datos;
-  try {
-    datos = await respuesta.json();
-  } catch (_) {
-    throw new Error(`Error inesperado del servidor (${respuesta.status}).`);
+  const cuerpo = await respuesta.text();
+  let datos = null;
+  if (cuerpo.trim()) {
+    try {
+      datos = JSON.parse(cuerpo);
+    } catch (_) {
+      throw new Error(`Error inesperado del servidor (${respuesta.status}).`);
+    }
   }
 
   if (!respuesta.ok) {
     // El backend devuelve {"error":"mensaje"}
-    throw new Error(datos.error || `Error ${respuesta.status}`);
+    throw new Error(datos?.error || `Error ${respuesta.status}`);
   }
 
   if (respuesta.headers?.get('X-Notification-Status') === 'not-sent'
@@ -110,6 +113,87 @@ const apiPut = (ruta, cuerpo) =>
 
 /** DELETE */
 const apiDelete = (ruta) => apiFetch(ruta, { method: 'DELETE' });
+
+function crearTablasAsistente(tablas) {
+  if (!Array.isArray(tablas) || tablas.length === 0) return null;
+  const contenedor = document.createElement('div');
+  contenedor.className = 'asistente-tablas';
+
+  tablas.forEach((tablaDatos) => {
+    if (!tablaDatos || !Array.isArray(tablaDatos.columnas)
+        || !Array.isArray(tablaDatos.filas)) return;
+
+    const tarjeta = document.createElement('section');
+    tarjeta.className = 'asistente-tabla-card';
+    const titulo = document.createElement('h3');
+    titulo.className = 'asistente-tabla-titulo';
+    titulo.textContent = tablaDatos.titulo || 'Registros';
+    tarjeta.appendChild(titulo);
+
+    const cantidad = document.createElement('p');
+    cantidad.className = 'asistente-tabla-cantidad';
+    const total = Number.isFinite(Number(tablaDatos.total)) ? Number(tablaDatos.total) : tablaDatos.filas.length;
+    const mostrados = Number.isFinite(Number(tablaDatos.mostrados))
+      ? Number(tablaDatos.mostrados) : tablaDatos.filas.length;
+    cantidad.textContent = total > mostrados
+      ? `Se encontraron ${total} registros · mostrando ${mostrados}`
+      : `${total} ${total === 1 ? 'registro encontrado' : 'registros encontrados'}`;
+    tarjeta.appendChild(cantidad);
+
+    if (tablaDatos.filas.length === 0) {
+      const vacio = document.createElement('p');
+      vacio.className = 'asistente-tabla-vacia';
+      vacio.textContent = 'No se encontraron registros.';
+      tarjeta.appendChild(vacio);
+    } else {
+      const desplazamiento = document.createElement('div');
+      desplazamiento.className = 'asistente-tabla-scroll';
+      desplazamiento.setAttribute('role', 'region');
+      desplazamiento.setAttribute('aria-label', `Tabla: ${titulo.textContent}`);
+      desplazamiento.tabIndex = 0;
+      const tabla = document.createElement('table');
+      tabla.className = 'asistente-tabla';
+      const encabezado = document.createElement('thead');
+      const filaEncabezado = document.createElement('tr');
+      tablaDatos.columnas.forEach((columna) => {
+        const celda = document.createElement('th');
+        celda.scope = 'col';
+        celda.textContent = String(columna);
+        filaEncabezado.appendChild(celda);
+      });
+      encabezado.appendChild(filaEncabezado);
+      tabla.appendChild(encabezado);
+
+      const cuerpo = document.createElement('tbody');
+      tablaDatos.filas.forEach((fila) => {
+        const tr = document.createElement('tr');
+        tablaDatos.columnas.forEach((columna, indice) => {
+          const td = document.createElement('td');
+          td.textContent = formatearCeldaAsistente(columna, Array.isArray(fila) ? fila[indice] : '');
+          tr.appendChild(td);
+        });
+        cuerpo.appendChild(tr);
+      });
+      tabla.appendChild(cuerpo);
+      desplazamiento.appendChild(tabla);
+      tarjeta.appendChild(desplazamiento);
+    }
+    contenedor.appendChild(tarjeta);
+  });
+
+  return contenedor.childElementCount ? contenedor : null;
+}
+
+function formatearCeldaAsistente(columna, valor) {
+  if (valor == null) return '—';
+  if (/fecha/i.test(String(columna))) {
+    const fechaHora = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (fechaHora) return `${fechaHora[3]}/${fechaHora[2]}/${fechaHora[1]} ${fechaHora[4]}:${fechaHora[5]}`;
+    const fecha = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (fecha) return `${fecha[3]}/${fecha[2]}/${fecha[1]}`;
+  }
+  return String(valor);
+}
 
 // ---------- TOAST ----------
 
