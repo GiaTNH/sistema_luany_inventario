@@ -86,6 +86,7 @@ class AsistenteServiceTests {
         MovimientoItem movimiento = new MovimientoItem(
                 8L, LocalDateTime.of(2026, 11, 3, 10, 0), "ENTRADA", 5,
                 null, 2L, "Blusa", 1, 6);
+        when(productoService.listar()).thenReturn(List.of());
         when(reportesService.movimientos(desde, hasta, null, TipoMovimiento.ENTRADA, 0, 50))
                 .thenReturn(new MovimientosPagina(desde, hasta, 0, 50, 1, 1, List.of(movimiento)));
         when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
@@ -102,6 +103,112 @@ class AsistenteServiceTests {
                 respuesta.tablas().get(0).columnas());
         assertEquals(LocalDateTime.of(2026, 11, 3, 10, 0), respuesta.tablas().get(0).filas().get(0).get(0));
         assertEquals(1, respuesta.tablas().get(0).total());
+    }
+
+    @Test
+    void filtraMovimientosPorNombreDeProductoIgnorandoMayusculasYTildes() {
+        Producto ropon = producto(12L, "Ropón", 3, 1, 8);
+        MovimientoItem movimiento = movimiento(1L, 12L, "Ropón", "ENTRADA");
+
+        RespuestaAsistente respuesta = consultarMovimientos(
+                "¿Qué movimientos ha tenido ropon?", List.of(ropon), 12L, null, List.of(movimiento));
+
+        assertEquals(1, respuesta.tablas().get(0).total());
+        assertEquals("Movimientos de Ropón", respuesta.tablas().get(0).titulo());
+        assertEquals("Ropón", respuesta.tablas().get(0).filas().get(0).get(2));
+    }
+
+    @Test
+    void filtraEntradasDelProductoSolicitado() {
+        Producto ropon = producto(12L, "Ropon", 3, 1, 8);
+
+        consultarMovimientos(
+                "Muéstrame las entradas de ropon", List.of(ropon), 12L, TipoMovimiento.ENTRADA,
+                List.of(movimiento(2L, 12L, "Ropon", "ENTRADA")));
+    }
+
+    @Test
+    void filtraSalidasDelProductoSolicitado() {
+        Producto ropon = producto(12L, "Ropon", 3, 1, 8);
+
+        consultarMovimientos(
+                "Muéstrame las salidas de ropon", List.of(ropon), 12L, TipoMovimiento.SALIDA,
+                List.of(movimiento(3L, 12L, "Ropon", "SALIDA")));
+    }
+
+    @Test
+    void identificaProductoConTildeEnLaConsulta() {
+        Producto biberon = producto(21L, "Biberón", 3, 1, 8);
+
+        consultarMovimientos(
+                "¿Qué movimientos ha tenido el biberón?", List.of(biberon), 21L, null,
+                List.of(movimiento(4L, 21L, "Biberón", "SALIDA")));
+    }
+
+    @Test
+    void losMovimientosDeTodosLosProductosNoAplicanFiltroDeProducto() {
+        List<MovimientoItem> movimientos = List.of(
+                movimiento(5L, 12L, "Ropon", "ENTRADA"),
+                movimiento(6L, 21L, "Biberón", "SALIDA"));
+        LocalDate hoy = LocalDate.now(clock);
+        when(reportesService.movimientos(any(LocalDate.class), any(LocalDate.class),
+                eq(null), eq(null), eq(0), eq(50)))
+                .thenReturn(new MovimientosPagina(hoy.minusDays(29), hoy, 0, 50, 2, 1, movimientos));
+        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "Muéstrame los movimientos de todos los productos", false);
+
+        verify(reportesService).movimientos(any(LocalDate.class), any(LocalDate.class),
+                eq(null), eq(null), eq(0), eq(50));
+        verify(productoService, never()).listar();
+        assertEquals(2, respuesta.tablas().get(0).total());
+        assertEquals(2, respuesta.tablas().get(0).filas().size());
+    }
+
+    @Test
+    void noMezclaProductosDeNombreSimilarYEvitaCoincidenciasParciales() {
+        Producto ropon = producto(12L, "Ropon", 3, 1, 8);
+        Producto roponAzul = producto(13L, "Ropon Azul", 3, 1, 8);
+        Producto roponera = producto(14L, "Roponera", 3, 1, 8);
+
+        RespuestaAsistente respuesta = consultarMovimientos(
+                "Muéstrame los movimientos de ropon azul",
+                List.of(ropon, roponAzul, roponera), 13L, null,
+                List.of(movimiento(7L, 13L, "Ropon Azul", "ENTRADA")));
+
+        assertEquals("Ropon Azul", respuesta.tablas().get(0).filas().get(0).get(2));
+    }
+
+    @Test
+    void productoNoEncontradoNoDevuelveMovimientosGlobales() {
+        when(productoService.listar()).thenReturn(List.of(producto(12L, "Ropon", 3, 1, 8)));
+        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido sombrero?", false);
+
+        verify(reportesService, never()).movimientos(
+                any(), any(), any(), any(), anyInt(), anyInt());
+        assertEquals(0, respuesta.tablas().get(0).total());
+        assertTrue(respuesta.respuesta().contains("No encontré un producto"));
+        assertTrue(respuesta.tablas().get(0).filas().isEmpty());
+    }
+
+    @Test
+    void nombresRegistradosAmbiguosSolicitanElNombreCompletoSinMezclarResultados() {
+        Producto roponConTilde = producto(12L, "Ropón", 3, 1, 8);
+        Producto roponSinTilde = producto(13L, "Ropon", 3, 1, 8);
+        when(productoService.listar()).thenReturn(List.of(roponConTilde, roponSinTilde));
+        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
+
+        RespuestaAsistente respuesta = asistenteService.consultar(
+                "¿Qué movimientos ha tenido ropon?", false);
+
+        verify(reportesService, never()).movimientos(
+                any(), any(), any(), any(), anyInt(), anyInt());
+        assertTrue(respuesta.respuesta().contains("varios productos"));
+        assertEquals(0, respuesta.tablas().get(0).total());
     }
 
     @Test
@@ -328,6 +435,31 @@ class AsistenteServiceTests {
         verify(reportesService, org.mockito.Mockito.times(2)).ventas(any(), any());
         verify(reportesService, org.mockito.Mockito.times(2))
                 .productosVendidos(any(), any(), anyInt());
+    }
+
+    private RespuestaAsistente consultarMovimientos(
+            String pregunta, List<Producto> productos, Long productoId, TipoMovimiento tipo,
+            List<MovimientoItem> movimientos) {
+        when(productoService.listar()).thenReturn(productos);
+        LocalDate hoy = LocalDate.now(clock);
+        when(reportesService.movimientos(any(LocalDate.class), any(LocalDate.class),
+                eq(productoId), eq(tipo), eq(0), eq(50)))
+                .thenReturn(new MovimientosPagina(hoy.minusDays(29), hoy, 0, 50,
+                        movimientos.size(), movimientos.isEmpty() ? 0 : 1, movimientos));
+        when(geminiClient.generar(any(), any())).thenReturn("Respuesta");
+
+        RespuestaAsistente respuesta = asistenteService.consultar(pregunta, false);
+
+        verify(reportesService).movimientos(any(LocalDate.class), any(LocalDate.class),
+                eq(productoId), eq(tipo), eq(0), eq(50));
+        assertEquals(movimientos.size(), respuesta.tablas().get(0).total());
+        assertEquals(movimientos.size(), respuesta.tablas().get(0).filas().size());
+        return respuesta;
+    }
+
+    private MovimientoItem movimiento(Long id, Long productoId, String nombre, String tipo) {
+        return new MovimientoItem(id, LocalDateTime.of(2026, 11, 3, 10, 0), tipo, 2,
+                null, productoId, nombre, 4, 2);
     }
 
     private String promptEnviado() {

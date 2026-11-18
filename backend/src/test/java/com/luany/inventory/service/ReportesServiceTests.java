@@ -90,6 +90,10 @@ class ReportesServiceTests {
                 LocalDate.of(2026, 11, 1).atStartOfDay(),
                 LocalDate.of(2026, 11, 4).atStartOfDay(),
                 8L, TipoMovimiento.VENTA, 20, 20);
+        verify(reportesRepository).contarMovimientos(
+                LocalDate.of(2026, 11, 1).atStartOfDay(),
+                LocalDate.of(2026, 11, 4).atStartOfDay(),
+                8L, TipoMovimiento.VENTA);
     }
 
     @Test
