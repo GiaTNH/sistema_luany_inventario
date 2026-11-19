@@ -109,6 +109,8 @@ CREATE TABLE IF NOT EXISTS productos (
   proveedor_id BIGINT       NOT NULL,
   codigo       VARCHAR(50)  DEFAULT NULL,
   descripcion  VARCHAR(200) DEFAULT NULL,
+  activo       TINYINT(1)   NOT NULL DEFAULT 1,
+  fecha_creacion DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uk_productos_codigo (codigo),
   KEY idx_productos_categoria (categoria_id),
@@ -124,7 +126,7 @@ CREATE TABLE IF NOT EXISTS movimientos (
   cantidad       INT          NOT NULL,
   fecha          DATETIME(6)  NOT NULL,
   observacion    VARCHAR(200) DEFAULT NULL,
-  tipo           ENUM('ENTRADA','SALIDA','VENTA') NOT NULL,
+  tipo           ENUM('ENTRADA','SALIDA','VENTA','CREACION') NOT NULL,
   producto_id    BIGINT       NOT NULL,
   usuario_id     BIGINT       DEFAULT NULL,
   stock_anterior INT          DEFAULT NULL,
@@ -136,7 +138,7 @@ CREATE TABLE IF NOT EXISTS movimientos (
   KEY idx_mov_usuario (usuario_id),
   CONSTRAINT fk_mov_producto FOREIGN KEY (producto_id) REFERENCES productos (id),
   CONSTRAINT fk_mov_usuario  FOREIGN KEY (usuario_id)  REFERENCES usuarios (id),
-  CONSTRAINT chk_mov_cantidad CHECK (cantidad > 0)
+  CONSTRAINT chk_mov_cantidad CHECK (cantidad >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS notas_venta (

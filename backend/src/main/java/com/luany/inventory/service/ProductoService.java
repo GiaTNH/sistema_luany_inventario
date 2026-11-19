@@ -4,40 +4,54 @@ import com.luany.inventory.model.*;
 import com.luany.inventory.repository.CategoriaRepository;
 import com.luany.inventory.repository.ProductoRepository;
 import com.luany.inventory.repository.ProveedorRepository;
+import com.luany.inventory.repository.MovimientoRepository;
+import com.luany.inventory.repository.UsuarioRepository;
+import com.luany.inventory.repository.DetallePedidoRepository;
+import com.luany.inventory.repository.DetalleRecepcionPedidoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ProductoService {
 
+    private static final int MAX_INTENTOS_CODIGO = 5;
+
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
     private final ProveedorRepository proveedorRepository;
     private final ProductoStockLockService productoStockLockService;
+    private final MovimientoRepository movimientoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final DetallePedidoRepository detallePedidoRepository;
+    private final DetalleRecepcionPedidoRepository detalleRecepcionPedidoRepository;
 
     public List<Producto> listar() {
-        return productoRepository.findAll();
+        return productoRepository.findAllByActivoTrue(Sort.by(
+                Sort.Order.desc("fechaCreacion"), Sort.Order.desc("id")));
     }
 
     public List<Producto> listarParaAsistente(int limite) {
-        return productoRepository.findAll(PageRequest.of(
-                0, limite, Sort.by(Sort.Order.asc("nombre").ignoreCase()))).getContent();
+        return productoRepository.findAllByActivoTrue(PageRequest.of(
+                0, limite, Sort.by(Sort.Order.desc("fechaCreacion"), Sort.Order.desc("id"))))
+                .getContent();
     }
 
     public Producto obtener(Long id) {
-        return productoRepository.findById(id)
+        return productoRepository.findByIdAndActivoTrue(id)
                 .orElseThrow(() -> new IllegalArgumentException("El producto no existe"));
     }
 
     public List<Producto> buscarPorNombre(String nombre) {
-        return productoRepository.buscarPorNombre(nombre);
+        return productoRepository.buscarPorNombre(nombre).stream().filter(Producto::isActivo).toList();
     }
 
     public List<Producto> productosConStockBajo() {
@@ -50,16 +64,49 @@ public class ProductoService {
 
     @Transactional
     public Producto crear(ProductoRequest request) {
+        return crear(request, null);
+    }
+
+    @Transactional
+    public Producto crear(ProductoRequest request, String emailUsuario) {
         Producto producto = new Producto();
+        producto.setActivo(true);
         aplicarDatos(producto, request.getNombre(), request.getCategoriaId(), request.getProveedorId(),
                 request.getStockMinimo(), request.getStockMaximo(), request.getPrecio(),
-                request.getCodigo(), request.getDescripcion());
+                generarCodigoDisponible(), request.getDescripcion());
         producto.setStockActual(request.getStockActual());
-        return productoRepository.save(producto);
+        Producto creado;
+        try {
+            creado = productoRepository.saveAndFlush(producto);
+        } catch (DataIntegrityViolationException exception) {
+            if (esColisionCodigo(exception)) {
+                throw new IllegalArgumentException(
+                        "No se pudo asignar un código único al producto. Intenta nuevamente");
+            }
+            throw exception;
+        }
+        Movimiento movimiento = new Movimiento();
+        movimiento.setProducto(creado);
+        movimiento.setTipo(TipoMovimiento.CREACION);
+        movimiento.setCantidad(0);
+        movimiento.setFecha(creado.getFechaCreacion());
+        movimiento.setObservacion("Producto creado y registrado en el inventario. Código: "
+                + (creado.getCodigo() == null ? "—" : creado.getCodigo()));
+        movimiento.setStockAnterior(creado.getStockActual());
+        movimiento.setStockNuevo(creado.getStockActual());
+        if (emailUsuario != null) {
+            Usuario usuario = usuarioRepository.buscarPorEmail(emailUsuario)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "No se encontró el usuario de la sesión"));
+            movimiento.setUsuario(usuario);
+        }
+        movimientoRepository.save(movimiento);
+        return creado;
     }
 
     @Transactional
     public Producto actualizar(Long id, ProductoActualizacionRequest request) {
+        validarActivoParaModificar(id);
         Producto producto = productoStockLockService.bloquear(id);
         aplicarDatos(producto, request.getNombre(), request.getCategoriaId(), request.getProveedorId(),
                 request.getStockMinimo(), request.getStockMaximo(), request.getPrecio(),
@@ -69,14 +116,57 @@ public class ProductoService {
 
     @Transactional
     public void eliminar(Long id) {
-        Producto producto = obtener(id);
-        try {
-            productoRepository.delete(producto);
-            productoRepository.flush();
-        } catch (DataIntegrityViolationException error) {
-            throw new IllegalArgumentException(
-                    "No se puede eliminar el producto porque está asociado a movimientos, pedidos, ventas u otros registros.");
+        validarActivoParaModificar(id);
+        Producto producto = productoStockLockService.bloquear(id);
+        if (producto.getStockActual() != null && producto.getStockActual() > 0) {
+            throw new IllegalArgumentException("No se puede retirar un producto con stock disponible");
         }
+        boolean tienePendientes = detallePedidoRepository.findByProductoId(id).stream()
+                .filter(detalle -> "PENDIENTE".equalsIgnoreCase(detalle.getPedido().getEstado())
+                        || "PARCIAL".equalsIgnoreCase(detalle.getPedido().getEstado()))
+                .anyMatch(detalle -> {
+                    long recibido = detalleRecepcionPedidoRepository
+                            .totalRecibido(detalle.getId());
+                    return detalle.getCantidad() - recibido > 0;
+                });
+        if (tienePendientes) {
+            throw new IllegalArgumentException(
+                    "No se puede retirar el producto porque existen recepciones pendientes en uno o más pedidos");
+        }
+        producto.setActivo(false);
+        productoRepository.save(producto);
+    }
+
+    private void validarActivoParaModificar(Long id) {
+        if (productoRepository.findByIdAndActivoTrue(id).isPresent()) {
+            return;
+        }
+        if (productoRepository.findById(id).isPresent()) {
+            throw new IllegalArgumentException("El producto está inactivo y no se puede modificar");
+        }
+        throw new IllegalArgumentException("El producto no existe");
+    }
+
+    private String generarCodigoDisponible() {
+        for (int intento = 0; intento < MAX_INTENTOS_CODIGO; intento++) {
+            String codigo = "LU-" + UUID.randomUUID().toString().replace("-", "").substring(0, 32)
+                    .toUpperCase(Locale.ROOT);
+            if (!productoRepository.existsByCodigo(codigo)) {
+                return codigo;
+            }
+        }
+        throw new IllegalStateException(
+                "No se pudo generar un código único para el producto después de varios intentos");
+    }
+
+    private boolean esColisionCodigo(DataIntegrityViolationException exception) {
+        for (Throwable causa = exception; causa != null; causa = causa.getCause()) {
+            if (causa instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && "uk_productos_codigo".equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public String estadoStock(Producto p) {
@@ -94,6 +184,7 @@ public class ProductoService {
 
     public List<AlertaStock> alertas() {
         return productoRepository.findStockBajo().stream()
+                .filter(Producto::isActivo)
                 .map(p -> new AlertaStock(
                         p.getId(),
                         p.getNombre(),

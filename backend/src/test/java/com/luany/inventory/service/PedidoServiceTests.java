@@ -101,7 +101,7 @@ class PedidoServiceTests {
     void crearPedidoNoActualizaStockNiRegistraMovimiento() {
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
         when(usuarioRepository.buscarPorEmail("almacen@luany.com")).thenReturn(Optional.of(usuario));
-        when(productoRepository.findById(7L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdAndActivoTrue(7L)).thenReturn(Optional.of(producto));
         when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocation -> {
             Pedido pedido = invocation.getArgument(0);
             pedido.setId(11L);
@@ -184,7 +184,7 @@ class PedidoServiceTests {
         productoOtro.setNombre("Ajeno");
         productoOtro.setProveedor(otroProveedor);
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
-        when(productoRepository.findById(7L)).thenReturn(Optional.of(productoOtro));
+        when(productoRepository.findByIdAndActivoTrue(7L)).thenReturn(Optional.of(productoOtro));
 
         assertThrows(IllegalArgumentException.class,
                 () -> pedidoService.crear(crearRequest(5), "almacen@luany.com"));

@@ -1,6 +1,8 @@
 (() => {
   const usuario = obtenerSesion();
   if (!usuario?.id || document.getElementById('luany-asistente-flotante')) return;
+  const launcher = document.querySelector('.sidebar-assistant-access');
+  if (!launcher) return;
 
   const historialKey = `luany-asistente-historial:${usuario.id}`;
   const preguntasRapidas = [
@@ -20,15 +22,6 @@
     widget.classList.add('ai-floating-over-full-assistant');
   }
   widget.innerHTML = `
-    <button class="ai-floating-launcher" type="button" aria-expanded="false"
-      aria-controls="luany-asistente-panel" aria-label="Abrir asistente IA de LUANY">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 3a7 7 0 0 0-7 7v3a3 3 0 0 0 3 3h1v-5H7v-1a5 5 0 0 1 10 0v1h-2v5h1a3 3 0 0 0 3-3v-3a7 7 0 0 0-7-7Z"/>
-        <path d="M9 19h6"/>
-      </svg>
-      <span>Asistente IA</span>
-    </button>
     <section class="ai-floating-panel" id="luany-asistente-panel" role="dialog"
       aria-labelledby="luany-asistente-titulo" aria-hidden="true" hidden>
       <header class="ai-floating-header">
@@ -37,6 +30,7 @@
           <strong id="luany-asistente-titulo"><img class="ai-floating-brand-bag" src="/img/logo-bolsa.png" alt="" />Asistente LUANY</strong>
           <small>Consultas de inventario</small>
         </span>
+        <a class="ai-floating-full-link" href="/asistente.html">Página completa</a>
         <button class="ai-floating-minimize" type="button"
           aria-label="Minimizar asistente" title="Minimizar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -66,7 +60,6 @@
 
   document.body.appendChild(widget);
 
-  const launcher = widget.querySelector('.ai-floating-launcher');
   const panel = widget.querySelector('.ai-floating-panel');
   const messages = widget.querySelector('.ai-floating-messages');
   const form = widget.querySelector('.ai-floating-form');

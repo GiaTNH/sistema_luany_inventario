@@ -346,6 +346,7 @@ function abrirModalProducto(id = null) {
   document.getElementById('prod-nombre').value       = '';
   document.getElementById('prod-categoria').value    = '';
   document.getElementById('prod-codigo').value       = '';
+  document.getElementById('prod-codigo').placeholder = 'Se asignará al guardar';
   document.getElementById('prod-proveedor').value    = '';
   document.getElementById('prod-stock-actual').value = '';
   document.getElementById('prod-stock-actual').disabled = false;
@@ -364,6 +365,7 @@ function abrirModalProducto(id = null) {
       document.getElementById('prod-nombre').value       = p.nombre;
       document.getElementById('prod-categoria').value    = p.categoria?.id || '';
       document.getElementById('prod-codigo').value       = p.codigo || '';
+      document.getElementById('prod-codigo').placeholder = '';
       document.getElementById('prod-proveedor').value    = p.proveedor?.id || '';
       document.getElementById('prod-stock-actual').value = p.stockActual;
       document.getElementById('prod-stock-actual').disabled = true;
@@ -428,7 +430,7 @@ async function guardarProducto() {
 
 function confirmarEliminarProducto(id, nombre) {
   document.getElementById('confirmar-mensaje').textContent =
-    `¿Eliminar el producto "${nombre}"? Esta acción no se puede deshacer.`;
+    `¿Retirar "${nombre}" del catálogo? Se conservarán sus movimientos y no podrá tener stock disponible.`;
   const btnOk = document.getElementById('btn-confirmar-ok');
   btnOk.onclick = () => eliminarProducto(id);
   abrirModal('modal-confirmar');
@@ -439,7 +441,7 @@ async function eliminarProducto(id) {
   btn.disabled = true;
   try {
     await apiDelete(`/api/productos/${id}`);
-    mostrarToast('Producto eliminado.', 'exito');
+    mostrarToast('Producto retirado del catálogo; su historial se conservó.', 'exito');
     cerrarModal('modal-confirmar');
     await cargarTodo();
   } catch (err) {

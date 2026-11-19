@@ -493,7 +493,7 @@ public class AsistenteService {
         }
         contexto.append(" (máximo ").append(MAX_MOVIMIENTOS)
                 .append("; ").append(pagina.totalElementos()).append(" en el periodo):\n");
-        contexto.append("- Tipos registrados: ENTRADA, SALIDA y VENTA; el sistema no tiene un tipo "
+        contexto.append("- Tipos registrados: ENTRADA, SALIDA, VENTA y CREACION; el sistema no tiene un tipo "
                 + "de movimiento separado para devoluciones.\n");
         agregarLineasMovimientos(contexto, pagina, "periodo consultado", productosIncluidos);
         agregarTablaMovimientos(tablas, titulo, pagina.totalElementos(), pagina.movimientos());

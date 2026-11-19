@@ -78,6 +78,16 @@ test('el usuario del navbar abre Perfil por clic y teclado para ambos roles', ()
   }
 });
 
+test('el acceso discreto del asistente se renderiza una sola vez antes del menú compartido', () => {
+  const api = readStatic('js/api.js');
+  const widget = readStatic('js/asistente-flotante.js');
+  assert.match(api, /accesoAsistente\.className = 'sidebar-assistant-access'/);
+  assert.match(api, /nav\.replaceChildren\(accesoAsistente, titulo, \.\.\.enlaces\)/);
+  assert.doesNotMatch(api, /label: 'Asistente IA', href: '\/asistente\.html'/);
+  assert.match(api, /renderizarNavegacionSidebar\(usuario\.rol\);[\s\S]*?cargarAsistenteFlotante\(\)/);
+  assert.match(widget, /href="\/asistente\.html"/);
+});
+
 test('el logo oficial conserva su proporción en acceso y notas, y el navbar usa la bolsa', () => {
   const logo = path.join(staticDirectory, 'img/logo_luany.png');
   assert.ok(fs.existsSync(logo), 'debe estar disponible el recurso oficial');
@@ -233,6 +243,30 @@ test('el selector de venta no duplica Cliente general y conserva la opción sin 
   assert.match(selector.innerHTML, /value="9"/);
 });
 
+test('el catálogo de venta excluye productos agotados', async () => {
+  const script = readStatic('js/notas-venta.js');
+  const boton = { setAttribute() {}, removeAttribute() {} };
+  const contexto = vm.createContext({
+    apiGet: async (ruta) => ruta === '/api/clientes' ? [] : [
+      { id: 11, nombre: 'Disponible', stockActual: 2 },
+      { id: 12, nombre: 'Agotado', stockActual: 0 },
+    ],
+    document: { getElementById: () => boton },
+    mostrarToast() {},
+  });
+  const cargarCatalogos = script.match(
+    /async function cargarCatalogosVenta\(\) \{[\s\S]*?\n\}/,
+  )?.[0];
+  assert.ok(cargarCatalogos);
+  vm.runInContext(cargarCatalogos, contexto);
+  await vm.runInContext('cargarCatalogosVenta()', contexto);
+
+  assert.deepEqual(
+    Array.from(vm.runInContext('productosVenta', contexto), (producto) => producto.id),
+    [11],
+  );
+});
+
 test('una respuesta de éxito no afirma ni marca que el correo fue enviado', () => {
   const usuarios = readStatic('js/usuarios.js');
   assert.match(usuarios, /resultado\.notificacionFallida/);
@@ -380,133 +414,68 @@ test('el filtro de rotación aplica días, seis meses y un año al conjunto de v
   assert.deepEqual(JSON.parse(JSON.stringify(filtrados.map((movimiento) => movimiento.id))), [1]);
 });
 
-test('la reposición de Alertas prepara una línea validada y crea un pedido solo al confirmar', async () => {
+test('Pedidos conserva la creación manual y Alertas ya no prepara reposiciones', () => {
   const alertas = readStatic('js/alertas.js');
+  const alertasHtml = readStatic('alertas.html');
   const pedidosHtml = readStatic('pedidos.html');
   const pedidos = readStatic('js/pedidos.js');
-  const alertaContexto = vm.createContext({});
-  vm.runInContext(extraerFuncion(alertas, 'productosParaReposicion'), alertaContexto);
-  const sugeridos = vm.runInContext(`productosParaReposicion(${JSON.stringify([
-    { productoId: 7, cantidadSugerida: 12 },
-    { productoId: 8, cantidadSugerida: 0 },
-    { productoId: 0, cantidadSugerida: 3 },
-  ])})`, alertaContexto);
-  assert.deepEqual(JSON.parse(JSON.stringify(sugeridos)), [{ productoId: 7, cantidad: 12 }]);
+  const pedidosKanban = readStatic('js/pedidos-kanban.js');
 
-  const pedidoContexto = vm.createContext({
-    proveedores: [
-      { id: 3, nombre: 'Proveedor A', estado: 'ACTIVO' },
-      { id: 4, nombre: 'Proveedor B', estado: 'INACTIVO' },
-      { id: 5, nombre: 'Proveedor C', estado: 'ACTIVO' },
-    ],
-    productos: [
-      { id: 7, nombre: 'Body', precio: 18.5, proveedor: { id: 3 } },
-      { id: 8, nombre: 'Manta', precio: 25, proveedor: { id: 4 } },
-      { id: 9, nombre: 'Gorro', precio: 8, proveedor: { id: 5 } },
-    ],
-  });
-  vm.runInContext(extraerFuncion(pedidos, 'opcionesProveedoresActivos'), pedidoContexto);
-  vm.runInContext(extraerFuncion(pedidos, 'agruparReposiciones'), pedidoContexto);
-  const grupos = vm.runInContext(
-    'agruparReposiciones([{productoId:7,cantidad:12},{productoId:8,cantidad:4},{productoId:9,cantidad:6}])',
-    pedidoContexto,
-  );
-  assert.equal(grupos.length, 2);
-  assert.equal(grupos[0].proveedorId, 3);
-  assert.equal(grupos[0].productos[0].cantidad, 12);
-
-  const lineas = [];
-  function filaPedido() {
-    const campos = {
-      '.pedido-producto': { value: '' },
-      '.pedido-cantidad': { value: '' },
-      '.pedido-precio': { value: '' },
-    };
-    return {
-      querySelector: (selector) => campos[selector],
-      campos,
-    };
-  }
-  const cuerpo = {
-    appendChild: (fila) => lineas.push(fila),
-    replaceChildren: () => { lineas.length = 0; },
-    get lastElementChild() { return lineas.at(-1); },
-  };
-  const selectProveedor = { value: '' };
-  const ayuda = { textContent: '', hidden: true };
-  const errorPedido = { hidden: true };
-  const formulario = { reset() {} };
-  pedidoContexto.formPedido = formulario;
-  pedidoContexto.cuerpoLineasPedido = cuerpo;
-  pedidoContexto.selectProveedor = selectProveedor;
-  pedidoContexto.reposicionesPendientes = grupos;
-  pedidoContexto.document = {
-    createElement: () => filaPedido(),
-    getElementById: (id) => id === 'pedido-error' ? errorPedido : ayuda,
-  };
-  pedidoContexto.escapar = String;
-  [
-    'productosDeProveedor',
-    'opcionesProducto',
-    'agregarLineaPedido',
-    'mostrarGrupoReposicion',
-  ].forEach((nombre) => vm.runInContext(extraerFuncion(pedidos, nombre), pedidoContexto));
-  assert.equal(vm.runInContext('mostrarGrupoReposicion(3)', pedidoContexto), true);
-  assert.equal(selectProveedor.value, '3');
-  assert.equal(lineas.length, 1);
-  assert.equal(lineas[0].campos['.pedido-producto'].value, '7');
-  assert.equal(lineas[0].campos['.pedido-cantidad'].value, '12');
-  assert.equal(lineas[0].campos['.pedido-precio'].value, '18.50');
-  assert.equal(ayuda.hidden, false);
-
-  assert.match(readStatic('alertas.html'), /id="btn-reponer-alertas" hidden disabled/);
-  assert.match(readStatic('alertas.html'), /id="modal-reponer-producto"/);
-  assert.match(readStatic('alertas.html'), /data-cerrar-reposicion>Cancelar/);
-  assert.match(alertas, /boton\.dataset\.productoId/);
-  assert.match(alertas, /usuarioAlertas\?\.rol === 'ADMIN'/);
-  assert.match(alertas, /window\.location\.href = '\/pedidos\.html\?reponer=1'/);
-  assert.match(alertas, /apiPost\('\/api\/pedidos', datos\)/);
   assert.match(pedidosHtml, /id="form-pedido"/);
+  assert.match(pedidos, /document\.getElementById\('btn-nuevo-pedido'\)\.addEventListener\('click', abrirNuevoPedido\)/);
   assert.match(pedidos, /apiPost\('\/api\/pedidos', datos\)/);
   assert.match(pedidos, /if \(guardandoPedido\) return/);
-  assert.match(pedidos, /el stock solo cambiará al registrar la recepción/);
+  assert.match(pedidos, /Pedido registrado\. El stock se actualizará al confirmar la recepción/);
+  assert.doesNotMatch(pedidos, /luany-reposicion-pendiente|prepararReposicionDesdeAlertas|reponer=1/);
+  assert.doesNotMatch(pedidosHtml, /pedido-reposicion-ayuda/);
+  assert.doesNotMatch(alertasHtml, /btn-reponer-alertas|modal-reponer-producto|data-cerrar-reposicion|<th>Acción<\/th>/);
+  assert.match(alertasHtml, /id="alertas-tabla"[\s\S]*?colspan="6"/);
+  assert.doesNotMatch(alertas, /abrirModalReposicion|btn-reponer-alertas|apiPost\('\/api\/pedidos'/);
+  assert.doesNotMatch(pedidosKanban, /textContent = 'Reponer'|alerta-producto-/);
+});
 
-  const posts = [];
-  let confirmar;
-  const apiContexto = vm.createContext({
-    guardandoReposicion: false,
-    botonConfirmarReposicion: { disabled: false },
-    apiPost: (ruta, datos) => {
-      posts.push({ ruta, datos });
-      return new Promise((resolve) => { confirmar = resolve; });
+test('Seleccionar todos marca y desmarca únicamente administradores ofertados', () => {
+  const alertas = readStatic('js/alertas.js');
+  const destinatarios = [{ checked: false }, { checked: false }, { checked: false }];
+  const control = { checked: false, indeterminate: false };
+  const contexto = vm.createContext({
+    listaDestinatarios: {
+      querySelectorAll: (selector) => selector === 'input[name="destinatario"]'
+        ? destinatarios : [],
     },
+    seleccionarTodosDestinatarios: control,
   });
-  vm.runInContext(extraerFuncion(alertas, 'datosPedidoReposicion'), apiContexto);
-  vm.runInContext(extraerFuncion(alertas, 'crearPedidoDesdeAlerta'), apiContexto);
-  apiContexto.producto = { id: 7, proveedor: { id: 3 } };
-  const datos = vm.runInContext(
-    "datosPedidoReposicion(producto, 12, 18.5, '2026-11-20')",
-    apiContexto,
-  );
-  apiContexto.datos = datos;
-  assert.deepEqual(JSON.parse(JSON.stringify(datos)), {
-    proveedorId: 3,
-    fechaEstimadaEntrega: '2026-11-20',
-    productos: [{ productoId: 7, cantidad: 12, precio: 18.5 }],
-  });
-  assert.equal(posts.length, 0);
-  assert.throws(() => vm.runInContext(
-    "datosPedidoReposicion(producto, 0, 18.5, null)",
-    apiContexto,
-  ));
-  const primeraCreacion = vm.runInContext('crearPedidoDesdeAlerta(datos)', apiContexto);
-  const dobleClic = vm.runInContext('crearPedidoDesdeAlerta(datos)', apiContexto);
-  assert.equal(await dobleClic, false);
-  assert.equal(posts.length, 1);
-  assert.equal(apiContexto.botonConfirmarReposicion.disabled, true);
-  confirmar({ id: 21 });
-  assert.equal(await primeraCreacion, true);
-  assert.equal(apiContexto.botonConfirmarReposicion.disabled, false);
+  vm.runInContext(extraerFuncion(alertas, 'actualizarSeleccionTodos'), contexto);
+  vm.runInContext(extraerFuncion(alertas, 'seleccionarDestinatarios'), contexto);
+
+  vm.runInContext('seleccionarDestinatarios(true)', contexto);
+  assert.deepEqual(destinatarios.map((item) => item.checked), [true, true, true]);
+  assert.equal(control.checked, true);
+  assert.equal(control.indeterminate, false);
+
+  destinatarios[1].checked = false;
+  vm.runInContext('actualizarSeleccionTodos()', contexto);
+  assert.equal(control.checked, false);
+  assert.equal(control.indeterminate, true);
+
+  vm.runInContext('seleccionarDestinatarios(false)', contexto);
+  assert.deepEqual(destinatarios.map((item) => item.checked), [false, false, false]);
+  assert.equal(control.indeterminate, false);
+});
+
+test('Alertas conserva destinatarios para ADMIN y ALMACÉN con validación del servidor', () => {
+  const html = readStatic('alertas.html');
+  const alertas = readStatic('js/alertas.js');
+  const seguridad = fs.readFileSync(path.resolve(
+    staticDirectory,
+    '../../../main/java/com/luany/inventory/controller/ConfiguracionSeguridad.java',
+  ), 'utf8');
+
+  assert.match(html, /id="notificacion-seleccionar-todos"/);
+  assert.match(alertas, /apiGet\('\/api\/alertas\/destinatarios'\)/);
+  assert.match(alertas, /apiPost\('\/api\/alertas\/notificar-stock', \{ destinatarioIds \}\)/);
+  assert.match(alertas, /Selecciona al menos un destinatario/);
+  assert.match(seguridad, /requestMatchers\(HttpMethod\.POST, "\/api\/alertas\/notificar-stock"\)\s+\.hasAnyRole\("ADMIN", "EMPLEADO"\)/);
 });
 
 test('el detalle y la nota recién registrada usan la misma vista imprimible dentro de la página', () => {
@@ -607,7 +576,7 @@ test('el Kanban conserva estados reales y agrupa el seguimiento de pedidos pendi
   assert.match(script, /clave: 'PENDIENTE', columna: 'kanban-pedido'/);
   assert.match(script, /clave: 'RECIBIDO', columna: 'kanban-recibido'/);
   assert.match(script, /apiGet\('\/api\/alertas\/stock'\)/);
-  assert.match(script, /alerta-producto-\$\{encodeURIComponent\(alerta\.productoId\)\}/);
+  assert.doesNotMatch(script, /alerta-producto-|textContent = 'Reponer'/);
   assert.match(script, /productoIds/);
   assert.match(html, /id="kanban-ultima-actualizacion"/);
   assert.match(html, /id="kanban-detalle-total"/);

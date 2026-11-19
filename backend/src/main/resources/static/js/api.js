@@ -469,13 +469,12 @@ const ENLACES_SIDEBAR = [
   { label: 'Alertas', href: '/alertas.html', pagina: 'alertas.html', icono: 'alertas' },
   { label: 'Proveedores', href: '/proveedores.html', pagina: 'proveedores.html', icono: 'proveedores' },
   { label: 'Clientes', href: '/clientes.html', pagina: 'clientes.html', icono: 'clientes' },
-  { label: 'Notas de venta', href: '/notas-venta.html', pagina: 'notas-venta.html', icono: 'ventas' },
+  { label: 'Ventas', href: '/notas-venta.html', pagina: 'notas-venta.html', icono: 'ventas' },
   { label: 'Pedidos', href: '/pedidos.html', pagina: 'pedidos.html', icono: 'pedidos' },
   { label: 'Tablero Kanban', href: '/pedidos-kanban.html', pagina: 'pedidos-kanban.html', icono: 'kanban' },
   { label: 'Movimientos', href: '/movimientos.html', pagina: 'movimientos.html', icono: 'movimientos' },
   { label: 'Reportes', href: '/reportes.html', pagina: 'reportes.html', icono: 'reportes' },
   { label: 'Usuarios', href: '/usuarios.html', pagina: 'usuarios.html', admin: true, icono: 'usuarios' },
-  { label: 'Asistente IA', href: '/asistente.html', pagina: 'asistente.html', icono: 'asistente' },
 ];
 
 function crearIconoSidebar(contenido, clase) {
@@ -504,6 +503,21 @@ function renderizarNavegacionSidebar(rol) {
   const rayosDer = rayosIzq.cloneNode();
   titulo.append(rayosIzq, document.createTextNode('MENÚ PRINCIPAL'), rayosDer);
 
+  const accesoAsistente = document.createElement('button');
+  accesoAsistente.type = 'button';
+  accesoAsistente.className = 'sidebar-assistant-access';
+  accesoAsistente.setAttribute('aria-label', 'Abrir asistente IA de LUANY');
+  accesoAsistente.setAttribute('aria-expanded', 'false');
+  accesoAsistente.setAttribute('aria-controls', 'luany-asistente-panel');
+  accesoAsistente.title = 'Asistente IA';
+  const etiquetaAsistente = document.createElement('span');
+  etiquetaAsistente.className = 'sidebar-assistant-label';
+  etiquetaAsistente.textContent = 'Asistente IA';
+  accesoAsistente.append(
+    crearIconoSidebar(ICONOS_SIDEBAR.asistente),
+    etiquetaAsistente,
+  );
+
   const enlaces = ENLACES_SIDEBAR
     .filter(enlace => !enlace.admin || rol === 'ADMIN')
     .map(enlace => {
@@ -530,7 +544,7 @@ function renderizarNavegacionSidebar(rol) {
       return link;
     });
 
-  nav.replaceChildren(titulo, ...enlaces);
+  nav.replaceChildren(accesoAsistente, titulo, ...enlaces);
   nav.classList.remove('sidebar-nav-pending');
 }
 
@@ -572,6 +586,19 @@ function configurarMarcaSidebar() {
   });
 }
 
+function cargarAsistenteFlotante() {
+  if (document.getElementById('asistente-flotante-script')) return;
+  const widget = document.createElement('script');
+  widget.id = 'asistente-flotante-script';
+  widget.src = '/js/asistente-flotante.js';
+  widget.async = false;
+  widget.onerror = () => {
+    console.error('No se pudo cargar el asistente flotante desde /js/asistente-flotante.js');
+    mostrarToast('No se pudo cargar el asistente IA. Recarga la página para intentarlo nuevamente.', 'error');
+  };
+  document.body.appendChild(widget);
+}
+
 /** Inicializa el botón de cerrar sesión y el avatar del topbar */
 function iniciarLayout(tituloPagina) {
   const usuario = requerirSesion();
@@ -594,6 +621,7 @@ function iniciarLayout(tituloPagina) {
   renderizarNavegacionSidebar(usuario.rol);
   configurarMarcaSidebar();
   habilitarAccesoPerfil();
+  if (!usuario.debeCambiarPassword) cargarAsistenteFlotante();
 
   // Botón cerrar sesión
   document.querySelectorAll('.btn-cerrar-sesion').forEach(btn => {
@@ -670,17 +698,6 @@ async function cargarPaginaProtegida(archivo, opciones = {}) {
   const usuario = await protegerPagina(opciones);
 
   if (!usuario) return;
-
-  if (!opciones.gestionarPassword) {
-    const widget = document.createElement('script');
-    widget.src = '/js/asistente-flotante.js';
-    widget.async = false;
-    widget.onerror = () => {
-      console.error('No se pudo cargar el asistente flotante desde /js/asistente-flotante.js');
-      mostrarToast('No se pudo cargar el asistente IA. Recarga la página para intentarlo nuevamente.', 'error');
-    };
-    document.body.appendChild(widget);
-  }
 
   const script = document.createElement('script');
   script.src = archivo;

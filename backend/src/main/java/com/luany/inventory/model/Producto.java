@@ -2,9 +2,14 @@ package com.luany.inventory.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "productos")
+@Table(name = "productos", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_productos_codigo", columnNames = "codigo")
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class Producto {
 
@@ -40,4 +45,11 @@ public class Producto {
 
     @Column(length = 200)
     private String descripcion;
+
+    @Column(nullable = false)
+    private boolean activo = true;
+
+    @CreationTimestamp
+    @Column(name = "fecha_creacion", nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion;
 }

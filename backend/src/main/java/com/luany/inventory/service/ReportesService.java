@@ -108,7 +108,7 @@ public class ReportesService {
                 && !List.of("AGOTADO", "BAJO", "NORMAL", "EXCESO").contains(estadoFiltro)) {
             throw new IllegalArgumentException("El estado debe ser AGOTADO, BAJO, NORMAL o EXCESO");
         }
-        List<ProductoInventario> productos = productoRepository.findAll().stream()
+        List<ProductoInventario> productos = productoRepository.findAllByActivoTrue().stream()
                 .map(producto -> new ProductoInventario(
                         producto.getId(),
                         producto.getNombre(),

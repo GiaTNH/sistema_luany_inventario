@@ -116,9 +116,10 @@ function crearTarjetaProductoBajoStock(alerta, pedidosActivos) {
     crearDatoTarjeta('Reposición sugerida', `${alerta.cantidadSugerida ?? '—'} uds.`),
   );
   const relacionados = pedidosRelacionadosProducto(alerta, pedidosActivos);
-  const acciones = document.createElement('div');
-  acciones.className = 'kanban-acciones';
+  tarjeta.append(nombre, categoria, datos);
   if (relacionados.length) {
+    const acciones = document.createElement('div');
+    acciones.className = 'kanban-acciones';
     relacionados.forEach((pedido) => {
       const vinculo = document.createElement('a');
       vinculo.className = 'btn btn-secundario';
@@ -126,14 +127,8 @@ function crearTarjetaProductoBajoStock(alerta, pedidosActivos) {
       vinculo.textContent = `Pedido #${pedido.id} · ${pedido.estado === 'PARCIAL' ? 'Parcial' : 'Pendiente'}`;
       acciones.appendChild(vinculo);
     });
-  } else {
-    const reponer = document.createElement('a');
-    reponer.className = 'btn btn-primario';
-    reponer.href = `/alertas.html#alerta-producto-${encodeURIComponent(alerta.productoId)}`;
-    reponer.textContent = 'Reponer';
-    acciones.appendChild(reponer);
+    tarjeta.appendChild(acciones);
   }
-  tarjeta.append(nombre, categoria, datos, acciones);
   return tarjeta;
 }
 

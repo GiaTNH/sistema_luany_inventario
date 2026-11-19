@@ -51,6 +51,8 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
 }) {
   const valoresSesion = new Map([['luany-asistente-historial:7', historialGuardado]]);
   const elementosWidget = new Map();
+  const accesoAsistente = elemento('.sidebar-assistant-access');
+  accesoAsistente.setAttribute('aria-expanded', 'false');
   const document = { activeElement: null };
   document.addEventListener = () => {};
   document.createTextNode = (texto) => ({ nodeType: 3, textContent: texto });
@@ -110,7 +112,6 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
   }
 
   [
-    '.ai-floating-launcher',
     '.ai-floating-panel',
     '.ai-floating-messages',
     '.ai-floating-form',
@@ -140,7 +141,9 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
   };
   document.createElement = (etiqueta) => etiqueta === 'section' ? widget : elemento(etiqueta);
   document.getElementById = (id) => widgetMounted && id === widget.id ? widget : null;
-  document.querySelector = () => null;
+  document.querySelector = (selector) => (
+    selector === '.sidebar-assistant-access' ? accesoAsistente : null
+  );
   document.body = documentBody;
 
   const llamadas = [];
@@ -177,7 +180,7 @@ function crearEntornoWidget(historialGuardado = '[]', respuestaApi = {
     'utf8',
   );
   vm.runInContext(widgetSource, contexto);
-  return { document, elementosWidget, llamadas, valoresSesion, widget };
+  return { document, elementosWidget, llamadas, valoresSesion, widget, accesoAsistente };
 }
 
 const usuarioEmpleado = {
@@ -188,17 +191,12 @@ const usuarioEmpleado = {
   debeCambiarPassword: false,
 };
 
-test('el widget se inyecta tras validar la sesión de páginas internas', async () => {
+test('el javascript de la página se carga solo después de validar la sesión', async () => {
   const entorno = crearEntorno(usuarioEmpleado);
 
   await entorno.cargarPaginaProtegida('/js/productos.js');
 
-  assert.deepEqual(entorno.scripts.map((script) => script.src), [
-    '/js/asistente-flotante.js',
-    '/js/productos.js',
-  ]);
-  assert.equal(entorno.scripts[0].async, false);
-  assert.equal(typeof entorno.scripts[0].onerror, 'function');
+  assert.deepEqual(entorno.scripts.map((script) => script.src), ['/js/productos.js']);
 });
 
 test('el cambio obligatorio de contraseña no carga el widget', async () => {
@@ -260,6 +258,9 @@ test('el widget conserva historial por usuario y solo reutiliza el endpoint de c
   assert.match(widgetSource, /luany-asistente-historial:\$\{usuario\.id\}/);
   assert.match(widgetSource, /sessionStorage\.setItem\(historialKey/);
   assert.match(widgetSource, /apiPost\('\/api\/asistente\/consulta'/);
+  assert.match(widgetSource, /document\.querySelector\('\.sidebar-assistant-access'\)/);
+  assert.doesNotMatch(widgetSource, /class="ai-floating-launcher"/);
+  assert.match(widgetSource, /href="\/asistente\.html"/);
   assert.equal(services.filter((name) => name === 'AsistenteService.java').length, 1);
   assert.equal(services.filter((name) => name === 'GeminiClient.java').length, 1);
   assert.equal(assistantEndpoints.length, 1);
@@ -445,12 +446,13 @@ test('el widget muestra y conserva el error cuando falla la consulta', async () 
     'No se pudo completar la consulta.');
 });
 
-test('el botón flotante abre el panel y el control del encabezado lo minimiza', async () => {
+test('el acceso discreto del sidebar abre el panel y el control del encabezado lo minimiza', async () => {
   const entorno = crearEntornoWidget();
-  const launcher = entorno.elementosWidget.get('.ai-floating-launcher');
+  const launcher = entorno.accesoAsistente;
   const panel = entorno.elementosWidget.get('.ai-floating-panel');
   const minimizar = entorno.elementosWidget.get('.ai-floating-minimize');
 
+  assert.equal(entorno.elementosWidget.has('.ai-floating-launcher'), false);
   await launcher.emitir('click');
   assert.equal(panel.hidden, false);
   assert.equal(launcher.getAttribute('aria-expanded'), 'true');

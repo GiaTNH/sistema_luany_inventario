@@ -157,7 +157,7 @@ public class PedidoService {
 
         List<DetallePedido> detalles = new ArrayList<>();
         for (CrearPedidoItemRequest item : request.getProductos()) {
-            Producto producto = productoRepository.findById(item.getProductoId())
+            Producto producto = productoRepository.findByIdAndActivoTrue(item.getProductoId())
                     .orElseThrow(() -> new IllegalArgumentException("Uno de los productos no existe"));
             DetallePedido detalle = new DetallePedido();
             detalle.setPedido(pedido);
@@ -267,7 +267,7 @@ public class PedidoService {
             if (!productosVistos.add(item.getProductoId())) {
                 throw new IllegalArgumentException("No repitas un producto en el mismo pedido");
             }
-            Producto producto = productoRepository.findById(item.getProductoId())
+            Producto producto = productoRepository.findByIdAndActivoTrue(item.getProductoId())
                     .orElseThrow(() -> new IllegalArgumentException("Uno de los productos no existe"));
             if (!producto.getProveedor().getId().equals(proveedorId)) {
                 throw new IllegalArgumentException(
