@@ -1,4 +1,4 @@
-iniciarLayout(window.location.pathname.endsWith('/nueva-nota-venta.html') ? 'Nueva nota de venta' : 'Notas de venta');
+iniciarLayout(window.location.pathname.endsWith('/nueva-nota-venta.html') ? 'Nueva nota de venta' : 'Ventas');
 
 const tbodyNotasVenta = document.getElementById('tabla-notas-venta-body');
 const mensajeNotasVenta = document.getElementById('notas-venta-mensaje');
@@ -118,7 +118,7 @@ function actualizarListaProductosVenta() {
     .map((input) => input.dataset.productoId)
     .filter(Boolean));
   lista.innerHTML = productosVenta
-    .filter((producto) => !usados.has(String(producto.id)))
+    .filter((producto) => Number(producto.stockActual) > 0 && !usados.has(String(producto.id)))
     .map((producto) => `<option value="${escapar(etiquetaProductoVenta(producto))}"></option>`)
     .join('');
 }
@@ -150,14 +150,15 @@ function actualizarTotalVenta() {
 }
 
 function agregarLineaVenta() {
-  if (!productosVenta.length) {
-    mostrarToast('No hay productos disponibles para registrar una venta.', 'error');
+  if (!productosVenta.some((producto) => Number(producto.stockActual) > 0)) {
+    mostrarToast('No hay productos con stock disponible para registrar una venta.', 'error');
     return;
   }
   const usados = new Set([...cuerpoLineasVenta.querySelectorAll('.venta-producto')]
     .map((input) => input.dataset.productoId)
     .filter(Boolean));
-  if (productosVenta.every((producto) => usados.has(String(producto.id)))) {
+  if (productosVenta.filter((producto) => Number(producto.stockActual) > 0)
+    .every((producto) => usados.has(String(producto.id)))) {
     mostrarToast('Ya agregaste todos los productos disponibles.', 'info');
     return;
   }
@@ -271,6 +272,7 @@ async function cargarCatalogosVenta() {
       apiGet('/api/clientes'),
       apiGet('/api/productos'),
     ]);
+    productosVenta = productosVenta.filter((producto) => Number(producto.stockActual) > 0);
     if (selectClienteVenta) {
       const clientesEspecificos = clientesVenta.filter((cliente) =>
         cliente.numeroDocumento?.trim().toUpperCase() !== 'CLIENTE-GENERAL');
@@ -283,7 +285,7 @@ async function cargarCatalogosVenta() {
       botonNuevaVenta.removeAttribute('aria-disabled');
       if (!productosVenta.length) {
         botonNuevaVenta.setAttribute('aria-disabled', 'true');
-        mostrarToast('No hay productos disponibles para registrar una venta.', 'info');
+        mostrarToast('No hay productos con stock disponible para registrar una venta.', 'info');
       }
     }
   } catch (error) {

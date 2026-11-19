@@ -76,13 +76,13 @@ public class NotaVentaService {
 
     @Transactional
     public NotaVentaDetalleResponse crear(CrearNotaVentaRequest request, String emailUsuario) {
+        validarLineas(request == null ? null : request.getProductos());
         Cliente cliente = request.getClienteId() == null
                 ? clienteService.obtenerOCrearGeneral()
                 : clienteRepository.findById(request.getClienteId())
                         .orElseThrow(() -> new IllegalArgumentException("El cliente no existe"));
         Usuario usuario = usuarioRepository.buscarPorEmail(emailUsuario)
                 .orElseThrow(() -> new IllegalStateException("No se encontró el usuario de la sesión"));
-        validarLineas(request.getProductos());
 
         List<Long> idsOrdenados = request.getProductos().stream()
                 .map(CrearDetalleVentaRequest::getProductoId)
@@ -99,6 +99,13 @@ public class NotaVentaService {
         List<DetalleVenta> detalles = new ArrayList<>();
         for (CrearDetalleVentaRequest item : request.getProductos()) {
             Producto producto = productosBloqueados.get(item.getProductoId());
+            if (producto == null) {
+                throw new IllegalArgumentException("El producto no existe o no está activo");
+            }
+            if (!producto.isActivo()) {
+                throw new IllegalArgumentException(
+                        "El producto " + producto.getNombre() + " está inactivo y no puede venderse");
+            }
             if (producto.getStockActual() < item.getCantidad()) {
                 throw new IllegalArgumentException(
                         "Stock insuficiente para " + producto.getNombre() + ": disponibles "
@@ -154,8 +161,20 @@ public class NotaVentaService {
     }
 
     private void validarLineas(List<CrearDetalleVentaRequest> productos) {
+        if (productos == null || productos.isEmpty()) {
+            throw new IllegalArgumentException("Agrega al menos un producto a la nota");
+        }
         Set<Long> productosVistos = new HashSet<>();
         for (CrearDetalleVentaRequest item : productos) {
+            if (item == null) {
+                throw new IllegalArgumentException("Cada línea debe incluir un producto válido");
+            }
+            if (item.getProductoId() == null || item.getProductoId() <= 0) {
+                throw new IllegalArgumentException("El producto es obligatorio y debe ser válido");
+            }
+            if (item.getCantidad() == null || item.getCantidad() <= 0) {
+                throw new IllegalArgumentException("La cantidad debe ser mayor a cero");
+            }
             if (!productosVistos.add(item.getProductoId())) {
                 throw new IllegalArgumentException("No repitas un producto en la misma nota de venta");
             }

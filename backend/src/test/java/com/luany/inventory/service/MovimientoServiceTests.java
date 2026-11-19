@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -76,6 +77,59 @@ class MovimientoServiceTests {
     }
 
     @Test
+    void motivoEsObligatorioParaRegistrarUnMovimiento() {
+        MovimientoRequest request = request(1);
+        request.setObservacion(" ");
+
+        assertThrows(IllegalArgumentException.class, () -> movimientoService.registrar(request));
+
+        verify(productoStockLockService, never()).bloquear(1L);
+        verify(movimientoRepository, never()).save(any());
+    }
+
+    @Test
+    void movimientosOperativosRechazanCantidadCeroYNegativa() {
+        for (TipoMovimiento tipo : List.of(
+                TipoMovimiento.ENTRADA, TipoMovimiento.SALIDA, TipoMovimiento.VENTA)) {
+            for (int cantidad : List.of(0, -1)) {
+                MovimientoRequest request = request(cantidad);
+                request.setTipo(tipo);
+                assertThrows(IllegalArgumentException.class, () -> movimientoService.registrar(request));
+            }
+        }
+
+        verify(productoStockLockService, never()).bloquear(1L);
+        verify(movimientoRepository, never()).save(any());
+    }
+
+    @Test
+    void creacionConCantidadCeroSeRechazaEnElFlujoNormalSinCambiarStock() {
+        MovimientoRequest request = request(0);
+        request.setTipo(TipoMovimiento.CREACION);
+
+        assertThrows(IllegalArgumentException.class, () -> movimientoService.registrar(request));
+
+        verify(productoStockLockService, never()).bloquear(1L);
+        verify(movimientoRepository, never()).save(any());
+    }
+
+    @Test
+    void salidaYVentaRechazanCantidadMayorAlStock() {
+        Producto producto = producto(2);
+        when(productoStockLockService.bloquear(1L)).thenReturn(producto);
+        for (TipoMovimiento tipo : List.of(TipoMovimiento.SALIDA, TipoMovimiento.VENTA)) {
+            MovimientoRequest request = request(3);
+            request.setTipo(tipo);
+
+            assertThrows(IllegalArgumentException.class, () -> movimientoService.registrar(request));
+
+            assertEquals(2, producto.getStockActual());
+        }
+
+        verify(movimientoRepository, never()).save(any());
+    }
+
+    @Test
     void listarPaginadoAplicaRangoCompletoYOrdenRecientePrimero() {
         when(movimientoRepository.buscarPaginado(
                 eq(4L), eq(TipoMovimiento.VENTA),
@@ -118,6 +172,7 @@ class MovimientoServiceTests {
         request.setProductoId(1L);
         request.setTipo(TipoMovimiento.ENTRADA);
         request.setCantidad(cantidad);
+        request.setObservacion("Reposición de inventario");
         return request;
     }
 

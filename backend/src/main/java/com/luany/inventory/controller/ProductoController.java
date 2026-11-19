@@ -7,6 +7,7 @@ import com.luany.inventory.service.ProductoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
@@ -39,8 +40,8 @@ public class ProductoController {
     }
 
     @PostMapping
-    public Producto crear(@Valid @RequestBody ProductoRequest request) {
-        return productoService.crear(request);
+    public Producto crear(@Valid @RequestBody ProductoRequest request, Authentication authentication) {
+        return productoService.crear(request, authentication.getName());
     }
 
     @PutMapping("/{id}")

@@ -11,6 +11,10 @@ public interface DetallePedidoRepository extends JpaRepository<DetallePedido, Lo
 
     List<DetallePedido> findByPedidoIdOrderById(Long pedidoId);
 
+    @Query("SELECT d FROM DetallePedido d JOIN FETCH d.pedido "
+            + "WHERE d.producto.id = :productoId")
+    List<DetallePedido> findByProductoId(@Param("productoId") Long productoId);
+
     @Query("SELECT d.pedido.id, COALESCE(SUM(d.cantidad), 0) "
             + "FROM DetallePedido d WHERE d.pedido.id IN :pedidoIds GROUP BY d.pedido.id")
     List<Object[]> cantidadesSolicitadasPorPedido(@Param("pedidoIds") List<Long> pedidoIds);

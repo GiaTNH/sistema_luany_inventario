@@ -102,7 +102,7 @@ class ReportesServiceTests {
         Producto bajo = producto(2L, "B", 2, 3, 10);
         Producto normal = producto(3L, "C", 5, 3, 10);
         Producto exceso = producto(4L, "D", 10, 3, 10);
-        when(productoRepository.findAll()).thenReturn(List.of(normal, exceso, agotado, bajo));
+        when(productoRepository.findAllByActivoTrue()).thenReturn(List.of(normal, exceso, agotado, bajo));
 
         var resultado = reportesService.inventario("BAJO");
 

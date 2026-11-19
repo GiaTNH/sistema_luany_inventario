@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.time.Clock;
@@ -123,6 +124,76 @@ class NotaVentaServiceTests {
 
         verify(notaVentaRepository, never()).saveAndFlush(any(NotaVenta.class));
         verifyNoInteractions(detalleVentaRepository, movimientoService);
+    }
+
+    @Test
+    void rechazaProductoInactivoAntesDeCrearNotaOMovimiento() {
+        prepararReferencias();
+        producto.setActivo(false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> notaVentaService.crear(request(1), usuario.getEmail()));
+
+        verify(notaVentaRepository, never()).saveAndFlush(any(NotaVenta.class));
+        verifyNoInteractions(detalleVentaRepository, movimientoService);
+    }
+
+    @Test
+    void rechazaListaNulaOVaciaAntesDeConsultarClienteUsuarioOProductos() {
+        CrearNotaVentaRequest sinProductos = new CrearNotaVentaRequest();
+        sinProductos.setClienteId(5L);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> notaVentaService.crear(sinProductos, usuario.getEmail()));
+
+        CrearNotaVentaRequest listaVacia = new CrearNotaVentaRequest();
+        listaVacia.setClienteId(5L);
+        listaVacia.setProductos(List.of());
+        assertThrows(IllegalArgumentException.class,
+                () -> notaVentaService.crear(listaVacia, usuario.getEmail()));
+
+        verifyNoInteractions(clienteRepository, usuarioRepository, productoStockLockService,
+                notaVentaRepository, detalleVentaRepository, movimientoService);
+    }
+
+    @Test
+    void rechazaCantidadNulaCeroONegativaAntesDeCrearLaNota() {
+        for (Integer cantidad : Arrays.asList(null, 0, -1)) {
+            CrearNotaVentaRequest solicitud = request(1);
+            solicitud.getProductos().get(0).setCantidad(cantidad);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> notaVentaService.crear(solicitud, usuario.getEmail()));
+        }
+
+        verifyNoInteractions(clienteRepository, usuarioRepository, productoStockLockService,
+                notaVentaRepository, detalleVentaRepository, movimientoService);
+    }
+
+    @Test
+    void rechazaProductoIdNuloOCeroONegativoAntesDeCrearLaNota() {
+        for (Long productoId : Arrays.asList(null, 0L, -1L)) {
+            CrearNotaVentaRequest solicitud = request(1);
+            solicitud.getProductos().get(0).setProductoId(productoId);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> notaVentaService.crear(solicitud, usuario.getEmail()));
+        }
+
+        verifyNoInteractions(clienteRepository, usuarioRepository, productoStockLockService,
+                notaVentaRepository, detalleVentaRepository, movimientoService);
+    }
+
+    @Test
+    void rechazaLineaNulaAntesDeCrearLaNota() {
+        CrearNotaVentaRequest solicitud = request(1);
+        solicitud.setProductos(Arrays.asList((CrearDetalleVentaRequest) null));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> notaVentaService.crear(solicitud, usuario.getEmail()));
+
+        verifyNoInteractions(clienteRepository, usuarioRepository, productoStockLockService,
+                notaVentaRepository, detalleVentaRepository, movimientoService);
     }
 
     @Test

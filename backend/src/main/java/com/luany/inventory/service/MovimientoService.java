@@ -33,24 +33,41 @@ public class MovimientoService {
 
     @Transactional
     public Movimiento registrar(MovimientoRequest request, String emailUsuario) {
-        Producto producto = productoStockLockService.bloquear(request.getProductoId());
+        if (request == null || request.getTipo() == null) {
+            throw new IllegalArgumentException("El tipo de movimiento es obligatorio");
+        }
+        if (request.getTipo() == TipoMovimiento.CREACION) {
+            throw new IllegalArgumentException("El tipo CREACION solo se registra al crear un producto");
+        }
+        if (request.getProductoId() == null) {
+            throw new IllegalArgumentException("El producto es obligatorio");
+        }
+        if (request.getCantidad() == null || request.getCantidad() <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor a 0");
+        }
+        if (request.getObservacion() == null || request.getObservacion().isBlank()) {
+            throw new IllegalArgumentException("El motivo del movimiento es obligatorio");
+        }
 
+        Producto producto = productoStockLockService.bloquear(request.getProductoId());
         int cantidad = request.getCantidad();
         int stockAnterior = producto.getStockActual();
-
         if (request.getTipo() == TipoMovimiento.ENTRADA) {
             if (stockAnterior < 0 || cantidad > Integer.MAX_VALUE - stockAnterior) {
                 throw new IllegalArgumentException(
                         "La entrada supera el máximo permitido para el stock");
             }
             producto.setStockActual(stockAnterior + cantidad);
-        } else {
-            if (producto.getStockActual() < cantidad) {
+        } else if (request.getTipo() == TipoMovimiento.SALIDA
+                || request.getTipo() == TipoMovimiento.VENTA) {
+            if (stockAnterior < cantidad) {
                 throw new IllegalArgumentException(
-                        "Stock insuficiente: hay " + producto.getStockActual()
+                        "Stock insuficiente: hay " + stockAnterior
                                 + " unidades y se piden " + cantidad);
             }
             producto.setStockActual(producto.getStockActual() - cantidad);
+        } else {
+            throw new IllegalArgumentException("El tipo de movimiento no es válido");
         }
         Movimiento movimiento = new Movimiento();
         movimiento.setProducto(producto);

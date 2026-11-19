@@ -12,6 +12,6 @@ import java.util.Optional;
 public interface ProductoStockLockRepository extends Repository<Producto, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT p FROM Producto p WHERE p.id = :id")
+    @Query("SELECT p FROM Producto p WHERE p.id = :id AND p.activo = true")
     Optional<Producto> buscarPorIdBloqueando(@Param("id") Long id);
 }
