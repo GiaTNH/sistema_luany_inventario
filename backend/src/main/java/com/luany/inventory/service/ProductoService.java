@@ -22,8 +22,10 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 public class ProductoService {
 
-    private static final int MAX_INTENTOS_CODIGO = 100;
     private static final String CARACTERES_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final String PREFIJOS_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    private static final int MAX_INTENTOS_CODIGO = PREFIJOS_CODIGO.length();
+    private static final long MAX_ID_CODIGO = 10L * 32 * 32 * 32 * 32;
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
@@ -167,23 +169,27 @@ public class ProductoService {
     }
 
     private String generarCodigoDisponible(Long id) {
-        StringBuilder codigo = new StringBuilder();
-        long restante = id;
+        if (id == null || id < 0 || id >= MAX_ID_CODIGO) {
+            throw new IllegalStateException("No se pudo representar el identificador en el código del producto");
+        }
+
+        long restante = id / 10;
+        StringBuilder identificador = new StringBuilder(4);
         do {
-            codigo.append(CARACTERES_CODIGO.charAt((int) (restante % CARACTERES_CODIGO.length())));
+            identificador.append(CARACTERES_CODIGO.charAt(
+                    (int) (restante % CARACTERES_CODIGO.length())));
             restante /= CARACTERES_CODIGO.length();
         } while (restante > 0);
-        while (codigo.length() < 6) {
-            codigo.append(CARACTERES_CODIGO.charAt(0));
+        while (identificador.length() < 4) {
+            identificador.append(CARACTERES_CODIGO.charAt(0));
         }
-        String base = "LU-" + codigo.reverse();
-        if (!productoRepository.existsByCodigo(base)) {
-            return base;
-        }
-        for (int intento = 1; intento <= MAX_INTENTOS_CODIGO; intento++) {
-            String alternativa = base + "-" + intento;
-            if (!productoRepository.existsByCodigo(alternativa)) {
-                return alternativa;
+        identificador.reverse();
+
+        for (int intento = 0; intento < MAX_INTENTOS_CODIGO; intento++) {
+            String codigo = "LU-" + PREFIJOS_CODIGO.charAt(intento)
+                    + (id % 10) + identificador;
+            if (!productoRepository.existsByCodigo(codigo)) {
+                return codigo;
             }
         }
         throw new IllegalStateException(

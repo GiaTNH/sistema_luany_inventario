@@ -86,8 +86,17 @@ test('el asistente y Kanban usan enlaces compartidos y Kanban sigue a Dashboard'
   assert.ok(dashboard >= 0 && kanban > dashboard && productos > kanban);
   assert.match(api, /label: 'Asistente IA', href: '\/asistente\.html', pagina: 'asistente\.html'/);
   assert.match(api, /link\.className = 'nav-item'/);
-  assert.match(api, /nav\.replaceChildren\(titulo, \.\.\.enlaces\)/);
+  assert.match(api, /const enlaceAsistente = enlacesPermitidos\.find/);
+  assert.match(api, /nav\.replaceChildren\([\s\S]*?\.\.\.\(enlaceAsistente \? \[crearEnlace\(enlaceAsistente\)\] : \[\]\),\s*titulo,/);
   assert.doesNotMatch(api, /sidebar-assistant-access|cargarAsistenteFlotante/);
+});
+
+test('Categorías conserva su módulo, pero ya no tiene una pestaña independiente sobre Productos', () => {
+  const html = readStatic('productos.html');
+  assert.doesNotMatch(html, /productos-tabs-card|data-tab="categorias"/);
+  assert.match(html, /<button class="btn btn-secundario" onclick="cambiarTab\('categorias'\)">Categorías<\/button>/);
+  assert.match(html, /id="tab-categorias"/);
+  assert.match(html, /onclick="abrirModalCategoria\(\)">[\s\S]*?Nueva categoría/);
 });
 
 test('el logo oficial conserva su proporción en acceso y notas, y el navbar usa la bolsa', () => {
@@ -634,7 +643,10 @@ test('el detalle y la nota recién registrada usan la misma vista imprimible den
   assert.match(documento, /<th>CANTIDAD<\/th><th>PRECIO<br \/>UNITARIO<\/th><th>IMPORTE<\/th>/);
   const estilos = readStatic('css/styles.css');
   assert.match(estilos, /@page \{ size: 80mm auto; margin: 0; \}/);
-  assert.match(estilos, /\.nota-venta-imprimible \{[\s\S]*?width: 80mm;[\s\S]*?max-width: 80mm;/);
+  assert.match(estilos, /\.nota-venta-imprimible \{[\s\S]*?width: 80mm;[\s\S]*?max-width: 100%;[\s\S]*?margin: 0 auto;/);
+  assert.match(estilos, /@media print \{[\s\S]*?\.nota-venta-imprimible \{[\s\S]*?width: 80mm;[\s\S]*?max-width: 80mm;/);
+  assert.match(estilos, /\.ventas-modal #venta-documento-imprimible \{ display: flex; justify-content: center; \}/);
+  assert.match(estilos, /body\.printing-venta \.ventas-modal #venta-documento-imprimible \{ display: block; \}/);
   assert.match(estilos, /nota-venta-imprimible th:nth-child\(2\)[\s\S]*?width: 14%; text-align: center;/);
   const titulo = { textContent: '' };
   const contenido = { innerHTML: '' };
@@ -656,6 +668,18 @@ test('el detalle y la nota recién registrada usan la misma vista imprimible den
   assert.match(readStatic('notas-venta.html'), /id="venta-documento-imprimible"/);
   assert.match(readStatic('nueva-nota-venta.html'), /id="venta-documento-imprimible"/);
   assert.match(readStatic('css/styles.css'), /@media print/);
+});
+
+test('el selector de ventas tiene espacio ancho, no queda recortado y se adapta a móvil', () => {
+  const estilos = readStatic('css/styles.css');
+  assert.match(estilos, /\.ventas-nueva-page \.tabla-wrapper \{ overflow: visible; \}/);
+  assert.match(estilos, /\.ventas-nueva-page \.ventas-formulario-pagina > \.panel \{ overflow: visible; \}/);
+  assert.match(estilos, /\.venta-product-options \{[\s\S]*?z-index: 1000;[\s\S]*?width: min\(720px, calc\(100vw - 340px\)\);/);
+  assert.match(estilos, /@media \(max-width: 900px\) \{\s*\.venta-product-options \{ width: min\(720px, calc\(100vw - 160px\)\); \}/);
+  assert.match(estilos, /@media \(max-width: 768px\) \{[\s\S]*?\.venta-product-options \{[\s\S]*?left: -52px;[\s\S]*?width: min\(720px, calc\(100vw - 12px\)\)/);
+  for (const campo of ['name', 'code', 'price', 'stock']) {
+    assert.match(estilos, new RegExp(`venta-product-option-${campo}`));
+  }
 });
 
 test('el Kanban conserva estados reales y agrupa el seguimiento de pedidos pendientes o parciales', () => {

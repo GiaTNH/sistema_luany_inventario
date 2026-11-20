@@ -504,33 +504,42 @@ function renderizarNavegacionSidebar(rol) {
   const rayosDer = rayosIzq.cloneNode();
   titulo.append(rayosIzq, document.createTextNode('MENÚ PRINCIPAL'), rayosDer);
 
-  const enlaces = ENLACES_SIDEBAR
-    .filter(enlace => !enlace.admin || rol === 'ADMIN')
-    .map(enlace => {
-      const link = document.createElement('a');
-      link.href = enlace.href;
-      link.className = 'nav-item';
-      link.dataset.pagina = enlace.pagina;
-      if (enlace.seccion) link.dataset.seccion = enlace.seccion;
-      if (enlace.tab) link.dataset.tab = enlace.tab;
-      link.setAttribute('aria-label', enlace.label);
-      link.title = enlace.label;
+  const crearEnlace = (enlace) => {
+    const link = document.createElement('a');
+    link.href = enlace.href;
+    link.className = 'nav-item';
+    link.dataset.pagina = enlace.pagina;
+    if (enlace.seccion) link.dataset.seccion = enlace.seccion;
+    if (enlace.tab) link.dataset.tab = enlace.tab;
+    link.setAttribute('aria-label', enlace.label);
+    link.title = enlace.label;
 
-      const iconoContenedor = document.createElement('span');
-      iconoContenedor.className = 'sidebar-nav-icon';
-      iconoContenedor.appendChild(crearIconoSidebar(ICONOS_SIDEBAR[enlace.icono]));
-      const etiqueta = document.createElement('span');
-      etiqueta.className = 'sidebar-nav-label';
-      etiqueta.textContent = enlace.label;
-      link.append(
-        iconoContenedor,
-        etiqueta,
-        crearIconoSidebar(ICONOS_SIDEBAR.chevron, 'sidebar-chevron'),
-      );
-      return link;
-    });
+    const iconoContenedor = document.createElement('span');
+    iconoContenedor.className = 'sidebar-nav-icon';
+    iconoContenedor.appendChild(crearIconoSidebar(ICONOS_SIDEBAR[enlace.icono]));
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 'sidebar-nav-label';
+    etiqueta.textContent = enlace.label;
+    link.append(
+      iconoContenedor,
+      etiqueta,
+      crearIconoSidebar(ICONOS_SIDEBAR.chevron, 'sidebar-chevron'),
+    );
+    return link;
+  };
+  const enlacesPermitidos = ENLACES_SIDEBAR.filter(
+    enlace => !enlace.admin || rol === 'ADMIN',
+  );
+  const enlaceAsistente = enlacesPermitidos.find(enlace => enlace.pagina === 'asistente.html');
+  const enlacesPrincipales = enlacesPermitidos
+    .filter(enlace => enlace !== enlaceAsistente)
+    .map(crearEnlace);
 
-  nav.replaceChildren(titulo, ...enlaces);
+  nav.replaceChildren(
+    ...(enlaceAsistente ? [crearEnlace(enlaceAsistente)] : []),
+    titulo,
+    ...enlacesPrincipales,
+  );
   nav.classList.remove('sidebar-nav-pending');
 }
 

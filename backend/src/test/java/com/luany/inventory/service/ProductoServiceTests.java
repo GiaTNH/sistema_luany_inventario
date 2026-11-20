@@ -170,7 +170,7 @@ class ProductoServiceTests {
 
         Producto creado = productoService.crear(request);
 
-        assertTrue(creado.getCodigo().matches("LU-[A-Z2-9]{6}"));
+        assertTrue(creado.getCodigo().matches("LU-[A-Z][0-9][A-Z2-9]{4}"));
         org.mockito.ArgumentCaptor<com.luany.inventory.model.Movimiento> movimiento =
                 org.mockito.ArgumentCaptor.forClass(com.luany.inventory.model.Movimiento.class);
         verify(movimientoRepository).save(movimiento.capture());
@@ -208,8 +208,8 @@ class ProductoServiceTests {
         Producto creado = productoService.crear(primero);
         Producto otro = productoService.crear(segundo);
 
-        assertTrue(creado.getCodigo().matches("LU-[A-Z2-9]{6}"));
-        assertTrue(otro.getCodigo().matches("LU-[A-Z2-9]{6}"));
+        assertTrue(creado.getCodigo().matches("LU-[A-Z][0-9][A-Z2-9]{4}"));
+        assertTrue(otro.getCodigo().matches("LU-[A-Z][0-9][A-Z2-9]{4}"));
         assertNotEquals(creado.getCodigo(), otro.getCodigo());
         verify(productoRepository, org.mockito.Mockito.times(4)).saveAndFlush(any(Producto.class));
     }
@@ -227,7 +227,7 @@ class ProductoServiceTests {
 
         Producto creado = productoService.crear(requestProducto(0));
 
-        assertTrue(creado.getCodigo().matches("LU-[A-Z2-9]{6}-1"));
+        assertTrue(creado.getCodigo().matches("LU-B[0-9][A-Z2-9]{4}"));
         verify(productoRepository, org.mockito.Mockito.times(2)).existsByCodigo(any());
     }
 

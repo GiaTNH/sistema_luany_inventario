@@ -85,13 +85,6 @@
 
     <div class="pagina productos-content">
 
-      <!-- Pestañas — .tab-btn y .tab-panel usados por productos.js -->
-      <div class="productos-tabs-card">
-        <div class="tabs">
-          <button class="tab-btn" data-tab="categorias" onclick="cambiarTab('categorias')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Categorías</button>
-        </div>
-      </div>
-
       <!-- TAB PRODUCTOS -->
       <div class="tab-panel activo" id="tab-productos">
         <div class="panel productos-table-card">
@@ -120,6 +113,7 @@
               </label>
             </div>
             <div class="toolbar-acciones productos-toolbar-actions">
+              <button class="btn btn-secundario" onclick="cambiarTab('categorias')">Categorías</button>
               <button class="btn btn-primario productos-tab-action productos-action-product" onclick="abrirModalProducto()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo producto</button>
             </div>
           </div>
