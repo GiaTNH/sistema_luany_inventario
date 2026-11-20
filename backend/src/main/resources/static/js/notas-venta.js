@@ -111,20 +111,66 @@ function etiquetaProductoVenta(producto) {
   return `${producto.nombre}${codigo ? ` · ${codigo}` : ` · ID ${producto.id}`}`;
 }
 
-function actualizarListaProductosVenta() {
-  const lista = document.getElementById('venta-productos-sugeridos');
-  if (!lista) return;
-  const usados = new Set([...cuerpoLineasVenta.querySelectorAll('.venta-producto')]
-    .map((input) => input.dataset.productoId)
+function productosParaBusquedaVenta(fila, termino = '') {
+  const normalizar = (valor) => String(valor || '').normalize('NFD')
+    .replace(/\p{M}/gu, '').toLocaleLowerCase('es-PE');
+  const consulta = normalizar(termino.trim());
+  const usados = new Set([...cuerpoLineasVenta.querySelectorAll('.venta-linea')]
+    .filter((linea) => linea !== fila)
+    .map((linea) => linea.dataset.productoId)
     .filter(Boolean));
-  lista.innerHTML = productosVenta
-    .filter((producto) => Number(producto.stockActual) > 0 && !usados.has(String(producto.id)))
-    .map((producto) => `<option value="${escapar(etiquetaProductoVenta(producto))}"></option>`)
-    .join('');
+  return productosVenta.filter((producto) => Number(producto.stockActual) > 0
+    && !usados.has(String(producto.id))
+    && (!consulta || normalizar(`${producto.nombre} ${producto.codigo || ''}`).includes(consulta)));
+}
+
+function renderizarOpcionesProducto(fila, termino = '') {
+  const lista = fila.querySelector('.venta-product-options');
+  if (!lista) return;
+  const productos = productosParaBusquedaVenta(fila, termino).slice(0, 20);
+  lista.innerHTML = productos.map((producto) => `
+    <button type="button" class="venta-product-option" role="option"
+      aria-selected="false" data-producto-id="${escapar(producto.id)}">
+      <span class="venta-product-option-name">${escapar(producto.nombre)}</span>
+      <span class="venta-product-option-code">${escapar(producto.codigo || `ID ${producto.id}`)}</span>
+      <span class="venta-product-option-price">${escapar(formatoMoneda(producto.precio))}</span>
+      <span class="venta-product-option-stock">Stock: ${escapar(producto.stockActual)}</span>
+    </button>`).join('');
+  lista.hidden = productos.length === 0;
+  lista.querySelectorAll('.venta-product-option').forEach((opcion) => {
+    opcion.addEventListener('mousedown', (evento) => evento.preventDefault());
+    opcion.addEventListener('click', () => {
+      seleccionarProductoVenta(fila, catalogoProducto(opcion.dataset.productoId));
+    });
+  });
+}
+
+function actualizarListaProductosVenta(filaActiva = null) {
+  cuerpoLineasVenta.querySelectorAll('.venta-linea').forEach((fila) => {
+    const lista = fila.querySelector('.venta-product-options');
+    if (!lista) return;
+    const estabaVisible = !lista.hidden;
+    const input = fila.querySelector('.venta-producto');
+    renderizarOpcionesProducto(fila, input.value);
+    if (fila !== filaActiva && !estabaVisible) lista.hidden = true;
+    input.setAttribute('aria-expanded', String(!lista.hidden));
+  });
 }
 
 function buscarProductoPorEtiqueta(etiqueta) {
   return productosVenta.find((producto) => etiquetaProductoVenta(producto) === etiqueta.trim());
+}
+
+function seleccionarProductoVenta(fila, producto) {
+  if (!producto || Number(producto.stockActual) <= 0) return;
+  const input = fila.querySelector('.venta-producto');
+  input.value = etiquetaProductoVenta(producto);
+  input.setAttribute('aria-expanded', 'false');
+  fila.dataset.productoId = String(producto.id);
+  const lista = fila.querySelector('.venta-product-options');
+  if (lista) lista.hidden = true;
+  actualizarLineaVenta(fila);
+  actualizarListaProductosVenta();
 }
 
 function actualizarLineaVenta(fila) {
@@ -165,7 +211,13 @@ function agregarLineaVenta() {
   const fila = document.createElement('tr');
   fila.className = 'venta-linea';
   fila.innerHTML = `
-    <td><input class="form-control venta-producto venta-producto-busqueda" type="search" list="venta-productos-sugeridos" placeholder="Buscar por nombre o código" autocomplete="off" required /></td>
+    <td><div class="venta-producto-selector">
+      <input class="form-control venta-producto venta-producto-busqueda" type="search"
+        role="combobox" aria-autocomplete="list" aria-expanded="false"
+        aria-label="Buscar producto por nombre o código"
+        placeholder="Buscar por nombre o código" autocomplete="off" required />
+      <div class="venta-product-options" role="listbox" hidden></div>
+    </div></td>
     <td class="venta-stock">—</td>
     <td><input class="form-control venta-cantidad" type="number" min="1" step="1" value="1" required /></td>
     <td class="venta-precio">S/ 0.00</td>
@@ -177,10 +229,29 @@ function agregarLineaVenta() {
     const producto = buscarProductoPorEtiqueta(inputProducto.value);
     fila.dataset.productoId = producto ? String(producto.id) : '';
     actualizarLineaVenta(fila);
-    actualizarListaProductosVenta();
+    actualizarListaProductosVenta(fila);
+  });
+  inputProducto.addEventListener('focus', () => {
+    inputProducto.setAttribute('aria-expanded', 'true');
+    renderizarOpcionesProducto(fila, inputProducto.value);
+  });
+  inputProducto.addEventListener('keydown', (evento) => {
+    const lista = fila.querySelector('.venta-product-options');
+    const opciones = [...(lista?.querySelectorAll('.venta-product-option') || [])];
+    if (evento.key === 'Escape') {
+      if (lista) lista.hidden = true;
+      inputProducto.setAttribute('aria-expanded', 'false');
+    } else if (evento.key === 'ArrowDown' && opciones.length) {
+      evento.preventDefault();
+      opciones[0].focus();
+    } else if (evento.key === 'Enter' && opciones.length) {
+      evento.preventDefault();
+      seleccionarProductoVenta(fila, catalogoProducto(opciones[0].dataset.productoId));
+      inputProducto.focus();
+    }
   });
   fila.querySelector('.venta-cantidad').addEventListener('input', () => actualizarLineaVenta(fila));
-  actualizarListaProductosVenta();
+  actualizarListaProductosVenta(fila);
 }
 
 function quitarLineaVenta(evento) {
@@ -213,7 +284,10 @@ function generarNotaImprimible(nota) {
       <p><strong>Documento:</strong> ${escapar(documentoClienteVisible(nota.clienteDocumento))}</p>
       <p><strong>Registrado por:</strong> ${escapar(nota.usuarioNombre || '—')}</p>
     </section>
-    <table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Importe</th></tr></thead><tbody>${filas}</tbody></table>
+    <table class="nota-venta-detalles">
+      <thead><tr><th>Producto</th><th>CANTIDAD</th><th>PRECIO<br />UNITARIO</th><th>IMPORTE</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
     <p class="nota-venta-total">Total de la venta: ${escapar(formatoMoneda(nota.total))}</p>
     <p class="nota-venta-legal">DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO</p>
     <p class="nota-venta-gracias">¡Gracias por tu compra!</p>

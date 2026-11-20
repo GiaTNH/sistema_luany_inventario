@@ -20,13 +20,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.hibernate.exception.ConstraintViolationException;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -80,8 +80,7 @@ class ProductoServiceTests {
         proveedor.setId(3L);
         when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
-        when(productoRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(Producto.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        prepararGuardadoProducto(101L);
         when(movimientoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ProductoRequest request = new ProductoRequest();
@@ -123,6 +122,14 @@ class ProductoServiceTests {
         assertEquals(8, actualizado.getStockActual());
         assertEquals("Vestido actualizado", actualizado.getNombre());
         verify(productoStockLockService).bloquear(10L);
+        org.mockito.ArgumentCaptor<com.luany.inventory.model.Movimiento> movimiento =
+                org.mockito.ArgumentCaptor.forClass(com.luany.inventory.model.Movimiento.class);
+        verify(movimientoRepository).save(movimiento.capture());
+        assertEquals(com.luany.inventory.model.TipoMovimiento.EDICION, movimiento.getValue().getTipo());
+        assertEquals(0, movimiento.getValue().getCantidad());
+        assertEquals(8, movimiento.getValue().getStockAnterior());
+        assertEquals(8, movimiento.getValue().getStockNuevo());
+        assertTrue(movimiento.getValue().getObservacion().contains("Nombre: Vestido -> Vestido actualizado"));
     }
 
     @Test
@@ -148,8 +155,7 @@ class ProductoServiceTests {
         proveedor.setId(3L);
         when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
-        when(productoRepository.saveAndFlush(any(Producto.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        prepararGuardadoProducto(102L);
         when(movimientoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ProductoRequest request = new ProductoRequest();
@@ -164,64 +170,91 @@ class ProductoServiceTests {
 
         Producto creado = productoService.crear(request);
 
-        assertTrue(creado.getCodigo().matches("LU-[A-F0-9]{32}"));
+        assertTrue(creado.getCodigo().matches("LU-[A-Z2-9]{6}"));
         org.mockito.ArgumentCaptor<com.luany.inventory.model.Movimiento> movimiento =
                 org.mockito.ArgumentCaptor.forClass(com.luany.inventory.model.Movimiento.class);
         verify(movimientoRepository).save(movimiento.capture());
         assertEquals(com.luany.inventory.model.TipoMovimiento.CREACION, movimiento.getValue().getTipo());
-        assertEquals(0, movimiento.getValue().getCantidad());
+        assertNotNull(creado.getFechaCreacion());
+        assertEquals(creado.getFechaCreacion(), movimiento.getValue().getFecha());
+        assertEquals(7, movimiento.getValue().getCantidad());
         assertEquals(7, movimiento.getValue().getStockAnterior());
         assertEquals(7, movimiento.getValue().getStockNuevo());
+        assertEquals(7, creado.getStockActual());
     }
 
     @Test
-    void codigoAutomaticoReintentaSiElCodigoPropuestoYaExiste() {
+    void codigoAutomaticoBasadoEnIdEsUnicoEntreCreaciones() {
         Categoria categoria = new Categoria(2L, "Ropa");
         Proveedor proveedor = new Proveedor();
         proveedor.setId(3L);
         when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
-        when(productoRepository.existsByCodigo(any())).thenReturn(true, false);
         when(productoRepository.saveAndFlush(any(Producto.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    Producto producto = invocation.getArgument(0);
+                    if (producto.getId() == null) {
+                        producto.setId(producto.getNombre().equals("Primer") ? 103L : 104L);
+                        producto.setFechaCreacion(java.time.LocalDateTime.now());
+                    }
+                    return producto;
+                });
+        when(movimientoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ProductoRequest primero = requestProducto(0);
+        primero.setNombre("Primer");
+        ProductoRequest segundo = requestProducto(0);
+        segundo.setNombre("Segundo");
+        Producto creado = productoService.crear(primero);
+        Producto otro = productoService.crear(segundo);
+
+        assertTrue(creado.getCodigo().matches("LU-[A-Z2-9]{6}"));
+        assertTrue(otro.getCodigo().matches("LU-[A-Z2-9]{6}"));
+        assertNotEquals(creado.getCodigo(), otro.getCodigo());
+        verify(productoRepository, org.mockito.Mockito.times(4)).saveAndFlush(any(Producto.class));
+    }
+
+    @Test
+    void codigoAutomaticoEvitaCodigosYaRegistrados() {
+        Categoria categoria = new Categoria(2L, "Ropa");
+        Proveedor proveedor = new Proveedor();
+        proveedor.setId(3L);
+        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+        when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
+        prepararGuardadoProducto(105L);
+        when(productoRepository.existsByCodigo(any())).thenReturn(true, false);
         when(movimientoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         Producto creado = productoService.crear(requestProducto(0));
 
-        assertTrue(creado.getCodigo().matches("LU-[A-F0-9]{32}"));
+        assertTrue(creado.getCodigo().matches("LU-[A-Z2-9]{6}-1"));
         verify(productoRepository, org.mockito.Mockito.times(2)).existsByCodigo(any());
-        verify(productoRepository).saveAndFlush(creado);
     }
 
     @Test
-    void codigoAutomaticoFallaTrasAgotarIntentosDeColision() {
-        when(productoRepository.existsByCodigo(any())).thenReturn(true);
-
-        assertThrows(IllegalStateException.class,
-                () -> productoService.crear(requestProducto(0)));
-
-        verify(productoRepository, org.mockito.Mockito.times(5)).existsByCodigo(any());
-        verify(productoRepository, never()).saveAndFlush(any());
-    }
-
-    @Test
-    void codigoUnicoDeBaseDeDatosImpideGuardarUnaColisionConcurrente() {
-        Categoria categoria = new Categoria(2L, "Ropa");
+    void actualizarSinCambiosNoAgregaUnEventoDuplicado() {
+        Producto existente = producto(10L, "Vestido", "Ropa", 8, 1, 20);
         Proveedor proveedor = new Proveedor();
         proveedor.setId(3L);
-        when(categoriaRepository.findById(2L)).thenReturn(Optional.of(categoria));
+        proveedor.setNombre("Proveedor");
+        existente.setProveedor(proveedor);
+        existente.setPrecio(0.0);
+        when(productoRepository.findByIdAndActivoTrue(10L)).thenReturn(Optional.of(existente));
+        when(productoStockLockService.bloquear(10L)).thenReturn(existente);
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(existente.getCategoria()));
         when(proveedorRepository.findById(3L)).thenReturn(Optional.of(proveedor));
-        when(productoRepository.saveAndFlush(any(Producto.class)))
-                .thenThrow(new DataIntegrityViolationException(
-                        "duplicate code",
-                        new ConstraintViolationException("duplicate code", null, "uk_productos_codigo")));
+        when(productoRepository.save(existente)).thenReturn(existente);
 
-        IllegalArgumentException error = assertThrows(
-                IllegalArgumentException.class, () -> productoService.crear(requestProducto(0)));
+        ProductoActualizacionRequest request = new ProductoActualizacionRequest();
+        request.setNombre("Vestido");
+        request.setCategoriaId(1L);
+        request.setProveedorId(3L);
+        request.setStockMinimo(1);
+        request.setStockMaximo(20);
+        request.setPrecio(0.0);
 
-        assertEquals(
-                "No se pudo asignar un código único al producto. Intenta nuevamente",
-                error.getMessage());
+        productoService.actualizar(10L, request);
+
         verify(movimientoRepository, never()).save(any());
     }
 
@@ -358,6 +391,18 @@ class ProductoServiceTests {
         request.setStockMaximo(20);
         request.setPrecio(12.5);
         return request;
+    }
+
+    private void prepararGuardadoProducto(long id) {
+        when(productoRepository.saveAndFlush(any(Producto.class)))
+                .thenAnswer(invocation -> {
+                    Producto producto = invocation.getArgument(0);
+                    if (producto.getId() == null) {
+                        producto.setId(id);
+                        producto.setFechaCreacion(java.time.LocalDateTime.now());
+                    }
+                    return producto;
+                });
     }
 
     private DetallePedido detallePedido(Long id, int cantidad, String estado) {

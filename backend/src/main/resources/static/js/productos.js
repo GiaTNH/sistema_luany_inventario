@@ -11,9 +11,8 @@ let ordenProductos = { campo: null, direccion: 1 };
 // ---------- PESTAÑAS ----------
 
 function cambiarTab(nombre, cargarDatos = true) {
-  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    const tabs = ['productos', 'categorias'];
-    btn.classList.toggle('activo', tabs[i] === nombre);
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('activo', btn.dataset.tab === nombre);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('activo'));
   document.getElementById(`tab-${nombre}`).classList.add('activo');
@@ -515,7 +514,9 @@ async function verHistorial(productoId, nombre) {
       return;
     }
     tbody.innerHTML = movs.map(m => {
-      const colorTipo = m.tipo === 'ENTRADA' ? 'badge-normal' : m.tipo === 'VENTA' ? 'badge-bajo' : 'badge-exceso';
+      const colorTipo = m.tipo === 'ENTRADA' ? 'badge-normal'
+        : m.tipo === 'VENTA' ? 'badge-bajo'
+          : m.tipo === 'CREACION' || m.tipo === 'EDICION' ? 'badge-exceso' : 'badge-exceso';
       return `<tr>
         <td>${escapar(normalizarFecha(m.fecha))}</td>
         <td><span class="badge ${colorTipo}">${escapar(m.tipo)}</span></td>

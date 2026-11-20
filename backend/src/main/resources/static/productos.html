@@ -88,7 +88,7 @@
       <!-- Pestañas — .tab-btn y .tab-panel usados por productos.js -->
       <div class="productos-tabs-card">
         <div class="tabs">
-          <button class="tab-btn activo" onclick="cambiarTab('productos')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Productos</button>
+          <button class="tab-btn" data-tab="categorias" onclick="cambiarTab('categorias')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Categorías</button>
         </div>
       </div>
 
@@ -156,7 +156,10 @@
         <div class="panel">
           <div class="panel-header">
             <h3>Categorías</h3>
-            <button class="btn btn-primario" onclick="abrirModalCategoria()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva categoría</button>
+            <div class="toolbar-acciones">
+              <button class="btn btn-secundario" onclick="cambiarTab('productos')">Volver a productos</button>
+              <button class="btn btn-primario" onclick="abrirModalCategoria()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva categoría</button>
+            </div>
           </div>
           <div class="tabla-wrapper">
             <table class="productos-list-table productos-entity-table productos-category-table">
@@ -275,7 +278,7 @@
         </div>
         <div class="form-grupo">
           <label for="mov-observacion">Motivo / Observación</label>
-          <input type="text" id="mov-observacion" class="form-control" maxlength="200" placeholder="Opcional" />
+          <input type="text" id="mov-observacion" class="form-control" maxlength="200" placeholder="Obligatorio" />
         </div>
       </form>
     </div>
