@@ -13,17 +13,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
+import java.util.Objects;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
 public class ProductoService {
 
-    private static final int MAX_INTENTOS_CODIGO = 5;
+    private static final int MAX_INTENTOS_CODIGO = 100;
+    private static final String CARACTERES_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
@@ -73,24 +73,20 @@ public class ProductoService {
         producto.setActivo(true);
         aplicarDatos(producto, request.getNombre(), request.getCategoriaId(), request.getProveedorId(),
                 request.getStockMinimo(), request.getStockMaximo(), request.getPrecio(),
-                generarCodigoDisponible(), request.getDescripcion());
+                null, request.getDescripcion());
         producto.setStockActual(request.getStockActual());
-        Producto creado;
-        try {
-            creado = productoRepository.saveAndFlush(producto);
-        } catch (DataIntegrityViolationException exception) {
-            if (esColisionCodigo(exception)) {
-                throw new IllegalArgumentException(
-                        "No se pudo asignar un código único al producto. Intenta nuevamente");
-            }
-            throw exception;
+        Producto creado = productoRepository.saveAndFlush(producto);
+        if (creado.getId() == null) {
+            throw new IllegalStateException("No se pudo asignar un identificador al producto");
         }
+        creado.setCodigo(generarCodigoDisponible(creado.getId()));
+        creado = productoRepository.saveAndFlush(creado);
         Movimiento movimiento = new Movimiento();
         movimiento.setProducto(creado);
         movimiento.setTipo(TipoMovimiento.CREACION);
-        movimiento.setCantidad(0);
+        movimiento.setCantidad(creado.getStockActual());
         movimiento.setFecha(creado.getFechaCreacion());
-        movimiento.setObservacion("Producto creado y registrado en el inventario. Código: "
+        movimiento.setObservacion("Stock inicial registrado al crear el producto. Código: "
                 + (creado.getCodigo() == null ? "—" : creado.getCodigo()));
         movimiento.setStockAnterior(creado.getStockActual());
         movimiento.setStockNuevo(creado.getStockActual());
@@ -106,12 +102,35 @@ public class ProductoService {
 
     @Transactional
     public Producto actualizar(Long id, ProductoActualizacionRequest request) {
+        return actualizar(id, request, null);
+    }
+
+    @Transactional
+    public Producto actualizar(Long id, ProductoActualizacionRequest request, String emailUsuario) {
         validarActivoParaModificar(id);
         Producto producto = productoStockLockService.bloquear(id);
+        DatosProducto anterior = capturarDatos(producto);
+        int stockActual = producto.getStockActual();
         aplicarDatos(producto, request.getNombre(), request.getCategoriaId(), request.getProveedorId(),
                 request.getStockMinimo(), request.getStockMaximo(), request.getPrecio(),
                 request.getCodigo(), request.getDescripcion());
-        return productoRepository.save(producto);
+        Producto actualizado = productoRepository.save(producto);
+        List<String> cambios = describirCambios(anterior, actualizado);
+        if (!cambios.isEmpty()) {
+            Movimiento movimiento = new Movimiento();
+            movimiento.setProducto(actualizado);
+            movimiento.setTipo(TipoMovimiento.EDICION);
+            movimiento.setCantidad(0);
+            movimiento.setFecha(java.time.LocalDateTime.now());
+            movimiento.setObservacion("Producto editado. Cambios: " + String.join("; ", cambios));
+            movimiento.setStockAnterior(stockActual);
+            movimiento.setStockNuevo(stockActual);
+            if (emailUsuario != null) {
+                usuarioRepository.buscarPorEmail(emailUsuario).ifPresent(movimiento::setUsuario);
+            }
+            movimientoRepository.save(movimiento);
+        }
+        return actualizado;
     }
 
     @Transactional
@@ -147,26 +166,79 @@ public class ProductoService {
         throw new IllegalArgumentException("El producto no existe");
     }
 
-    private String generarCodigoDisponible() {
-        for (int intento = 0; intento < MAX_INTENTOS_CODIGO; intento++) {
-            String codigo = "LU-" + UUID.randomUUID().toString().replace("-", "").substring(0, 32)
-                    .toUpperCase(Locale.ROOT);
-            if (!productoRepository.existsByCodigo(codigo)) {
-                return codigo;
+    private String generarCodigoDisponible(Long id) {
+        StringBuilder codigo = new StringBuilder();
+        long restante = id;
+        do {
+            codigo.append(CARACTERES_CODIGO.charAt((int) (restante % CARACTERES_CODIGO.length())));
+            restante /= CARACTERES_CODIGO.length();
+        } while (restante > 0);
+        while (codigo.length() < 6) {
+            codigo.append(CARACTERES_CODIGO.charAt(0));
+        }
+        String base = "LU-" + codigo.reverse();
+        if (!productoRepository.existsByCodigo(base)) {
+            return base;
+        }
+        for (int intento = 1; intento <= MAX_INTENTOS_CODIGO; intento++) {
+            String alternativa = base + "-" + intento;
+            if (!productoRepository.existsByCodigo(alternativa)) {
+                return alternativa;
             }
         }
         throw new IllegalStateException(
                 "No se pudo generar un código único para el producto después de varios intentos");
     }
 
-    private boolean esColisionCodigo(DataIntegrityViolationException exception) {
-        for (Throwable causa = exception; causa != null; causa = causa.getCause()) {
-            if (causa instanceof org.hibernate.exception.ConstraintViolationException violation
-                    && "uk_productos_codigo".equalsIgnoreCase(violation.getConstraintName())) {
-                return true;
-            }
+    private DatosProducto capturarDatos(Producto producto) {
+        return new DatosProducto(
+                producto.getNombre(),
+                producto.getCategoria() == null ? null : producto.getCategoria().getId(),
+                producto.getCategoria() == null ? null : producto.getCategoria().getNombre(),
+                producto.getProveedor() == null ? null : producto.getProveedor().getId(),
+                producto.getProveedor() == null ? null : producto.getProveedor().getNombre(),
+                producto.getStockMinimo(),
+                producto.getStockMaximo(),
+                producto.getPrecio(),
+                producto.getCodigo(),
+                producto.getDescripcion());
+    }
+
+    private List<String> describirCambios(DatosProducto anterior, Producto actual) {
+        List<String> cambios = new ArrayList<>();
+        agregarCambio(cambios, "Nombre", anterior.nombre(), actual.getNombre());
+        if (!Objects.equals(anterior.categoriaId(), actual.getCategoria().getId())) {
+            agregarCambio(cambios, "Categoría", anterior.categoriaNombre(), actual.getCategoria().getNombre());
         }
-        return false;
+        if (!Objects.equals(anterior.proveedorId(), actual.getProveedor().getId())) {
+            agregarCambio(cambios, "Proveedor", anterior.proveedorNombre(), actual.getProveedor().getNombre());
+        }
+        agregarCambio(cambios, "Stock mínimo", anterior.stockMinimo(), actual.getStockMinimo());
+        agregarCambio(cambios, "Stock máximo", anterior.stockMaximo(), actual.getStockMaximo());
+        agregarCambio(cambios, "Precio", anterior.precio(), actual.getPrecio());
+        agregarCambio(cambios, "Código", anterior.codigo(), actual.getCodigo());
+        agregarCambio(cambios, "Descripción", anterior.descripcion(), actual.getDescripcion());
+        return cambios;
+    }
+
+    private void agregarCambio(List<String> cambios, String campo, Object anterior, Object actual) {
+        if (!Objects.equals(anterior, actual)) {
+            cambios.add(campo + ": " + (anterior == null ? "—" : anterior)
+                    + " -> " + (actual == null ? "—" : actual));
+        }
+    }
+
+    private record DatosProducto(
+            String nombre,
+            Long categoriaId,
+            String categoriaNombre,
+            Long proveedorId,
+            String proveedorNombre,
+            Integer stockMinimo,
+            Integer stockMaximo,
+            Double precio,
+            String codigo,
+            String descripcion) {
     }
 
     public String estadoStock(Producto p) {

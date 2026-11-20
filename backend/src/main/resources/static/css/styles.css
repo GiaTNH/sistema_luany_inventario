@@ -706,6 +706,43 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .ventas-tabla-form .venta-producto-busqueda { min-width: 210px; }
 .ventas-tabla .venta-producto-busqueda { min-width: 210px; }
 .ventas-tabla-form td:first-child .form-control { min-width: 180px; }
+.venta-producto-selector { position: relative; min-width: 210px; }
+.venta-product-options {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #E1D9F0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(39, 20, 76, .18);
+}
+.venta-product-options[hidden] { display: none; }
+.venta-product-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 12px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #F0ECF8;
+  background: #fff;
+  color: #332A69;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.venta-product-option:last-child { border-bottom: 0; }
+.venta-product-option:hover,
+.venta-product-option:focus-visible { background: #F7F3FF; outline: 0; }
+.venta-product-option-name { overflow: hidden; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.venta-product-option-code { color: #756B91; font-size: 10px; }
+.venta-product-option-price,
+.venta-product-option-stock { color: #5630A8; font-size: 10px; font-weight: 700; text-align: right; white-space: nowrap; }
+.venta-product-option-stock { grid-column: 2; color: #26734D; }
 .ventas-accion,
 .venta-quitar-linea { padding: 8px 11px; font-size: 12px; }
 .ventas-modal[hidden] { display: none; }
@@ -871,7 +908,7 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .btn-cerrar-modal svg { width: 18px; height: 18px; }
 
 @media print {
-  @page { margin: 0; size: 80mm auto; }
+  @page { size: 80mm auto; margin: 0; }
   body.printing-venta > .layout,
   body.printing-venta > .btn-menu-movil,
   body.printing-venta > #toast-container { display: none !important; }
@@ -897,35 +934,41 @@ td:first-child { font-weight: 600; color: var(--texto); }
   body.printing-venta .ventas-modal .modal-footer { display: none !important; }
   body.printing-venta .ventas-modal .modal-body { padding: 0 !important; }
   .nota-venta-imprimible {
-    width: 72mm;
-    max-width: 72mm;
-    margin: 0 auto;
-    padding: 4mm;
+    box-sizing: border-box;
+    width: 80mm;
+    max-width: 80mm;
+    min-height: 0;
+    margin: 0;
+    padding: 3mm;
     color: #000;
-    font: 10px Arial, sans-serif;
+    font: 9px/1.3 Arial, sans-serif;
   }
-  .nota-venta-imprimible h2 { margin: 10px 0; font-size: 14px; text-align: center; }
-  .nota-venta-encabezado { justify-content: center; padding-bottom: 8px; border-bottom: 1px dashed #555; }
+  .nota-venta-imprimible h2 { margin: 7px 0; font-size: 12px; text-align: center; }
+  .nota-venta-encabezado { justify-content: center; gap: 5px; padding-bottom: 6px; border-bottom: 1px dashed #555; }
   .nota-venta-bolsa,
-  .nota-venta-logo { width: 34px; height: 34px; }
-  .nota-venta-tienda { text-align: center; font-size: 10px; }
-  .nota-venta-tienda span { font-size: 9px; }
-  .nota-venta-datos { display: block; font-size: 9px; }
-  .nota-venta-imprimible table { margin-top: 10px; table-layout: fixed; font-size: 9px; }
+  .nota-venta-logo { width: 27px; height: 27px; }
+  .nota-venta-tienda { text-align: center; font-size: 8px; }
+  .nota-venta-tienda span { font-size: 7px; }
+  .nota-venta-datos { display: block; font-size: 8px; }
+  .nota-venta-datos p { margin: 2px 0; }
+  .nota-venta-imprimible table { width: 100%; margin-top: 7px; table-layout: fixed; font-size: 8px; }
   .nota-venta-imprimible th,
-  .nota-venta-imprimible td { padding: 3px 2px; border: 0; border-bottom: 1px dashed #aaa; }
+  .nota-venta-imprimible td { padding: 3px 2px; border: 0; border-bottom: 1px dashed #aaa; overflow-wrap: anywhere; }
+  .nota-venta-imprimible th { font-size: 7px; line-height: 1.15; white-space: normal; }
   .nota-venta-imprimible th:nth-child(1),
-  .nota-venta-imprimible td:nth-child(1) { width: 38%; }
+  .nota-venta-imprimible td:nth-child(1) { width: 36%; text-align: left; }
   .nota-venta-imprimible th:nth-child(2),
-  .nota-venta-imprimible td:nth-child(2) { width: 12%; text-align: center; }
+  .nota-venta-imprimible td:nth-child(2) { width: 14%; text-align: center; }
   .nota-venta-imprimible th:nth-child(3),
-  .nota-venta-imprimible td:nth-child(3),
   .nota-venta-imprimible th:nth-child(4),
+  .nota-venta-imprimible td:nth-child(3),
   .nota-venta-imprimible td:nth-child(4) { width: 25%; text-align: right; }
-  .nota-venta-total { margin: 10px 0; font-size: 13px; }
-  .nota-venta-legal { margin-top: 16px; font-size: 8px; }
-  .nota-venta-gracias { margin-top: 12px; font-size: 12px; }
-  .nota-venta-eslogan { font-size: 9px; }
+  .nota-venta-imprimible th:nth-child(3) { text-align: right; }
+  .nota-venta-imprimible td:nth-child(2) { white-space: nowrap; }
+  .nota-venta-total { margin: 7px 0; font-size: 11px; }
+  .nota-venta-legal { margin-top: 10px; font-size: 7px; }
+  .nota-venta-gracias { margin-top: 8px; font-size: 10px; }
+  .nota-venta-eslogan { font-size: 8px; }
   .nota-venta-encabezado,
   .nota-venta-imprimible tr { break-inside: avoid; }
   .nota-venta-imprimible th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

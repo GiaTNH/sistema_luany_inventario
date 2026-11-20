@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS movimientos (
   cantidad       INT          NOT NULL,
   fecha          DATETIME(6)  NOT NULL,
   observacion    VARCHAR(200) DEFAULT NULL,
-  tipo           ENUM('ENTRADA','SALIDA','VENTA','CREACION') NOT NULL,
+  tipo           ENUM('ENTRADA','SALIDA','VENTA','CREACION','EDICION') NOT NULL,
   producto_id    BIGINT       NOT NULL,
   usuario_id     BIGINT       DEFAULT NULL,
   stock_anterior INT          DEFAULT NULL,

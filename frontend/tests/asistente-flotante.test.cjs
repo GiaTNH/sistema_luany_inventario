@@ -258,9 +258,12 @@ test('el widget conserva historial por usuario y solo reutiliza el endpoint de c
   assert.match(widgetSource, /luany-asistente-historial:\$\{usuario\.id\}/);
   assert.match(widgetSource, /sessionStorage\.setItem\(historialKey/);
   assert.match(widgetSource, /apiPost\('\/api\/asistente\/consulta'/);
-  assert.match(widgetSource, /document\.querySelector\('\.sidebar-assistant-access'\)/);
   assert.doesNotMatch(widgetSource, /class="ai-floating-launcher"/);
   assert.match(widgetSource, /href="\/asistente\.html"/);
+  const assistantSource = fs.readFileSync(path.join(staticDirectory, 'js/asistente.js'), 'utf8');
+  assert.match(assistantSource, /luany-asistente-historial:\$\{usuarioAsistente\?\.id\}/);
+  assert.match(assistantSource, /sessionStorage\.setItem\(historialKey/);
+  assert.match(assistantSource, /restaurarHistorialAsistente\(\)/);
   assert.equal(services.filter((name) => name === 'AsistenteService.java').length, 1);
   assert.equal(services.filter((name) => name === 'GeminiClient.java').length, 1);
   assert.equal(assistantEndpoints.length, 1);
@@ -446,20 +449,7 @@ test('el widget muestra y conserva el error cuando falla la consulta', async () 
     'No se pudo completar la consulta.');
 });
 
-test('el acceso discreto del sidebar abre el panel y el control del encabezado lo minimiza', async () => {
-  const entorno = crearEntornoWidget();
-  const launcher = entorno.accesoAsistente;
-  const panel = entorno.elementosWidget.get('.ai-floating-panel');
-  const minimizar = entorno.elementosWidget.get('.ai-floating-minimize');
-
-  assert.equal(entorno.elementosWidget.has('.ai-floating-launcher'), false);
-  await launcher.emitir('click');
-  assert.equal(panel.hidden, false);
-  assert.equal(launcher.getAttribute('aria-expanded'), 'true');
-
-  await minimizar.emitir('click');
-  assert.equal(panel.hidden, true);
-  assert.equal(panel.getAttribute('aria-hidden'), 'true');
-  assert.equal(launcher.getAttribute('aria-expanded'), 'false');
-  assert.equal(entorno.document.activeElement, launcher);
+test('el enlace principal del asistente navega a la pantalla completa y no inicia el widget', () => {
+  assert.match(apiSource, /label: 'Asistente IA', href: '\/asistente\.html', pagina: 'asistente\.html'/);
+  assert.doesNotMatch(apiSource, /sidebar-assistant-access|cargarAsistenteFlotante/);
 });

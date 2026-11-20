@@ -78,14 +78,16 @@ test('el usuario del navbar abre Perfil por clic y teclado para ambos roles', ()
   }
 });
 
-test('el acceso discreto del asistente se renderiza una sola vez antes del menú compartido', () => {
+test('el asistente y Kanban usan enlaces compartidos y Kanban sigue a Dashboard', () => {
   const api = readStatic('js/api.js');
-  const widget = readStatic('js/asistente-flotante.js');
-  assert.match(api, /accesoAsistente\.className = 'sidebar-assistant-access'/);
-  assert.match(api, /nav\.replaceChildren\(accesoAsistente, titulo, \.\.\.enlaces\)/);
-  assert.doesNotMatch(api, /label: 'Asistente IA', href: '\/asistente\.html'/);
-  assert.match(api, /renderizarNavegacionSidebar\(usuario\.rol\);[\s\S]*?cargarAsistenteFlotante\(\)/);
-  assert.match(widget, /href="\/asistente\.html"/);
+  const dashboard = api.indexOf("label: 'Dashboard'");
+  const kanban = api.indexOf("label: 'Tablero Kanban'");
+  const productos = api.indexOf("label: 'Productos'");
+  assert.ok(dashboard >= 0 && kanban > dashboard && productos > kanban);
+  assert.match(api, /label: 'Asistente IA', href: '\/asistente\.html', pagina: 'asistente\.html'/);
+  assert.match(api, /link\.className = 'nav-item'/);
+  assert.match(api, /nav\.replaceChildren\(titulo, \.\.\.enlaces\)/);
+  assert.doesNotMatch(api, /sidebar-assistant-access|cargarAsistenteFlotante/);
 });
 
 test('el logo oficial conserva su proporción en acceso y notas, y el navbar usa la bolsa', () => {
@@ -280,11 +282,17 @@ test('agregar, editar y quitar líneas actualiza los importes y libera productos
   const total = { textContent: '' };
 
   function crearLinea() {
+    const opciones = {
+      innerHTML: '',
+      hidden: true,
+      querySelectorAll: () => [],
+    };
     const input = {
       value: '',
       dataset: {},
       listeners: new Map(),
       addEventListener(tipo, listener) { this.listeners.set(tipo, listener); },
+      setAttribute(nombre, valor) { this[nombre] = valor; },
       emitir(tipo) { this.listeners.get(tipo)?.(); },
     };
     const cantidad = {
@@ -295,6 +303,7 @@ test('agregar, editar y quitar líneas actualiza los importes y libera productos
     };
     const campos = {
       '.venta-producto': input,
+      '.venta-product-options': opciones,
       '.venta-cantidad': cantidad,
       '.venta-stock': { textContent: '' },
       '.venta-precio': { textContent: '' },
@@ -322,6 +331,7 @@ test('agregar, editar y quitar líneas actualiza los importes y libera productos
   const lista = { innerHTML: '' };
   const contexto = vm.createContext({
     cuerpoLineasVenta,
+    lineas,
     productosVenta: [
       { id: 1, nombre: 'Uno', codigo: 'U-01', precio: 10, stockActual: 5 },
       { id: 2, nombre: 'Dos', codigo: 'D-02', precio: 2, stockActual: 6 },
@@ -338,6 +348,8 @@ test('agregar, editar y quitar líneas actualiza los importes y libera productos
   [
     'catalogoProducto',
     'etiquetaProductoVenta',
+    'productosParaBusquedaVenta',
+    'renderizarOpcionesProducto',
     'actualizarListaProductosVenta',
     'buscarProductoPorEtiqueta',
     'actualizarLineaVenta',
@@ -369,8 +381,112 @@ test('agregar, editar y quitar líneas actualiza los importes y libera productos
   contexto.botonQuitar = botonQuitar;
   vm.runInContext('quitarLineaVenta({target:{closest:()=>botonQuitar}})', contexto);
   assert.equal(lineas.length, 1);
-  assert.match(lista.innerHTML, /Uno · U-01/);
+  assert.ok(
+    Array.from(vm.runInContext('productosParaBusquedaVenta(lineas[0])', contexto))
+      .some((producto) => producto.id === 1),
+  );
   assert.equal(total.textContent, 'S/ 4.00');
+});
+
+test('el selector de productos de venta busca nombre y código e informa detalles de cada opción', () => {
+  const script = readStatic('js/notas-venta.js');
+  const lineas = [
+    { dataset: { productoId: '99' } },
+    { dataset: {} },
+  ];
+  const contexto = vm.createContext({
+    cuerpoLineasVenta: { querySelectorAll: () => lineas },
+    productosVenta: [
+      { id: 4, nombre: 'Body algodón', codigo: 'BD-04', stockActual: 2 },
+      { id: 5, nombre: 'Pijama', codigo: 'PJ-05', stockActual: 7 },
+      { id: 6, nombre: 'Agotado', codigo: 'AG-06', stockActual: 0 },
+    ],
+  });
+  vm.runInContext(extraerFuncion(script, 'productosParaBusquedaVenta'), contexto);
+  contexto.fila = lineas[1];
+  assert.deepEqual(
+    Array.from(vm.runInContext("productosParaBusquedaVenta(fila, 'algodon')", contexto), (p) => p.id),
+    [4],
+  );
+  assert.deepEqual(
+    Array.from(vm.runInContext("productosParaBusquedaVenta(fila, 'PJ-05')", contexto), (p) => p.id),
+    [5],
+  );
+  assert.match(script, /venta-product-option-code/);
+  assert.match(script, /venta-product-option-price/);
+  assert.match(script, /venta-product-option-stock/);
+  assert.doesNotMatch(readStatic('nueva-nota-venta.html'), /<datalist/);
+});
+
+test('el selector refresca opciones al seleccionar y eliminar una fila', () => {
+  const script = readStatic('js/notas-venta.js');
+  const filas = [];
+  const total = { textContent: '' };
+  const productos = [
+    { id: 1, nombre: 'Uno', codigo: 'U-01', precio: 10, stockActual: 5 },
+    { id: 2, nombre: 'Dos', codigo: 'D-02', precio: 2, stockActual: 6 },
+  ];
+
+  function crearFila() {
+    const lista = { innerHTML: '', hidden: true, querySelectorAll: () => [] };
+    const input = {
+      value: '',
+      setAttribute(nombre, valor) { this[nombre] = valor; },
+    };
+    const campos = {
+      '.venta-producto': input,
+      '.venta-product-options': lista,
+      '.venta-cantidad': { value: '1', max: '' },
+      '.venta-stock': { textContent: '' },
+      '.venta-precio': { textContent: '' },
+      '.venta-subtotal': { textContent: '' },
+    };
+    return {
+      dataset: {},
+      querySelector: (selector) => campos[selector],
+      remove() { filas.splice(filas.indexOf(this), 1); },
+      campos,
+    };
+  }
+
+  const cuerpoLineasVenta = {
+    querySelectorAll: () => filas,
+  };
+  const contexto = vm.createContext({
+    cuerpoLineasVenta,
+    productosVenta: productos,
+    document: { getElementById: () => total },
+    escapar: String,
+    formatoMoneda: (valor) => `S/ ${Number(valor).toFixed(2)}`,
+  });
+  [
+    'catalogoProducto',
+    'etiquetaProductoVenta',
+    'productosParaBusquedaVenta',
+    'renderizarOpcionesProducto',
+    'actualizarListaProductosVenta',
+    'actualizarLineaVenta',
+    'actualizarTotalVenta',
+    'seleccionarProductoVenta',
+    'quitarLineaVenta',
+  ].forEach((nombre) => vm.runInContext(extraerFuncion(script, nombre), contexto));
+
+  const filaSeleccionada = crearFila();
+  const filaRestante = crearFila();
+  filas.push(filaSeleccionada, filaRestante);
+  filaRestante.campos['.venta-product-options'].hidden = false;
+  contexto.filaSeleccionada = filaSeleccionada;
+  contexto.filaRestante = filaRestante;
+  vm.runInContext('seleccionarProductoVenta(filaSeleccionada, productosVenta[0])', contexto);
+
+  assert.doesNotMatch(filaRestante.campos['.venta-product-options'].innerHTML, /data-producto-id="1"/);
+  assert.match(filaRestante.campos['.venta-product-options'].innerHTML, /data-producto-id="2"/);
+  assert.equal(filaRestante.campos['.venta-product-options'].hidden, false);
+
+  contexto.botonQuitar = { closest: () => filaSeleccionada };
+  vm.runInContext('quitarLineaVenta({target:{closest:()=>botonQuitar}})', contexto);
+  assert.match(filaRestante.campos['.venta-product-options'].innerHTML, /data-producto-id="1"/);
+  assert.equal(filaRestante.campos['.venta-product-options'].hidden, false);
 });
 
 test('el detalle de pedidos ofrece subtotales sin cambiar el flujo de recepciones', () => {
@@ -515,6 +631,11 @@ test('el detalle y la nota recién registrada usan la misma vista imprimible den
   assert.doesNotMatch(documento, /RUC|Dirección|teléfono/i);
   assert.doesNotMatch(script, /window\.location\.replace\('\/notas-venta\.html'\)/);
   assert.doesNotMatch(script, /window\.open|document\.write/);
+  assert.match(documento, /<th>CANTIDAD<\/th><th>PRECIO<br \/>UNITARIO<\/th><th>IMPORTE<\/th>/);
+  const estilos = readStatic('css/styles.css');
+  assert.match(estilos, /@page \{ size: 80mm auto; margin: 0; \}/);
+  assert.match(estilos, /\.nota-venta-imprimible \{[\s\S]*?width: 80mm;[\s\S]*?max-width: 80mm;/);
+  assert.match(estilos, /nota-venta-imprimible th:nth-child\(2\)[\s\S]*?width: 14%; text-align: center;/);
   const titulo = { textContent: '' };
   const contenido = { innerHTML: '' };
   const modal = { hidden: true };

@@ -46,8 +46,10 @@ public class ProductoController {
 
     @PutMapping("/{id}")
     public Producto actualizar(
-            @PathVariable Long id, @Valid @RequestBody ProductoActualizacionRequest request) {
-        return productoService.actualizar(id, request);
+            @PathVariable Long id,
+            @Valid @RequestBody ProductoActualizacionRequest request,
+            Authentication authentication) {
+        return productoService.actualizar(id, request, authentication.getName());
     }
 
     @DeleteMapping("/{id}")

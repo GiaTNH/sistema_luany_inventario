@@ -9,6 +9,49 @@ const mensajesEl   = document.getElementById('chat-mensajes');
 
 let esperando = false;
 let sugerenciaPendiente = null;
+const usuarioAsistente = obtenerSesion();
+const historialKey = `luany-asistente-historial:${usuarioAsistente?.id}`;
+let historialAsistente = cargarHistorialAsistente();
+
+function cargarHistorialAsistente() {
+  try {
+    const guardado = JSON.parse(sessionStorage.getItem(historialKey) || '[]');
+    return Array.isArray(guardado)
+      ? guardado.filter((item) => item && ['usuario', 'asistente', 'error'].includes(item.tipo)
+        && typeof item.texto === 'string').slice(-80)
+      : [];
+  } catch (error) {
+    console.warn('No se pudo restaurar el historial del asistente.', error);
+    return [];
+  }
+}
+
+function guardarHistorialAsistente() {
+  try {
+    sessionStorage.setItem(historialKey, JSON.stringify(historialAsistente.slice(-80)));
+  } catch (error) {
+    console.warn('No se pudo guardar el historial del asistente.', error);
+  }
+}
+
+function restaurarHistorialAsistente() {
+  historialAsistente.forEach((item) => {
+    if (item.tipo === 'usuario') {
+      agregarBurbuja(item.texto, 'usuario');
+    } else if (item.tipo === 'error') {
+      agregarErrorAsistente(item.texto);
+    } else {
+      if (item.opcionesProducto?.length) {
+        sugerenciaPendiente = {
+          pregunta: item.preguntaOriginal,
+          opciones: item.opcionesProducto,
+        };
+      }
+      agregarRespuestaAsistente(item.texto, item.meta || null, item.tablas || [],
+        item.opcionesProducto || []);
+    }
+  });
+}
 
 // ---------- Contador de caracteres ----------
 
@@ -53,6 +96,17 @@ function agregarBurbuja(texto, tipo, meta = null) {
     metaEl.className = 'burbuja-meta';
     metaEl.textContent = meta;
     wrapper.appendChild(metaEl);
+  }
+
+  function agregarErrorAsistente(texto) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'burbuja-wrapper asistente';
+    const burbuja = document.createElement('div');
+    burbuja.className = 'burbuja error-chat';
+    burbuja.textContent = texto;
+    wrapper.appendChild(burbuja);
+    mensajesEl.appendChild(wrapper);
+    mensajesEl.scrollTop = mensajesEl.scrollHeight;
   }
 
   mensajesEl.appendChild(wrapper);
@@ -175,6 +229,8 @@ async function enviarMensaje(accion = null) {
   }
 
   agregarBurbuja(pregunta, 'usuario');
+  historialAsistente.push({ tipo: 'usuario', texto: pregunta });
+  guardarHistorialAsistente();
 
   // Limpiar input
   inputChat.value = '';
@@ -198,18 +254,21 @@ async function enviarMensaje(accion = null) {
     if (opcionesProducto.length) sugerenciaPendiente = { pregunta, opciones: opcionesProducto };
     agregarRespuestaAsistente(respuesta.respuesta || '(Sin respuesta)', meta,
       respuesta.tablas, opcionesProducto);
+    historialAsistente.push({
+      tipo: 'asistente',
+      texto: respuesta.respuesta || '(Sin respuesta)',
+      meta,
+      tablas: Array.isArray(respuesta.tablas) ? respuesta.tablas : [],
+      preguntaOriginal: pregunta,
+      opcionesProducto,
+    });
+    guardarHistorialAsistente();
 
   } catch (err) {
     quitarEscribiendo();
-    // Mostrar error dentro del chat como burbuja de error
-    const wrapper = document.createElement('div');
-    wrapper.className = 'burbuja-wrapper asistente';
-    const burbuja = document.createElement('div');
-    burbuja.className = 'burbuja error-chat';
-    burbuja.textContent = err.message;
-    wrapper.appendChild(burbuja);
-    mensajesEl.appendChild(wrapper);
-    mensajesEl.scrollTop = mensajesEl.scrollHeight;
+    agregarErrorAsistente(err.message);
+    historialAsistente.push({ tipo: 'error', texto: err.message });
+    guardarHistorialAsistente();
   } finally {
     esperando = false;
     btnEnviar.disabled = false;
@@ -217,3 +276,5 @@ async function enviarMensaje(accion = null) {
     inputChat.focus();
   }
 }
+
+restaurarHistorialAsistente();
