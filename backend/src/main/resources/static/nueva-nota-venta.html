@@ -36,9 +36,14 @@
           </div>
           <form id="form-nueva-venta" novalidate>
             <div class="panel-body">
-              <div class="form-grupo">
-                <label for="venta-cliente">Cliente</label>
-                <select id="venta-cliente" class="form-control"></select>
+              <div class="venta-cliente-bloque">
+                <div class="venta-cliente-selector">
+                  <div class="form-grupo">
+                    <label for="venta-cliente">Cliente</label>
+                    <select id="venta-cliente" class="form-control"></select>
+                  </div>
+                  <button type="button" class="btn btn-secundario" id="btn-nuevo-cliente-venta">+ Nuevo cliente</button>
+                </div>
                 <small class="text-suave">Puedes seleccionar Cliente general sin proporcionar datos personales.</small>
               </div>
               <div class="ventas-lineas-header"><h4>Productos</h4><button type="button" class="btn btn-secundario" id="btn-agregar-producto-venta">Agregar producto</button></div>
@@ -60,6 +65,54 @@
         </div>
       </section>
     </main>
+  </div>
+  <div class="modal-overlay clientes-modal ventas-cliente-modal" id="modal-nuevo-cliente-venta" role="dialog" aria-modal="true" aria-labelledby="modal-nuevo-cliente-venta-titulo" aria-hidden="true" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-nuevo-cliente-venta-titulo">Nuevo cliente</h3>
+        <button type="button" class="btn-cerrar-modal" id="btn-cerrar-nuevo-cliente-venta" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="form-nuevo-cliente-venta" novalidate>
+          <div class="form-grupo">
+            <label for="venta-cliente-nombre">Nombre completo *</label>
+            <input id="venta-cliente-nombre" class="form-control" type="text" maxlength="120" autocomplete="name" required />
+          </div>
+          <div class="form-fila">
+            <div class="form-grupo">
+              <label for="venta-cliente-tipo-documento">Tipo de documento *</label>
+              <select id="venta-cliente-tipo-documento" class="form-control" required>
+                <option value="">Seleccionar...</option>
+                <option value="DNI">DNI</option>
+                <option value="RUC">RUC</option>
+                <option value="OTRO">Otro</option>
+              </select>
+            </div>
+            <div class="form-grupo">
+              <label for="venta-cliente-numero-documento">Número de documento *</label>
+              <input id="venta-cliente-numero-documento" class="form-control" type="text" maxlength="20" required />
+            </div>
+          </div>
+          <div class="form-fila">
+            <div class="form-grupo">
+              <label for="venta-cliente-telefono">Teléfono</label>
+              <input id="venta-cliente-telefono" class="form-control" type="tel" maxlength="20" autocomplete="tel" />
+            </div>
+            <div class="form-grupo">
+              <label for="venta-cliente-direccion">Dirección</label>
+              <input id="venta-cliente-direccion" class="form-control" type="text" maxlength="200" autocomplete="street-address" />
+            </div>
+          </div>
+          <p class="clientes-error" id="error-nuevo-cliente-venta" role="alert" hidden></p>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" form="form-nuevo-cliente-venta" class="btn btn-primario" id="btn-guardar-nuevo-cliente-venta">Guardar cliente</button>
+        <button type="button" class="btn btn-secundario" id="btn-cancelar-nuevo-cliente-venta">Cancelar</button>
+      </div>
+    </div>
   </div>
   <div class="modal-overlay ventas-modal" id="modal-detalle-venta" role="dialog" aria-modal="true" aria-labelledby="modal-detalle-venta-titulo" aria-hidden="true" hidden>
     <div class="modal ventas-modal-ancho">

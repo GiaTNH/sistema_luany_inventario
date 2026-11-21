@@ -4,8 +4,12 @@ const tbodyNotasVenta = document.getElementById('tabla-notas-venta-body');
 const mensajeNotasVenta = document.getElementById('notas-venta-mensaje');
 const busquedaNotasVenta = document.getElementById('buscar-nota-venta');
 const modalDetalleVenta = document.getElementById('modal-detalle-venta');
+const modalNuevoClienteVenta = document.getElementById('modal-nuevo-cliente-venta');
 const formNuevaVenta = document.getElementById('form-nueva-venta');
 const selectClienteVenta = document.getElementById('venta-cliente');
+const formNuevoClienteVenta = document.getElementById('form-nuevo-cliente-venta');
+const errorNuevoClienteVenta = document.getElementById('error-nuevo-cliente-venta');
+const botonGuardarClienteVenta = document.getElementById('btn-guardar-nuevo-cliente-venta');
 const cuerpoLineasVenta = document.getElementById('venta-lineas-body');
 const botonRegistrarVenta = document.getElementById('btn-registrar-venta');
 let notaActualDetalle = null;
@@ -98,8 +102,64 @@ function ocultarModal(modal) {
   cerrarModalAccesible(modal);
 }
 
+function abrirModalNuevoClienteVenta() {
+  formNuevoClienteVenta.reset();
+  errorNuevoClienteVenta.hidden = true;
+  mostrarModal(modalNuevoClienteVenta);
+}
+
+function cerrarModalNuevoClienteVenta() {
+  ocultarModal(modalNuevoClienteVenta);
+  formNuevoClienteVenta.reset();
+  errorNuevoClienteVenta.hidden = true;
+  botonGuardarClienteVenta.disabled = false;
+}
+
 function cerrarModalesVenta() {
   if (!modalDetalleVenta.hidden) ocultarModal(modalDetalleVenta);
+}
+
+function renderizarSelectorClientesVenta(clienteSeleccionadoId = selectClienteVenta?.value || '') {
+  if (!selectClienteVenta) return;
+  const clientesEspecificos = clientesVenta.filter((cliente) =>
+    cliente.numeroDocumento?.trim().toUpperCase() !== 'CLIENTE-GENERAL');
+  selectClienteVenta.innerHTML = '<option value="">Cliente general (sin datos personales)</option>' +
+    clientesEspecificos.map((cliente) =>
+      `<option value="${escapar(cliente.id)}">${escapar(cliente.nombre)} · ${escapar(cliente.numeroDocumento)}</option>`)
+      .join('');
+  if (clienteSeleccionadoId) selectClienteVenta.value = String(clienteSeleccionadoId);
+}
+
+async function guardarNuevoClienteVenta(evento) {
+  evento.preventDefault();
+  errorNuevoClienteVenta.hidden = true;
+  if (!formNuevoClienteVenta.reportValidity()) return;
+
+  botonGuardarClienteVenta.disabled = true;
+  const datos = {
+    nombre: document.getElementById('venta-cliente-nombre').value.trim(),
+    tipoDocumento: document.getElementById('venta-cliente-tipo-documento').value,
+    numeroDocumento: document.getElementById('venta-cliente-numero-documento').value.trim(),
+    telefono: document.getElementById('venta-cliente-telefono').value.trim(),
+    direccion: document.getElementById('venta-cliente-direccion').value.trim(),
+  };
+
+  try {
+    const cliente = await apiPost('/api/clientes', datos);
+    if (!cliente?.id) throw new Error('El servidor no devolvió los datos del cliente creado.');
+    clientesVenta = [
+      ...clientesVenta.filter((existente) => String(existente.id) !== String(cliente.id)),
+      cliente,
+    ];
+    renderizarSelectorClientesVenta(cliente.id);
+    cerrarModalNuevoClienteVenta();
+    mostrarToast('Cliente registrado correctamente.', 'exito');
+  } catch (error) {
+    errorNuevoClienteVenta.textContent = error.message || 'No se pudo registrar el cliente.';
+    errorNuevoClienteVenta.hidden = false;
+  } finally {
+    botonGuardarClienteVenta.disabled = false;
+  }
 }
 
 function catalogoProducto(id) {
@@ -307,6 +367,13 @@ function renderizarDetalleVenta(nota) {
 }
 
 document.getElementById('btn-agregar-producto-venta')?.addEventListener('click', agregarLineaVenta);
+document.getElementById('btn-nuevo-cliente-venta')?.addEventListener('click', abrirModalNuevoClienteVenta);
+document.getElementById('btn-cerrar-nuevo-cliente-venta')?.addEventListener('click', cerrarModalNuevoClienteVenta);
+document.getElementById('btn-cancelar-nuevo-cliente-venta')?.addEventListener('click', cerrarModalNuevoClienteVenta);
+formNuevoClienteVenta?.addEventListener('submit', guardarNuevoClienteVenta);
+modalNuevoClienteVenta?.addEventListener('click', (evento) => {
+  if (evento.target === modalNuevoClienteVenta) cerrarModalNuevoClienteVenta();
+});
 document.querySelectorAll('[data-cerrar-venta]').forEach((boton) => {
   boton.addEventListener('click', cerrarModalesVenta);
 });
@@ -316,7 +383,9 @@ document.querySelectorAll('.ventas-modal').forEach((modal) => {
   });
 });
 document.addEventListener('keydown', (evento) => {
-  if (evento.key === 'Escape') cerrarModalesVenta();
+  if (evento.key !== 'Escape') return;
+  if (modalNuevoClienteVenta && !modalNuevoClienteVenta.hidden) cerrarModalNuevoClienteVenta();
+  else cerrarModalesVenta();
 });
 window.addEventListener('afterprint', () => document.body.classList.remove('printing-venta'));
 
@@ -348,12 +417,7 @@ async function cargarCatalogosVenta() {
     ]);
     productosVenta = productosVenta.filter((producto) => Number(producto.stockActual) > 0);
     if (selectClienteVenta) {
-      const clientesEspecificos = clientesVenta.filter((cliente) =>
-        cliente.numeroDocumento?.trim().toUpperCase() !== 'CLIENTE-GENERAL');
-      selectClienteVenta.innerHTML = '<option value="">Cliente general (sin datos personales)</option>' +
-        clientesEspecificos.map((cliente) =>
-          `<option value="${escapar(cliente.id)}">${escapar(cliente.nombre)} · ${escapar(cliente.numeroDocumento)}</option>`)
-          .join('');
+      renderizarSelectorClientesVenta();
     }
     if (botonNuevaVenta) {
       botonNuevaVenta.removeAttribute('aria-disabled');
