@@ -241,11 +241,9 @@ test('el selector de venta no duplica Cliente general y conserva la opción sin 
     escapar: String,
     mostrarToast() {},
   });
-  const cargarCatalogos = script.match(
-    /async function cargarCatalogosVenta\(\) \{[\s\S]*?\n\}/,
-  )?.[0];
-  assert.ok(cargarCatalogos, 'debe existir el cargador de catálogos de venta');
-  vm.runInContext(cargarCatalogos, contexto);
+  const renderizarSelector = extraerFuncion(script, 'renderizarSelectorClientesVenta');
+  const cargarCatalogos = extraerFuncion(script, 'cargarCatalogosVenta');
+  vm.runInContext(`${renderizarSelector}\n${cargarCatalogos}`, contexto);
   await vm.runInContext('cargarCatalogosVenta()', contexto);
 
   assert.equal((selector.innerHTML.match(/Cliente general/g) || []).length, 1);
@@ -262,6 +260,7 @@ test('el catálogo de venta excluye productos agotados', async () => {
       { id: 11, nombre: 'Disponible', stockActual: 2 },
       { id: 12, nombre: 'Agotado', stockActual: 0 },
     ],
+    selectClienteVenta: null,
     document: { getElementById: () => boton },
     mostrarToast() {},
   });

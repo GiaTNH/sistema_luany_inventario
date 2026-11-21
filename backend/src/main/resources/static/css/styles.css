@@ -3192,6 +3192,15 @@ td:first-child { font-weight: 600; color: var(--texto); }
 .ventas-nueva-page .ventas-formulario-pagina > .panel > form > .panel-body { display: grid; gap: 20px; }
 .ventas-nueva-page .ventas-formulario-acciones { display: flex; justify-content: flex-end; gap: 12px; }
 .ventas-nueva-page #venta-cliente { max-width: 480px; }
+.ventas-nueva-page .venta-cliente-selector { display: flex; align-items: flex-end; gap: 12px; max-width: 760px; }
+.ventas-nueva-page .venta-cliente-selector .form-grupo { flex: 1; min-width: 0; margin-bottom: 0; }
+.ventas-nueva-page .venta-cliente-selector > .btn { flex: 0 0 auto; min-height: 42px; white-space: nowrap; }
+.ventas-nueva-page .ventas-cliente-modal .modal { max-width: 640px; }
+
+@media (max-width: 768px) {
+  .ventas-nueva-page .venta-cliente-selector { align-items: stretch; flex-direction: column; }
+  .ventas-nueva-page .venta-cliente-selector > .btn { align-self: flex-start; }
+}
 
 .dashboard-page .dashboard-user-chevron { width: 15px; height: 15px; color: #435A9D; }
 
