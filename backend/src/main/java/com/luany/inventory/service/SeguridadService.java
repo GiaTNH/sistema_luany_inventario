@@ -24,6 +24,7 @@ public class SeguridadService {
     private final UsuarioRepository usuarioRepository;
     private final SessionRegistry sessionRegistry;
     private final CorreoService correoService;
+    private final BloqueoIpService bloqueoIpService;
     private final Clock clock;
 
     @Value("${security.login.window-minutes:15}")
@@ -57,8 +58,8 @@ public class SeguridadService {
 
         long cuenta = intentoRepository.countByIdentificadorIgnoreCaseAndResultadoAndFechaAfter(
                 normalizar(identificador), "FALLIDO", ahora.minusMinutes(ventanaMinutos));
-        long ipCount = ip == null ? 0 : intentoRepository.countByIpAndResultadoAndFechaAfter(
-                normalizarIp(ip), "FALLIDO", ahora.minusMinutes(ventanaMinutos));
+        long ipCount = ip == null ? 0 : intentoRepository.countByIpAndTipoAndResultadoAndFechaAfter(
+                normalizarIp(ip), "LOGIN", "FALLIDO", ahora.minusMinutes(ventanaMinutos));
 
         boolean bloqueado = false;
         if (cuenta >= blockAt && usuario != null) {
@@ -84,6 +85,7 @@ public class SeguridadService {
         }
 
         progresar(cuenta);
+        bloqueoIpService.registrarFallido(normalizarIp(ip));
         return new ResultadoLogin(bloqueado, cuenta, ipCount);
     }
 

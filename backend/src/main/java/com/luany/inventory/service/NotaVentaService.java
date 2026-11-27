@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 public class NotaVentaService {
 
     private static final BigDecimal MAX_TOTAL = new BigDecimal("9999999999.99");
+    private static final int MAX_LIMITE_ASISTENTE = 30;
 
     private final NotaVentaRepository notaVentaRepository;
     private final DetalleVentaRepository detalleVentaRepository;
@@ -58,6 +59,12 @@ public class NotaVentaService {
     @Transactional(readOnly = true)
     public List<NotaVentaResumenResponse> listarParaAsistente(
             String cliente, LocalDate desde, LocalDate hasta, int limite) {
+        if (limite < 1) {
+            throw new IllegalArgumentException("El límite debe ser al menos 1");
+        }
+        if (limite > MAX_LIMITE_ASISTENTE) {
+            throw new IllegalArgumentException("El límite no puede superar " + MAX_LIMITE_ASISTENTE);
+        }
         return notaVentaRepository.buscarParaAsistente(
                         cliente == null || cliente.isBlank() ? null : cliente.trim(),
                         desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay(),

@@ -21,6 +21,7 @@ public class ProveedorService {
                     + "(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$");
     private static final String ESTADO_ACTIVO = "ACTIVO";
     private static final String ESTADO_INACTIVO = "INACTIVO";
+    private static final int MAX_LIMITE_ASISTENTE = 50;
 
     private final ProveedorRepository proveedorRepository;
 
@@ -29,6 +30,12 @@ public class ProveedorService {
     }
 
     public List<Proveedor> listarParaAsistente(int limite) {
+        if (limite < 1) {
+            throw new IllegalArgumentException("El límite debe ser al menos 1");
+        }
+        if (limite > MAX_LIMITE_ASISTENTE) {
+            throw new IllegalArgumentException("El límite no puede superar " + MAX_LIMITE_ASISTENTE);
+        }
         return proveedorRepository.findAll(PageRequest.of(
                 0, limite, Sort.by(Sort.Order.asc("nombre").ignoreCase()))).getContent();
     }

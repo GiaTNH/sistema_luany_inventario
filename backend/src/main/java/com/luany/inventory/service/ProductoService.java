@@ -26,6 +26,7 @@ public class ProductoService {
     private static final String PREFIJOS_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ";
     private static final int MAX_INTENTOS_CODIGO = PREFIJOS_CODIGO.length();
     private static final long MAX_ID_CODIGO = 10L * 32 * 32 * 32 * 32;
+    private static final int MAX_LIMITE_ASISTENTE = 100;
 
     private final ProductoRepository productoRepository;
     private final CategoriaRepository categoriaRepository;
@@ -42,6 +43,12 @@ public class ProductoService {
     }
 
     public List<Producto> listarParaAsistente(int limite) {
+        if (limite < 1) {
+            throw new IllegalArgumentException("El límite debe ser al menos 1");
+        }
+        if (limite > MAX_LIMITE_ASISTENTE) {
+            throw new IllegalArgumentException("El límite no puede superar 100");
+        }
         return productoRepository.findAllByActivoTrue(PageRequest.of(
                 0, limite, Sort.by(Sort.Order.desc("fechaCreacion"), Sort.Order.desc("id"))))
                 .getContent();

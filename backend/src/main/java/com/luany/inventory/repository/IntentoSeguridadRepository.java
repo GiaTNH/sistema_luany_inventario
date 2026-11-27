@@ -12,5 +12,8 @@ public interface IntentoSeguridadRepository extends JpaRepository<IntentoSegurid
 
     long countByIpAndResultadoAndFechaAfter(String ip, String resultado, LocalDateTime fecha);
 
+    long countByIpAndTipoAndResultadoAndFechaAfter(
+            String ip, String tipo, String resultado, LocalDateTime fecha);
+
     List<IntentoSeguridad> findTop100ByOrderByFechaDesc();
 }

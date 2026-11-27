@@ -34,6 +34,7 @@ public class AuthService {
     private final NotificacionTrasCommit notificacionTrasCommit;
     private final IntentosAutenticacionService intentosAutenticacionService;
     private final SeguridadService seguridadService;
+    private final BloqueoIpService bloqueoIpService;
 
     @Autowired
     public AuthService(
@@ -43,7 +44,8 @@ public class AuthService {
             JdbcTemplate jdbcTemplate,
             NotificacionTrasCommit notificacionTrasCommit,
             IntentosAutenticacionService intentosAutenticacionService,
-            SeguridadService seguridadService) {
+            SeguridadService seguridadService,
+            BloqueoIpService bloqueoIpService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.correoService = correoService;
@@ -51,6 +53,7 @@ public class AuthService {
         this.notificacionTrasCommit = notificacionTrasCommit;
         this.intentosAutenticacionService = intentosAutenticacionService;
         this.seguridadService = seguridadService;
+        this.bloqueoIpService = bloqueoIpService;
     }
 
     public AuthService(
@@ -60,7 +63,7 @@ public class AuthService {
             JdbcTemplate jdbcTemplate,
             NotificacionTrasCommit notificacionTrasCommit) {
         this(usuarioRepository, passwordEncoder, correoService, jdbcTemplate,
-                notificacionTrasCommit, null, null);
+                notificacionTrasCommit, null, null, null);
     }
 
     public AuthService(
@@ -71,7 +74,7 @@ public class AuthService {
             NotificacionTrasCommit notificacionTrasCommit,
             IntentosAutenticacionService intentosAutenticacionService) {
         this(usuarioRepository, passwordEncoder, correoService, jdbcTemplate,
-                notificacionTrasCommit, intentosAutenticacionService, null);
+                notificacionTrasCommit, intentosAutenticacionService, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -160,6 +163,10 @@ public class AuthService {
 
     public UsuarioResponse iniciarSesion(LoginRequest request, String ip) {
         String email = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        // Verificar bloqueo por IP persistente (multi-instancia)
+        if (bloqueoIpService != null) {
+            bloqueoIpService.verificar(ip);
+        }
         if (intentosAutenticacionService != null) {
             intentosAutenticacionService.verificarLogin(email, ip);
         }
