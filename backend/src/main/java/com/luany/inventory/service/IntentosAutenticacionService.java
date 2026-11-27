@@ -27,13 +27,13 @@ public class IntentosAutenticacionService {
     public synchronized void verificarLogin(String email, String ip) {
         Instant ahora = clock.instant();
         verificar("login-email:" + normalizar(email), ahora);
-        verificar("login-ip:" + normalizarIp(ip), ahora);
+        // El bloqueo por IP se verifica mediante BloqueoIpService (persistente)
     }
 
     public synchronized void registrarLoginFallido(String email, String ip) {
         Instant ahora = clock.instant();
         registrar("login-email:" + normalizar(email), ahora);
-        registrar("login-ip:" + normalizarIp(ip), ahora);
+        // El registro de fallos por IP se delega a BloqueoIpService (persistente)
     }
 
     public synchronized void registrarLoginExitoso(String email) {

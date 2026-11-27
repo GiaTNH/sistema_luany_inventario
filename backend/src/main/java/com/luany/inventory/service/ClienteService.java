@@ -24,6 +24,7 @@ public class ClienteService {
     private static final String DOCUMENTO_CLIENTE_GENERAL = "CLIENTE-GENERAL";
     private static final String NOMBRE_CLIENTE_GENERAL = "Cliente general";
     private static final Sort ORDEN_NOMBRE = Sort.by(Sort.Order.asc("nombre").ignoreCase());
+    private static final int MAX_LIMITE_ASISTENTE = 30;
 
     private final ClienteRepository clienteRepository;
     private final NotaVentaRepository notaVentaRepository;
@@ -46,6 +47,12 @@ public class ClienteService {
 
     @Transactional(readOnly = true)
     public List<Cliente> listarParaAsistente(String nombre, int limite) {
+        if (limite < 1) {
+            throw new IllegalArgumentException("El límite debe ser mayor o igual a 1");
+        }
+        if (limite > MAX_LIMITE_ASISTENTE) {
+            throw new IllegalArgumentException("El límite no puede superar " + MAX_LIMITE_ASISTENTE);
+        }
         var solicitud = PageRequest.of(0, limite, ORDEN_NOMBRE);
         if (nombre == null || nombre.isBlank()) {
             return clienteRepository.findAll(solicitud).getContent();

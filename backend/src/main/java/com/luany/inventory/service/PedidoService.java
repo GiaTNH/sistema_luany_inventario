@@ -28,6 +28,7 @@ import java.time.Clock;
 public class PedidoService {
 
     private static final Sort ORDEN_PEDIDOS = Sort.by(Sort.Direction.DESC, "fechaPedido");
+    private static final int MAX_LIMITE_ASISTENTE = 20;
 
     private final PedidoRepository pedidoRepository;
     private final DetallePedidoRepository detallePedidoRepository;
@@ -69,6 +70,18 @@ public class PedidoService {
 
     @Transactional(readOnly = true)
     public List<PedidoDetalleResponse> listarParaAsistente(LocalDate desde, LocalDate hasta, int limite) {
+        if (limite < 1) {
+            throw new IllegalArgumentException("El límite debe ser al menos 1");
+        }
+        if (limite > MAX_LIMITE_ASISTENTE) {
+            throw new IllegalArgumentException("El límite no puede superar " + MAX_LIMITE_ASISTENTE);
+        }
+        if (desde == null || hasta == null) {
+            throw new IllegalArgumentException("Las fechas desde y hasta son obligatorias");
+        }
+        if (desde.isAfter(hasta)) {
+            throw new IllegalArgumentException("La fecha desde no puede ser posterior a hasta");
+        }
         LocalDateTime inicio = desde.atStartOfDay();
         LocalDateTime finExclusivo = hasta.plusDays(1).atStartOfDay();
         return pedidoRepository.listarParaAsistente(inicio, finExclusivo, PageRequest.of(
